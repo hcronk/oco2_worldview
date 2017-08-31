@@ -5,6 +5,7 @@ import numpy as np
 import os
 import sys
 from shapely.geometry import Polygon, Point, MultiPoint
+import matplotlib.pyplot as plt
 
 
 resolution = "1km"
@@ -72,6 +73,22 @@ vertex_latitude = np.squeeze(vertex_latitude[quality_mask, :])
 vertex_longitude = np.squeeze(vertex_longitude[quality_mask, :])
 data = data[quality_mask]
 
+latlon_subset_mask = np.logical_and(
+            np.logical_and(latitude <= 42.52, latitude >= 42.48), 
+            np.logical_and(longitude <= -83.0, longitude >= -83.3))
+
+latitude = latitude[latlon_subset_mask]
+longitude = longitude[latlon_subset_mask]
+vertex_latitude = np.squeeze(vertex_latitude[latlon_subset_mask, :])
+vertex_longitude = np.squeeze(vertex_longitude[latlon_subset_mask, :])
+data = data[latlon_subset_mask]
+
+#do_modis_overlay_plot(geo_upper_left,
+#                      geo_lower_right, 
+#		      date, vertex_latitude, vertex_longitude, data, var_lims = [395, 408],
+#                      out_plot = "data_check.png", out_data = "data_check.h5")                     
+#sys.exit()
+
 #Create lat/lon corner pairs from vertices
 #Each element of this array is a 4x2 array of lat/lon points of the parallelogram corners (Order: LL, UL, UR, LR)
 poly = np.dstack([vertex_latitude, vertex_longitude])
@@ -86,13 +103,20 @@ lat_check = []
 lon_check = []
 trigger = False
 
+fig = plt.figure()
+ax = fig.add_subplot(111)
+
 for n, vertices in enumerate(poly):
+    print n
     #Create a shapely polygon from vertices (Point order: LL, UL, UR, LR, LL)
     pg = [Polygon((x,y) for x, y in vertices)][0]
     
     #Get the indexes of the center grid boxes where the lat/lon of the center is between the vertex min/max for this polygon
     lat_idx = np.where(np.logical_and(lat_centers >= vlat_mins[n], lat_centers <= vlat_maxes[n]))[0]
     lon_idx = np.where(np.logical_and(lon_centers >= vlon_mins[n], lon_centers <= vlon_maxes[n]))[0]
+
+#    lat_idx = np.where(np.logical_and(lat_centers >= vlat_mins[n] - 0.01, lat_centers <= vlat_maxes[n] + 0.01))[0]
+#    lon_idx = np.where(np.logical_and(lon_centers >= vlon_mins[n] - 0.01, lon_centers <= vlon_maxes[n] + 0.01))[0]
     
     #If there are no grid boxes inside this polygon, move on to the next polygon
     if len(lat_idx) == 0 or len(lon_idx) == 0:
@@ -110,6 +134,7 @@ for n, vertices in enumerate(poly):
     for ll in zip_it:
         pt = Point(ll[0], ll[1])
         if pt.within(pg):
+            print pt, "is within", pg
             x = np.where(ll[1] == lon_centers)[0][0]
             y = np.where(ll[0] == lat_centers)[0][0]
             if grid[x,y] is None:
@@ -117,6 +142,16 @@ for n, vertices in enumerate(poly):
             else:
                 grid[x,y].append(data[n])
 
+    if n in [3,4,10]: 
+        plt.plot(np.append(vertices[:,1],vertices[0,1]), np.append(vertices[:,0], vertices[0,0]), "-o", c="red")
+        for xy in zip(vertices[:,1], vertices[:,0]):
+            ax.annotate('(%s, %s)' % xy, xy=xy, textcoords='data', fontsize=8.5)
+        plt.scatter(lon_m.flatten(), lat_m.flatten(), c="blue", edgecolor='none')
+        for xy in zip(np.round(lon_m.flatten(), 4), np.round(lat_m.flatten(), 4)):
+            if np.all(np.round(xy, 4) == [-83.2368, 42.4995]):
+                ax.annotate('(%s, %s)' % xy, xy=xy, textcoords='data', rotation=-30, fontsize=8.5)
+plt.show()
+    
 #    #Plot polygon vertices and gridpoints to visualize/quality check
 #    fig = plt.figure()
 #    ax = fig.add_subplot(111)
@@ -128,6 +163,7 @@ for n, vertices in enumerate(poly):
 #    for xy in zip(np.round(lon_m.flatten(), 4), np.round(lat_m.flatten(), 4)):
 #        ax.annotate('(%s, %s)' % xy, xy=xy, textcoords='data', rotation=-30, fontsize=8.5)
 #    plt.show()
+#    print
 #    #sys.exit()
 
 x_action, y_action = np.nonzero(grid)
@@ -158,10 +194,13 @@ valid_grid = grid_subset[xg,yg].astype(float)
 subset_lat_vertex = np.vstack([lat_bins[y], lat_bins[y], lat_bins[y + 1], lat_bins[y + 1]] for y in y_subset_indices[0][yg])
 subset_lon_vertex = np.vstack([lon_bins[x], lon_bins[x + 1], lon_bins[x + 1], lon_bins[x]] for x in x_subset_indices[0][xg])
 
+#do_modis_overlay_plot(geo_upper_left,
+#                      geo_lower_right, 
+#		      date, subset_lat_vertex, subset_lon_vertex, valid_grid, var_lims = [395, 408],
+#                      out_plot = out_plot, out_data = out_data)
+
 do_modis_overlay_plot(geo_upper_left,
                       geo_lower_right, 
 		      date, subset_lat_vertex, subset_lon_vertex, valid_grid, var_lims = [395, 408],
-                      out_plot = out_plot, out_data = out_data)
-
-
+                      out_plot = "data_check.png", out_data = "data_check.h5")
 
