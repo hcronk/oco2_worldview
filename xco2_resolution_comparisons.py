@@ -4,11 +4,11 @@ from oco2_modis_vistool.OCO2FileOps import LiteCO2File
 import numpy as np
 import os
 import sys
-from shapely.geometry import Polygon, Point, MultiPoint
+from shapely.geometry import Polygon, Point, LineString
 import matplotlib.pyplot as plt
 
 
-resolution = "1km"
+resolution = "500m"
 date = "2015-03-24"
 geo_upper_left = [42.8,-83.4]
 geo_lower_right = [41.2,-82.5]
@@ -73,15 +73,15 @@ vertex_latitude = np.squeeze(vertex_latitude[quality_mask, :])
 vertex_longitude = np.squeeze(vertex_longitude[quality_mask, :])
 data = data[quality_mask]
 
-latlon_subset_mask = np.logical_and(
-            np.logical_and(latitude <= 42.52, latitude >= 42.48), 
-            np.logical_and(longitude <= -83.0, longitude >= -83.3))
-
-latitude = latitude[latlon_subset_mask]
-longitude = longitude[latlon_subset_mask]
-vertex_latitude = np.squeeze(vertex_latitude[latlon_subset_mask, :])
-vertex_longitude = np.squeeze(vertex_longitude[latlon_subset_mask, :])
-data = data[latlon_subset_mask]
+#latlon_subset_mask = np.logical_and(
+#            np.logical_and(latitude <= 42.52, latitude >= 42.48), 
+#            np.logical_and(longitude <= -83.0, longitude >= -83.3))
+#
+#latitude = latitude[latlon_subset_mask]
+#longitude = longitude[latlon_subset_mask]
+#vertex_latitude = np.squeeze(vertex_latitude[latlon_subset_mask, :])
+#vertex_longitude = np.squeeze(vertex_longitude[latlon_subset_mask, :])
+#data = data[latlon_subset_mask]
 
 #do_modis_overlay_plot(geo_upper_left,
 #                      geo_lower_right, 
@@ -103,13 +103,15 @@ lat_check = []
 lon_check = []
 trigger = False
 
-fig = plt.figure()
-ax = fig.add_subplot(111)
+#fig = plt.figure(figsize=(14,12))
+#ax = fig.add_subplot(111)
+#ax.axis('off')
 
 for n, vertices in enumerate(poly):
-    print n
+    #print n
     #Create a shapely polygon from vertices (Point order: LL, UL, UR, LR, LL)
-    pg = [Polygon((x,y) for x, y in vertices)][0]
+    pg = [Polygon((x, y) for x, y in vertices)][0]
+    #pg = [Polygon((np.round(x, 4), np.round(y,4)) for x, y in vertices)][0]
     
     #Get the indexes of the center grid boxes where the lat/lon of the center is between the vertex min/max for this polygon
     lat_idx = np.where(np.logical_and(lat_centers >= vlat_mins[n], lat_centers <= vlat_maxes[n]))[0]
@@ -133,24 +135,88 @@ for n, vertices in enumerate(poly):
     
     for ll in zip_it:
         pt = Point(ll[0], ll[1])
+        #pt = Point(np.round(ll[0], 4), np.round(ll[1], 4))
         if pt.within(pg):
-            print pt, "is within", pg
+#            if n in [3, 4,10]:
+#                print pt, "is within", pg
+#                print "Checking distance"
+#                print pg.distance(pt)
+#                print "Checking exterior distance"
+#                print pg.exterior.distance(pt)
             x = np.where(ll[1] == lon_centers)[0][0]
             y = np.where(ll[0] == lat_centers)[0][0]
             if grid[x,y] is None:
                 grid[x,y] = [data[n]]
             else:
                 grid[x,y].append(data[n])
-
-    if n in [3,4,10]: 
-        plt.plot(np.append(vertices[:,1],vertices[0,1]), np.append(vertices[:,0], vertices[0,0]), "-o", c="red")
-        for xy in zip(vertices[:,1], vertices[:,0]):
-            ax.annotate('(%s, %s)' % xy, xy=xy, textcoords='data', fontsize=8.5)
-        plt.scatter(lon_m.flatten(), lat_m.flatten(), c="blue", edgecolor='none')
-        for xy in zip(np.round(lon_m.flatten(), 4), np.round(lat_m.flatten(), 4)):
-            if np.all(np.round(xy, 4) == [-83.2368, 42.4995]):
-                ax.annotate('(%s, %s)' % xy, xy=xy, textcoords='data', rotation=-30, fontsize=8.5)
-plt.show()
+        else:
+#            if n in [3, 4, 10]:
+#                print pt, "is outside", pg
+#                #print "Checking distance"
+#                #print pg.distance(pt)
+                #print "Checking exterior distance"
+            if pg.exterior.distance(pt) <= 1e-3:
+                x = np.where(ll[1] == lon_centers)[0][0]
+                y = np.where(ll[0] == lat_centers)[0][0]
+                if grid[x,y] is None:
+                    grid[x,y] = [data[n]]
+                else:
+                    grid[x,y].append(data[n])
+                    
+                #Cut off some precision and try again
+#            modified_pt = Point(np.round(ll[0], 4), np.round(ll[1], 4))
+#            modified_pg = [Polygon((np.round(x, 4), np.round(y,4)) for x, y in vertices)][0]
+#            if modified_pt.within(modified_pg):
+#                x = np.where(ll[1] == lon_centers)[0][0]
+#                y = np.where(ll[0] == lat_centers)[0][0]
+#                if grid[x,y] is None:
+#                    grid[x,y] = [data[n]]
+#                else:
+#                    grid[x,y].append(data[n])
+                    
+#                    print "Changing the tune"
+#                    print modified_pt, "is within", modified_pg
+#                    sys.exit()
+#                print "Checking lines"
+#                xs = list(np.append(vertices[:,1],vertices[0,1]))
+#                ys = list(np.append(vertices[:,0], vertices[0,0]))
+#                for i in xrange(0, len(xs)):
+#                    #print i
+#                    if i == len(xs)-1:
+#                        break
+#                    line = LineString([(xs[i], ys[i]), (xs[i+1], ys[i+1])])
+#                    print "Distance between", line, pt, ":"
+#                    print line.distance(pt)
+#                    #print line
+#                    #if line.distance(pt) < 1e-8:
+#                    #    print pt, "is within", line
+#                    #else:
+#                    #    print pt, "is off", line
+##sys.exit()
+#
+#    if n in [3,4,10]: 
+#        #print vertices
+#        #sys.exit()
+#        plt.plot(np.append(vertices[:,1],vertices[0,1]), np.append(vertices[:,0], vertices[0,0]), "-o", c="red")
+#        if n == 3:
+#            for xy in zip(vertices[:,1], vertices[:,0]):
+#                #print type(xy)
+#                #sys.exit()
+#                ax.annotate('(%s, %s)' % xy, xy=xy, textcoords='data', fontsize=12, rotation=90)
+#        if n == 4:
+#            for xy in zip(vertices[:,1], vertices[:,0]):
+#                ax.annotate('  (%s, %s)' % xy, xy=xy, textcoords='data', fontsize=12, rotation=-0)
+#        if n == 10:
+#            for xy in zip(vertices[:,1], vertices[:,0]):
+#                ax.annotate('  (%s, %s)' % xy, xy=xy, textcoords='data', fontsize=12, rotation=-45)
+#        #plt.scatter(lon_m.flatten(), lat_m.flatten(), c="blue", edgecolor='none')
+#        for xy in zip(np.round(lon_m.flatten(), 4), np.round(lat_m.flatten(), 4)):
+#        #for xy in zip(lon_m.flatten(), lat_m.flatten()):
+#            #print xy
+#            if np.all(np.round(xy, 4) == [-83.2368, 42.4995]):
+#                plt.scatter(xy[0], xy[1], c="blue", edgecolor='none')
+#                ax.annotate('(%s, %s)' % xy, xy=xy, textcoords='data', rotation=-30, fontsize=12)
+#plt.show()
     
 #    #Plot polygon vertices and gridpoints to visualize/quality check
 #    fig = plt.figure()
@@ -194,6 +260,16 @@ valid_grid = grid_subset[xg,yg].astype(float)
 subset_lat_vertex = np.vstack([lat_bins[y], lat_bins[y], lat_bins[y + 1], lat_bins[y + 1]] for y in y_subset_indices[0][yg])
 subset_lon_vertex = np.vstack([lon_bins[x], lon_bins[x + 1], lon_bins[x + 1], lon_bins[x]] for x in x_subset_indices[0][xg])
 
+print valid_grid.shape
+print valid_grid.dtype
+print valid_grid
+print
+print subset_lat_vertex.shape
+print subset_lat_vertex
+print
+print subset_lon_vertex.shape
+print subset_lon_vertex
+
 #do_modis_overlay_plot(geo_upper_left,
 #                      geo_lower_right, 
 #		      date, subset_lat_vertex, subset_lon_vertex, valid_grid, var_lims = [395, 408],
@@ -202,5 +278,5 @@ subset_lon_vertex = np.vstack([lon_bins[x], lon_bins[x + 1], lon_bins[x + 1], lo
 do_modis_overlay_plot(geo_upper_left,
                       geo_lower_right, 
 		      date, subset_lat_vertex, subset_lon_vertex, valid_grid, var_lims = [395, 408],
-                      out_plot = "data_check.png", out_data = "data_check.h5")
+                      out_plot = "data_check_" + resolution + ".png", out_data = "data_check_" + resolution + ".png")
 
