@@ -7,30 +7,38 @@ import sys
 from shapely.geometry import Polygon, Point, LineString
 import matplotlib.pyplot as plt
 
-
-resolution = "500m"
-date = "2015-03-24"
-geo_upper_left = [42.8,-83.4]
-geo_lower_right = [41.2,-82.5]
-
-out_plot_dir = "/home/hcronk/worldview/plots"
-plot_name = "Detroit_vistool_" + resolution + ".png"
+resolution = "1km"
+oco2_file_dir = "/home/codell/OCO2_results/b70/lite_B7Br"
 out_data_dir = "/home/hcronk/worldview/data"
-out_data_name = "Detroit_vistool_" + resolution + ".h5"
+out_plot_dir = "/home/hcronk/worldview/plots"
+
+##Detroit
+#date = "2015-03-24"
+#geo_upper_left = [42.8,-83.4]
+#geo_lower_right = [41.2,-82.5]
+#
+#plot_name = "Detroit_vistool_" + resolution + ".png"
+#out_data_name = "Detroit_vistool_" + resolution + ".h5"
+#
+#oco2_file = "oco2_LtCO2_150324_B7305Br_160712115928s.nc4"
+
+#Act America Pennsylvania
+date = "2016-07-27"
+geo_upper_left = [43.5, -78.9]
+geo_lower_right = [39.6, -77.5]
+
+plot_name = "AAPenn_vistool_" + resolution + ".png"
+out_data_name = "AAPenn_vistool_" + resolution + ".h5"
+
+oco2_file = "oco2_LtCO2_160727_B7305Br_160923172049s.nc4"
+
+#----#
+
 out_plot = os.path.join(out_plot_dir, plot_name)
 out_data = os.path.join(out_data_dir, out_data_name)
 
-oco2_file_dir = "/home/codell/OCO2_results/b70/lite_B7Br"
-oco2_file = "oco2_LtCO2_150324_B7305Br_160712115928s.nc4"
-
 #These numbers came from the GIBS ICD
 gibs_resolution_dict = {"2km" : 0.017578125, "1km" : 0.0087890625, "500m" : 0.00439453125, "250m" : 0.002197265625}
-
-#lat_bins = np.arange(90, -90, -gibs_resolution_dict[resolution], dtype=float)
-#lon_bins = np.arange(-180, 180, gibs_resolution_dict[resolution], dtype=float)
-#
-#lat_centers = np.arange(lat_bins[0] - gibs_resolution_dict[resolution] / 2., lat_bins[-1] - gibs_resolution_dict[resolution], -gibs_resolution_dict[resolution], dtype=float)
-#lon_centers = np.arange(lon_bins[0] + gibs_resolution_dict[resolution] / 2., lon_bins[-1] + gibs_resolution_dict[resolution], gibs_resolution_dict[resolution], dtype=float)
 
 #South to North by 1km bins, starting at -90 and ending at 89.
 lat_bins = np.arange(-90, 90, gibs_resolution_dict[resolution], dtype=float)
@@ -73,52 +81,24 @@ vertex_latitude = np.squeeze(vertex_latitude[quality_mask, :])
 vertex_longitude = np.squeeze(vertex_longitude[quality_mask, :])
 data = data[quality_mask]
 
-#latlon_subset_mask = np.logical_and(
-#            np.logical_and(latitude <= 42.52, latitude >= 42.48), 
-#            np.logical_and(longitude <= -83.0, longitude >= -83.3))
-#
-#latitude = latitude[latlon_subset_mask]
-#longitude = longitude[latlon_subset_mask]
-#vertex_latitude = np.squeeze(vertex_latitude[latlon_subset_mask, :])
-#vertex_longitude = np.squeeze(vertex_longitude[latlon_subset_mask, :])
-#data = data[latlon_subset_mask]
-
-#do_modis_overlay_plot(geo_upper_left,
-#                      geo_lower_right, 
-#		      date, vertex_latitude, vertex_longitude, data, var_lims = [395, 408],
-#                      out_plot = "data_check.png", out_data = "data_check.h5")                     
-#sys.exit()
-
 #Create lat/lon corner pairs from vertices
 #Each element of this array is a 4x2 array of lat/lon points of the parallelogram corners (Order: LL, UL, UR, LR)
 poly = np.dstack([vertex_latitude, vertex_longitude])
+print poly.shape
+#sys.exit()
 
 vlat_mins = vertex_latitude.min(axis=1)
 vlat_maxes = vertex_latitude.max(axis=1)
 vlon_mins = vertex_longitude.min(axis=1)
 vlon_maxes = vertex_longitude.max(axis=1)
 
-data_check = []
-lat_check = []
-lon_check = []
-trigger = False
-
-#fig = plt.figure(figsize=(14,12))
-#ax = fig.add_subplot(111)
-#ax.axis('off')
-
 for n, vertices in enumerate(poly):
-    #print n
     #Create a shapely polygon from vertices (Point order: LL, UL, UR, LR, LL)
     pg = [Polygon((x, y) for x, y in vertices)][0]
-    #pg = [Polygon((np.round(x, 4), np.round(y,4)) for x, y in vertices)][0]
     
     #Get the indexes of the center grid boxes where the lat/lon of the center is between the vertex min/max for this polygon
     lat_idx = np.where(np.logical_and(lat_centers >= vlat_mins[n], lat_centers <= vlat_maxes[n]))[0]
     lon_idx = np.where(np.logical_and(lon_centers >= vlon_mins[n], lon_centers <= vlon_maxes[n]))[0]
-
-#    lat_idx = np.where(np.logical_and(lat_centers >= vlat_mins[n] - 0.01, lat_centers <= vlat_maxes[n] + 0.01))[0]
-#    lon_idx = np.where(np.logical_and(lon_centers >= vlon_mins[n] - 0.01, lon_centers <= vlon_maxes[n] + 0.01))[0]
     
     #If there are no grid boxes inside this polygon, move on to the next polygon
     if len(lat_idx) == 0 or len(lon_idx) == 0:
@@ -135,91 +115,24 @@ for n, vertices in enumerate(poly):
     
     for ll in zip_it:
         pt = Point(ll[0], ll[1])
-        #pt = Point(np.round(ll[0], 4), np.round(ll[1], 4))
+        x = np.where(ll[1] == lon_centers)[0][0]
+        y = np.where(ll[0] == lat_centers)[0][0]
         if pt.within(pg):
-#            if n in [3, 4,10]:
-#                print pt, "is within", pg
-#                print "Checking distance"
-#                print pg.distance(pt)
-#                print "Checking exterior distance"
-#                print pg.exterior.distance(pt)
-            x = np.where(ll[1] == lon_centers)[0][0]
-            y = np.where(ll[0] == lat_centers)[0][0]
             if grid[x,y] is None:
                 grid[x,y] = [data[n]]
             else:
                 grid[x,y].append(data[n])
         else:
-#            if n in [3, 4, 10]:
-#                print pt, "is outside", pg
-#                #print "Checking distance"
-#                #print pg.distance(pt)
-                #print "Checking exterior distance"
             if pg.exterior.distance(pt) <= 1e-3:
-                x = np.where(ll[1] == lon_centers)[0][0]
-                y = np.where(ll[0] == lat_centers)[0][0]
+                #x = np.where(ll[1] == lon_centers)[0][0]
+                #y = np.where(ll[0] == lat_centers)[0][0]
                 if grid[x,y] is None:
                     grid[x,y] = [data[n]]
                 else:
-                    grid[x,y].append(data[n])
-                    
-                #Cut off some precision and try again
-#            modified_pt = Point(np.round(ll[0], 4), np.round(ll[1], 4))
-#            modified_pg = [Polygon((np.round(x, 4), np.round(y,4)) for x, y in vertices)][0]
-#            if modified_pt.within(modified_pg):
-#                x = np.where(ll[1] == lon_centers)[0][0]
-#                y = np.where(ll[0] == lat_centers)[0][0]
-#                if grid[x,y] is None:
-#                    grid[x,y] = [data[n]]
-#                else:
-#                    grid[x,y].append(data[n])
-                    
-#                    print "Changing the tune"
-#                    print modified_pt, "is within", modified_pg
-#                    sys.exit()
-#                print "Checking lines"
-#                xs = list(np.append(vertices[:,1],vertices[0,1]))
-#                ys = list(np.append(vertices[:,0], vertices[0,0]))
-#                for i in xrange(0, len(xs)):
-#                    #print i
-#                    if i == len(xs)-1:
-#                        break
-#                    line = LineString([(xs[i], ys[i]), (xs[i+1], ys[i+1])])
-#                    print "Distance between", line, pt, ":"
-#                    print line.distance(pt)
-#                    #print line
-#                    #if line.distance(pt) < 1e-8:
-#                    #    print pt, "is within", line
-#                    #else:
-#                    #    print pt, "is off", line
-##sys.exit()
-#
-#    if n in [3,4,10]: 
-#        #print vertices
-#        #sys.exit()
-#        plt.plot(np.append(vertices[:,1],vertices[0,1]), np.append(vertices[:,0], vertices[0,0]), "-o", c="red")
-#        if n == 3:
-#            for xy in zip(vertices[:,1], vertices[:,0]):
-#                #print type(xy)
-#                #sys.exit()
-#                ax.annotate('(%s, %s)' % xy, xy=xy, textcoords='data', fontsize=12, rotation=90)
-#        if n == 4:
-#            for xy in zip(vertices[:,1], vertices[:,0]):
-#                ax.annotate('  (%s, %s)' % xy, xy=xy, textcoords='data', fontsize=12, rotation=-0)
-#        if n == 10:
-#            for xy in zip(vertices[:,1], vertices[:,0]):
-#                ax.annotate('  (%s, %s)' % xy, xy=xy, textcoords='data', fontsize=12, rotation=-45)
-#        #plt.scatter(lon_m.flatten(), lat_m.flatten(), c="blue", edgecolor='none')
-#        for xy in zip(np.round(lon_m.flatten(), 4), np.round(lat_m.flatten(), 4)):
-#        #for xy in zip(lon_m.flatten(), lat_m.flatten()):
-#            #print xy
-#            if np.all(np.round(xy, 4) == [-83.2368, 42.4995]):
-#                plt.scatter(xy[0], xy[1], c="blue", edgecolor='none')
-#                ax.annotate('(%s, %s)' % xy, xy=xy, textcoords='data', rotation=-30, fontsize=12)
-#plt.show()
+                    grid[x,y].append(data[n])                  
     
 #    #Plot polygon vertices and gridpoints to visualize/quality check
-#    fig = plt.figure()
+#    fig = plt.figure(figsize=(10,8))
 #    ax = fig.add_subplot(111)
 #    #plt.scatter(vertices[:,1], vertices[:,0], c="red", edgecolor='none')
 #    plt.plot(np.append(vertices[:,1],vertices[0,1]), np.append(vertices[:,0], vertices[0,0]), "-o", c="red")
@@ -229,8 +142,6 @@ for n, vertices in enumerate(poly):
 #    for xy in zip(np.round(lon_m.flatten(), 4), np.round(lat_m.flatten(), 4)):
 #        ax.annotate('(%s, %s)' % xy, xy=xy, textcoords='data', rotation=-30, fontsize=8.5)
 #    plt.show()
-#    print
-#    #sys.exit()
 
 x_action, y_action = np.nonzero(grid)
 
@@ -260,23 +171,9 @@ valid_grid = grid_subset[xg,yg].astype(float)
 subset_lat_vertex = np.vstack([lat_bins[y], lat_bins[y], lat_bins[y + 1], lat_bins[y + 1]] for y in y_subset_indices[0][yg])
 subset_lon_vertex = np.vstack([lon_bins[x], lon_bins[x + 1], lon_bins[x + 1], lon_bins[x]] for x in x_subset_indices[0][xg])
 
-print valid_grid.shape
-print valid_grid.dtype
-print valid_grid
-print
-print subset_lat_vertex.shape
-print subset_lat_vertex
-print
-print subset_lon_vertex.shape
-print subset_lon_vertex
-
-#do_modis_overlay_plot(geo_upper_left,
-#                      geo_lower_right, 
-#		      date, subset_lat_vertex, subset_lon_vertex, valid_grid, var_lims = [395, 408],
-#                      out_plot = out_plot, out_data = out_data)
-
 do_modis_overlay_plot(geo_upper_left,
                       geo_lower_right, 
 		      date, subset_lat_vertex, subset_lon_vertex, valid_grid, var_lims = [395, 408],
-                      out_plot = "data_check_" + resolution + ".png", out_data = "data_check_" + resolution + ".png")
+                      out_plot = out_plot, out_data = out_data)
+
 
