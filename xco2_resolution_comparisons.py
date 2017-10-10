@@ -8,8 +8,30 @@ from shapely.geometry import Polygon, Point, LineString
 import matplotlib.pyplot as plt
 import json
 from glob import glob
+import matplotlib.patches as mpatches
+import matplotlib as mpl
+from PIL import Image
+import cartopy
+import cartopy.feature as cfeature
+ccrs = cartopy.crs
+
+def stitch_east_west(east_plot, west_plot, global_plot):
+    imgs = map(Image.open, [east_plot, west_plot])
+    w, h = zip(*(i.size for i in imgs))
+    total_w = sum(w)
+    max_h = max(h)
+    
+    stitched = Image.new('RGB', (total_w, max_h))
+    
+    offset = 0
+    for i in imgs:
+        stitched.paste(i, (offset, 0))
+        offset += i.size[0]
+    
+    stitched.save(global_plot)
 
 resolution = "500m"
+dpi = 10000
 oco2_file_dir = "/home/codell/OCO2_results/b70/lite_B7Br"
 #oco2_file_dir = "/home/codell/OCO2_results/b70/lite_test_20170724/"
 out_data_dir = "/home/hcronk/worldview/data"
@@ -24,6 +46,10 @@ out_plot_dir = "/home/hcronk/worldview/plots"
 #plot_name = "Detroit_" + resolution + ".png"
 #out_data_name = "Detroit_" + resolution + ".h5"
 #
+#global_plot_east_name = "Detroit_global_east_" + resolution + ".png"
+#global_plot_west_name = "Detroit_global_west_" + resolution + ".png"
+#global_plot_name = "Detroit_global_" + resolution + ".png"
+#
 #baseline_plot_name = "Detroit_baseline.png"
 #baseline_data_name = "Detroit_baseline.h5"
 #
@@ -31,19 +57,23 @@ out_plot_dir = "/home/hcronk/worldview/plots"
 
 #---#
 
-##Act America Pennsylvania
-#date = "2016-07-27"
-#geo_upper_left = [43.5, -78.9]
-#geo_lower_right = [39.6, -77.5]
-#variable_plot_lims = [395, 408]
-#
-#plot_name = "AAPenn_" + resolution + ".png"
-#out_data_name = "AAPenn_" + resolution + ".h5"
-#
-#baseline_plot_name = "AAPenn_baseline.png"
-#baseline_data_name = "AAPenn_baseline.h5"
-#
-#oco2_file = "oco2_LtCO2_160727_B7305Br_160923172049s.nc4"
+#Act America Pennsylvania
+date = "2016-07-27"
+geo_upper_left = [43.5, -78.9]
+geo_lower_right = [39.6, -77.5]
+variable_plot_lims = [395, 408]
+
+plot_name = "AAPenn_" + resolution + ".png"
+out_data_name = "AAPenn_" + resolution + ".h5"
+
+global_plot_name = "AAPenn_global_" + resolution + ".png"
+global_plot_east_name = "AAPenn_global_east_" + resolution + ".png"
+global_plot_west_name = "AAPenn_global_west_" + resolution + ".png"
+
+baseline_plot_name = "AAPenn_baseline.png"
+baseline_data_name = "AAPenn_baseline.h5"
+
+oco2_file = "oco2_LtCO2_160727_B7305Br_160923172049s.nc4"
 
 #---#
 
@@ -55,6 +85,8 @@ out_plot_dir = "/home/hcronk/worldview/plots"
 #
 #plot_name = "GL_2016-09-07_11629_023_" + resolution + ".png"
 #out_data_name = "GL_2016-09-07_11629_023_" + resolution + ".h5"
+#
+#global_plot_name = "GL_2016-09-07_11629_global_" + resolution + ".png"
 #
 #baseline_plot_name = "GL_2016-09-07_11629_023_baseline.png"
 #baseline_data_name = "GL_2016-09-07_11629_023_baseline.h5"
@@ -72,6 +104,8 @@ out_plot_dir = "/home/hcronk/worldview/plots"
 #plot_name = "GL_2016-09-07_11629_024_" + resolution + ".png"
 #out_data_name = "GL_2016-09-07_11629_024_" + resolution + ".h5"
 #
+#global_plot_name = "GL_2016-09-07_11629_global_" + resolution + ".png"
+#
 #baseline_plot_name = "GL_2016-09-07_11629_024_baseline.png"
 #baseline_data_name = "GL_2016-09-07_11629_024_baseline.h5"
 #
@@ -79,27 +113,36 @@ out_plot_dir = "/home/hcronk/worldview/plots"
 
 #---#
 
-#Somalia: GL_2014-12-30_02638_033
-date = "2014-12-30"
-geo_upper_left = [0.6, 42.45]
-geo_lower_right = [-1.0, 42.9]
-variable_plot_lims = [395., 402.]
-
-plot_name = "GL_2014-12-30_02638_033_" + resolution + ".png"
-out_data_name = "GL_2014-12-30_02638_033_" + resolution + ".h5"
-
-baseline_plot_name = "GL_2014-12-30_02638_033_baseline.png"
-baseline_data_name = "GL_2014-12-30_02638_033_baseline.h5"
-
-oco2_file = "oco2_LtCO2_141230_B7305Br_160712143805s.nc4"
+##Somalia: GL_2014-12-30_02638_033
+#date = "2014-12-30"
+#geo_upper_left = [0.6, 42.45]
+#geo_lower_right = [-1.0, 42.9]
+#variable_plot_lims = [395, 402]
+#
+#plot_name = "GL_2014-12-30_02638_033_" + resolution + ".png"
+#out_data_name = "GL_2014-12-30_02638_033_" + resolution + ".h5"
+#
+#global_plot_name = "GL_2014-12-30_02638_global_" + resolution + ".png"
+#
+#baseline_plot_name = "GL_2014-12-30_02638_033_baseline.png"
+#baseline_data_name = "GL_2014-12-30_02638_033_baseline.h5"
+#
+#oco2_file = "oco2_LtCO2_141230_B7305Br_160712143805s.nc4"
 
 #----#
 
 out_plot = os.path.join(out_plot_dir, plot_name)
 out_data = os.path.join(out_data_dir, out_data_name)
+global_plot_east = os.path.join(out_plot_dir, global_plot_east_name)
+global_plot_west = os.path.join(out_plot_dir, global_plot_west_name)
+global_plot = os.path.join(out_plot_dir, global_plot_name)
 
 baseline_plot = os.path.join(out_plot_dir, baseline_plot_name)
 baseline_data = os.path.join(out_data_dir, baseline_data_name)
+
+if glob(global_plot_east) and glob(global_plot_west) and not glob(global_plot):
+    print "Just the global plot"
+    stitch_east_west(global_plot_east, global_plot_west, global_plot)
 
 #These numbers came from the GIBS ICD
 gibs_resolution_dict = {"2km" : 0.017578125, "1km" : 0.0087890625, "500m" : 0.00439453125, "250m" : 0.002197265625}
@@ -249,31 +292,143 @@ for x, y in zip(x_action, y_action):
     if grid[x,y] is not None:
         grid[x,y] = np.mean(grid[x,y])
         
+# Plot the Eastern Hemisphere
+#fig = plt.figure(figsize=(0.5 * grid_x_elem / dpi, 0.5 * grid_y_elem / dpi), dpi=dpi)
+##ax = plt.subplot(111, projection=ccrs.PlateCarree())
+#ax = plt.axes(projection=ccrs.PlateCarree())
+##ax.set_global()
+#ax.outline_patch.set_visible(False)
+##ax = plt.subplot(111)
+##ax.set_extent([
+#ax.coastlines(resolution='10m', color='black', linewidth=1)
+#ax.add_feature(cfeature.LAKES, edgecolor='black', facecolor='none')
+##fig, ax = plt.subplots(figsize=(10,8), subplot_kw={'projection': ccrs.PlateCarree()})
 
-# Plot the subset
-lat_ul = geo_upper_left[0]
-lon_ul = geo_upper_left[1]
-lat_lr = geo_lower_right[0]
-lon_lr = geo_lower_right[1]
+xg, yg = np.nonzero(grid)
+valid_grid = grid[xg,yg].astype(float)
 
-x_subset_indices = np.where(np.logical_and(lon_centers >= lon_ul, lon_centers <= lon_lr))
-y_subset_indices = np.where(np.logical_and(lat_centers >= lat_lr, lat_centers <= lat_ul))
+#print valid_grid.shape
 
-subset_lat_centers = lat_centers[y_subset_indices]
-subset_lon_centers = lon_centers[x_subset_indices]
-subset_lat_bins = lat_bins[y_subset_indices]
-subset_lon_bins = lon_bins[x_subset_indices]
-grid_subset = grid[int(x_subset_indices[0][0]) : int(x_subset_indices[0][-1] + 1), int(y_subset_indices[0][0]) : int(y_subset_indices[0][-1] + 1)]
+#subset_lat_vertex = np.vstack([lat_bins[y], lat_bins[y], lat_bins[y + 1], lat_bins[y + 1]] for y in yg)
+#subset_lon_vertex = np.vstack([lon_bins[x], lon_bins[x + 1], lon_bins[x + 1], lon_bins[x]] for x in xg)
 
-xg, yg = np.nonzero(grid_subset)
-valid_grid = grid_subset[xg,yg].astype(float)
+east_subset_indices =  np.where(lon_centers >= 0)
+west_subset_indices = np.where(lon_centers < 0)
 
-subset_lat_vertex = np.vstack([lat_bins[y], lat_bins[y], lat_bins[y + 1], lat_bins[y + 1]] for y in y_subset_indices[0][yg])
-subset_lon_vertex = np.vstack([lon_bins[x], lon_bins[x + 1], lon_bins[x + 1], lon_bins[x]] for x in x_subset_indices[0][xg])
+#subset_lat_centers = lat_centers[y_subset_indices]
+#subset_lon_centers = lon_centers[x_subset_indices]
+east_lon_bins = lon_bins[east_subset_indices]
+west_lon_bins = lon_bins[west_subset_indices]
 
-do_modis_overlay_plot(geo_upper_left,
-                      geo_lower_right, 
-		      date, subset_lat_vertex, subset_lon_vertex, valid_grid, var_lims = variable_plot_lims,
-                      out_plot = out_plot, out_data = out_data)
+east_grid_subset = grid[int(east_subset_indices[0][0]) : int(east_subset_indices[0][-1] + 1), :]
+west_grid_subset = grid[int(west_subset_indices[0][0]) : int(west_subset_indices[0][-1] + 1), :]
+
+###East####
+
+fig = plt.figure(figsize=(0.5 * grid_x_elem / dpi, 0.5 * grid_y_elem / dpi), dpi=dpi)
+#ax = plt.subplot(111, projection=ccrs.PlateCarree())
+ax = plt.axes(projection=ccrs.PlateCarree())
+#ax.set_global()
+ax.set_extent([0, 180, -90, 90])
+ax.outline_patch.set_visible(False)
+#ax = plt.subplot(111)
+#ax.coastlines(resolution='10m', color='black', linewidth=1)
+#ax.add_feature(cfeature.LAKES, edgecolor='black', facecolor='none')
+#fig, ax = plt.subplots(figsize=(10,8), subplot_kw={'projection': ccrs.PlateCarree()})
+
+xg, yg = np.nonzero(east_grid_subset)
+valid_grid = east_grid_subset[xg,yg].astype(float)
+
+subset_lat_vertex = np.vstack([lat_bins[y], lat_bins[y], lat_bins[y + 1], lat_bins[y + 1]] for y in yg)
+subset_lon_vertex = np.vstack([lon_bins[x], lon_bins[x + 1], lon_bins[x + 1], lon_bins[x]] for x in east_subset_indices[0][xg])
+
+
+zip_it = np.dstack([subset_lon_vertex, subset_lat_vertex])
+
+patches = []
+
+for row in zip_it:
+    polygon = mpatches.Polygon(row)
+    patches.append(polygon)                 
+p = mpl.collections.PatchCollection(patches, cmap='jet', edgecolor='none')
+p.set_array(valid_grid)
+p.set_clim(variable_plot_lims[0], variable_plot_lims[1])
+ax.add_collection(p)
+
+#plt.axis('off')
+#fig.axes.get_xaxis().set_visible(False)
+#fig.axes.get_yaxis().set_visible(False)
+#ax.set_axis_off()
+#plt.show()
+fig.savefig(global_plot_east, bbox_inches='tight', pad_inches=0, dpi=dpi)
+
+###West###
+
+fig = plt.figure(figsize=(0.5 * grid_x_elem / dpi, 0.5 * grid_y_elem / dpi), dpi=dpi)
+#ax = plt.subplot(111, projection=ccrs.PlateCarree())
+ax = plt.axes(projection=ccrs.PlateCarree())
+#ax.set_global()
+ax.set_extent([-180, 0, -90, 90])
+ax.outline_patch.set_visible(False)
+#ax = plt.subplot(111)
+#ax.set_extent([
+#ax.coastlines(resolution='10m', color='black', linewidth=1)
+#ax.add_feature(cfeature.LAKES, edgecolor='black', facecolor='none')
+#fig, ax = plt.subplots(figsize=(10,8), subplot_kw={'projection': ccrs.PlateCarree()})
+
+xg, yg = np.nonzero(west_grid_subset)
+valid_grid = west_grid_subset[xg,yg].astype(float)
+
+subset_lat_vertex = np.vstack([lat_bins[y], lat_bins[y], lat_bins[y + 1], lat_bins[y + 1]] for y in yg)
+subset_lon_vertex = np.vstack([lon_bins[x], lon_bins[x + 1], lon_bins[x + 1], lon_bins[x]] for x in west_subset_indices[0][xg])
+
+
+zip_it = np.dstack([subset_lon_vertex, subset_lat_vertex])
+
+patches = []
+
+for row in zip_it:
+    polygon = mpatches.Polygon(row)
+    patches.append(polygon)                 
+p = mpl.collections.PatchCollection(patches, cmap='jet', edgecolor='none')
+p.set_array(valid_grid)
+p.set_clim(variable_plot_lims[0], variable_plot_lims[1])
+ax.add_collection(p)
+
+#plt.axis('off')
+#fig.axes.get_xaxis().set_visible(False)
+#fig.axes.get_yaxis().set_visible(False)
+#ax.set_axis_off()
+#plt.show()
+fig.savefig(global_plot_west, bbox_inches='tight', pad_inches=0, dpi=dpi)
+
+if glob(global_plot_east) and glob(global_plot_west) and not glob(global_plot):
+    stitch_east_west(global_plot_east, global_plot_west, global_plot)
+
+## Plot the subset
+#lat_ul = geo_upper_left[0]
+#lon_ul = geo_upper_left[1]
+#lat_lr = geo_lower_right[0]
+#lon_lr = geo_lower_right[1]
+#
+#x_subset_indices = np.where(np.logical_and(lon_centers >= lon_ul, lon_centers <= lon_lr))
+#y_subset_indices = np.where(np.logical_and(lat_centers >= lat_lr, lat_centers <= lat_ul))
+#
+#subset_lat_centers = lat_centers[y_subset_indices]
+#subset_lon_centers = lon_centers[x_subset_indices]
+#subset_lat_bins = lat_bins[y_subset_indices]
+#subset_lon_bins = lon_bins[x_subset_indices]
+#grid_subset = grid[int(x_subset_indices[0][0]) : int(x_subset_indices[0][-1] + 1), int(y_subset_indices[0][0]) : int(y_subset_indices[0][-1] + 1)]
+#
+#xg, yg = np.nonzero(grid_subset)
+#valid_grid = grid_subset[xg,yg].astype(float)
+#
+#subset_lat_vertex = np.vstack([lat_bins[y], lat_bins[y], lat_bins[y + 1], lat_bins[y + 1]] for y in y_subset_indices[0][yg])
+#subset_lon_vertex = np.vstack([lon_bins[x], lon_bins[x + 1], lon_bins[x + 1], lon_bins[x]] for x in x_subset_indices[0][xg])
+#
+#do_modis_overlay_plot(geo_upper_left,
+#                      geo_lower_right, 
+#		      date, subset_lat_vertex, subset_lon_vertex, valid_grid, var_lims = variable_plot_lims,
+#                      out_plot = out_plot, out_data = out_data)
 
 
