@@ -16,7 +16,7 @@ import cartopy.feature as cfeature
 ccrs = cartopy.crs
 
 def stitch_east_west(east_plot, west_plot, global_plot):
-    imgs = map(Image.open, [east_plot, west_plot])
+    imgs = map(Image.open, [west_plot, east_plot])
     w, h = zip(*(i.size for i in imgs))
     total_w = sum(w)
     max_h = max(h)
