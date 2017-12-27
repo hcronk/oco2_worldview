@@ -92,7 +92,7 @@ def regrid_oco2(vertex_latitude, vertex_longitude, grid_lat_centers, grid_lon_ce
     vlon_maxes = vertex_longitude.max(axis=1)
 
     for n, vertices in enumerate(poly):
-        #print n
+        print n
         #print vertices
         #Create a shapely polygon from vertices (Point order: LL, UL, UR, LR, LL)
         pg = [Polygon((x, y) for x, y in vertices)][0]
@@ -137,8 +137,10 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(description="Flags", prefix_chars='-')
     parser.add_argument("-v", "--verbose", help="Prints some basic information during code execution", action="store_true")
+    parser.add_argument("-f", "--file", help="Full path to input file name for command line use", default=None)
     args = parser.parse_args()
     verbose = args.verbose
+    lite_file = args.file
     
     # Local paths
     xco2_lite_file_dir = "/data6/OCO2/product/Lite/B8/LtCO2/"
@@ -184,6 +186,15 @@ if __name__ == "__main__":
                       "sif_blended" : {"data_field_name" : None, "range": [0, 2], "cmap" : "jet", "quality_info" : {}}
                     }
                 }
+    geo_dict = { "LtCO2" : {
+                    "lat" : "vertex_latitude",
+                    "lon" : "vertex_longitude"
+                    },
+                 "LtSIF" : {
+                    "lat" : "footprint_vertex_latitude",
+                    "lon" : "footprint_vertex_longitude"
+                    }
+                }
 
     if user_defined_var_list:
         var_list = user_defined_var_list
@@ -195,14 +206,11 @@ if __name__ == "__main__":
         if overwrite:
             print("Any existing plots for these variables in " + out_plot_dir + " will be overwritten")
             print("This is the default behavior. To change, change the value of 'overwrite' to False")
-    sys.exit()
             
 
     resolution = "500m"
     dpi = 10000
-    regrid_LtC02 = False
-    regrid_LtSIF = False
-
+    regrid = True
 
     #These numbers came from the GIBS ICD
     gibs_resolution_dict = {"2km" : 0.017578125, "1km" : 0.0087890625, "500m" : 0.00439453125, "250m" : 0.002197265625}
@@ -218,14 +226,15 @@ if __name__ == "__main__":
     lon_centers = np.arange(lon_bins[0] + gibs_resolution_dict[resolution] / 2., lon_bins[-1] + gibs_resolution_dict[resolution], gibs_resolution_dict[resolution], dtype=float)
 
     for var in var_list:
-        print var
-        if var not in data_dict["LtCO2"].keys() and var not in data_dict["LtSIF"].keys():
-            print(var + " is not defined in the data dictionary. Please add it or check spelling.")
+        if verbose:
+            print("Processing "+ var)
+        if var not in data_dict[product].keys():
+            print(var + " is not defined in the " + product + " data dictionary. Please add it or check spelling.")
             print("Exiting.")
             sys.exit()
-        if var in data_dict["LtCO2"] and not regrid_LtC02:
-            var_lat = get_oco2_data("vertex_latitude", lite_file)
-            var_lon = get_oco2_data("vertex_longitude", lite_file)
+        if var in data_dict[product] and regrid:
+            var_lat = get_oco2_data(geo_dict[product]["lat"], lite_file)
+            var_lon = get_oco2_data(geo_dict[product]["lon"], lite_file)
             #Cut out the missing data and the data that crosses the date line
             vertex_miss_mask = np.where(np.logical_not(np.any(var_lat == -999999, axis=1), np.any(var_lon == -999999, axis=1)))
             vertex_zero_mask = np.where(np.logical_not(np.any(var_lat == 0.0, axis=1), np.any(var_lon == 0.0, axis=1)))
@@ -237,27 +246,9 @@ if __name__ == "__main__":
             var_lon = np.squeeze(var_lon[total_mask, :])
 
             #Get the LtCO2 indices in each GIBS grid box
-            xco2_grid = regrid_oco2(var_lat, var_lon, lat_centers, lon_centers)
-            regrid_LtCO2 = True
-
-        if var in data_dict["LtSIF"] and not regrid_LtSIF:
-            print "regridding"
-            var_lat = get_oco2_data("footprint_vertex_latitude", lite_file)
-            var_lon = get_oco2_data("footprint_vertex_longitude", lite_file) 
-            #Cut out the missing data and the data that crosses the date line
-            vertex_miss_mask = np.where(np.logical_not(np.any(var_lat == -999999, axis=1), np.any(var_lon == -999999, axis=1)))
-            vertex_zero_mask = np.where(np.logical_not(np.any(var_lat == 0.0, axis=1), np.any(var_lon == 0.0, axis=1)))
-            vertex_crossDL_mask = np.where(np.logical_not(np.any(var_lon <= -179.9, axis=1), np.any(var_lon >= 179.9, axis=1)))
-
-            total_mask = reduce(np.intersect1d, (vertex_miss_mask, vertex_zero_mask, vertex_crossDL_mask))
-
-            var_lat = np.squeeze(var_lat[total_mask, :])
-            var_lon = np.squeeze(var_lon[total_mask, :])
-
-            #Get the LtSIF indices in each GIBS grid box
-            sif_grid = regrid_oco2(var_lat, var_lon, lat_centers, lon_centers)
-            regrid_LtSIF = True
-            print "regridding success"
+            grid = regrid_oco2(var_lat, var_lon, lat_centers, lon_centers)
+            regrid = False
+            print "success"
     sys.exit()
     good_quality_xco2_grid_scheme
     global_plot_name = var + "_" + global_plot_name_tags
