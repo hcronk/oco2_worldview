@@ -138,19 +138,33 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Flags", prefix_chars='-')
     parser.add_argument("-v", "--verbose", help="Prints some basic information during code execution", action="store_true")
     parser.add_argument("-f", "--file", help="Full path to input file name for command line use", default=None)
+    parser.add_argument("-c", "--config", help="Full path to text file containing a list of files to process, one filename per line", default=None)
     args = parser.parse_args()
     verbose = args.verbose
     lite_file = args.file
+    config_file = args.config
     
-    # Local paths
-    xco2_lite_file_dir = "/data6/OCO2/product/Lite/B8/LtCO2/"
-    sif_lite_file_dir = "/cloudsat/LtSIF/"
-    out_plot_dir = "/home/hcronk/worldview/plots"
+    if not lite_file and not config_file or lite_file and config_file:
+        print("Please provide a single file to process with the -f flag OR a file containing a list of files to process with the -c flag.")
+        print("Exiting.")
+        sys.exit()
+    
+    if config_file:
+        if glob(config_file):
+            files = np.genfromtxt(config_file, dtype="str", delimiter="\n")
+        else:
+            print(config_file + " DNE. Exiting.")
+            sys.exit()
 
     #Variables to be plotted, if not all of the ones available. Can be left as an empty list []
     user_defined_var_list = ["xco2"]
     #Overwrite existing plots, if applicable
     overwrite = True
+    # Local paths
+    xco2_lite_file_dir = "/data6/OCO2/product/Lite/B8/LtCO2/"
+    sif_lite_file_dir = "/cloudsat/LtSIF/"
+    out_plot_dir = "/home/hcronk/worldview/plots"
+
 
     ### TESTING ###
     ##Test Case 1: Act America Pennsylvania
@@ -210,7 +224,7 @@ if __name__ == "__main__":
 
     resolution = "500m"
     dpi = 10000
-    regrid = True
+    regrid = False
 
     #These numbers came from the GIBS ICD
     gibs_resolution_dict = {"2km" : 0.017578125, "1km" : 0.0087890625, "500m" : 0.00439453125, "250m" : 0.002197265625}
@@ -248,14 +262,21 @@ if __name__ == "__main__":
             #Get the LtCO2 indices in each GIBS grid box
             grid = regrid_oco2(var_lat, var_lon, lat_centers, lon_centers)
             regrid = False
-            print "success"
-    sys.exit()
-    good_quality_xco2_grid_scheme
-    global_plot_name = var + "_" + global_plot_name_tags
-    if data_dict[product][var]["preprocessing"]:
-        data = preprocessing(var, lite_file)
-    else:
-        data = preprocessing(var, lite_file)
+
+        if data_dict[product][var]["preprocessing"]:
+            data = preprocessing(var, lite_file)
+        else:
+            data = get_oco2_data(data_dict[product][var]["data_field_name"], lite_file)
+            print data.shape
+        
+        if data_dict[product][var]["quality_info"]:
+            #"quality_info" : {"quality_field_name" : "xco2_quality_flag", "qc_val" :  0, "qc_operator" : operator.eq }}, 
+            quality = get_oco2_data(data_dict[product][var]["quality_info"]["quality_field_name"], lite_file)
+            quality_mask = np.where(data_dict[product][var]["quality_info"]["qc_operator"](quality, data_dict[product][var]["quality_info"]["qc_val"]))
+            print len(quality_mask[0])
+        
+        
+
 
     variable_plot_lims = data_dict[product][var]["range"]
 
