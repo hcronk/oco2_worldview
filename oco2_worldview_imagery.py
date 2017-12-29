@@ -60,7 +60,7 @@ def patch_plot(data, grid_lat, grid_lon, extent, data_limits, cmap, out_plot_nam
 
     subset_lat_vertex = np.vstack([grid_lat[y], grid_lat[y], grid_lat[y + 1], grid_lat[y + 1]] for y in yg)
     subset_lon_vertex = np.vstack([grid_lon[x], grid_lon[x + 1], grid_lon[x + 1], grid_lon[x]] for x in xg)
-
+    
     zip_it = np.dstack([subset_lon_vertex, subset_lat_vertex])
 
     patches = []
@@ -196,8 +196,7 @@ if __name__ == "__main__":
             sys.exit()
 
     if custom_geo_box:
-        bad_chars = "[,]"
-        custom_geo_box = [float(x.strip(bad_chars)) for x in custom_geo_box]
+        custom_geo_box = [float(x.strip("[,]")) for x in custom_geo_box]
         if len(custom_geo_box) != 4:
             print("Custom geolocation box format: [lat_min, lat_max, lon_min, lon_max]")
             print("Exiting.")
@@ -212,7 +211,7 @@ if __name__ == "__main__":
     #Output directory path
     out_plot_dir = "/home/hcronk/worldview/plots"
     #Overwrite existing plots in output directory, if applicable
-    overwrite = False
+    overwrite = True
 
     ### TESTING ###
     #Local paths
@@ -271,7 +270,7 @@ if __name__ == "__main__":
         #double check there's something to do
         if custom_geo_box:
             for var in var_list:
-                if glob(os.path.join(out_plot_dir, var + "_Lat" + str(custom_geo_box[2]) + "to" + str(custom_geo_box[3]) + "_Lon" + str(custom_geo_box[0])+ str(custom_geo_box[1]) + "_" + global_plot_name_tags)):
+                if glob(os.path.join(out_plot_dir, var + "_Lat" + str(custom_geo_box[2]) + "to" + str(custom_geo_box[3]) + "_Lon" + str(custom_geo_box[0]) + "to" + str(custom_geo_box[1]) + "_" + global_plot_name_tags)):
                     var_list.remove(var)
         else:
             for var in var_list:
@@ -320,7 +319,12 @@ if __name__ == "__main__":
         south_subset_indices = np.where(lat_centers < 0)
         west_subset_indices = np.where(lon_centers < 0)
         
-
+        quadrant_dict = { "NE": { "lat_indices" : north_subset_indices, "lon_indices" : east_subset_indices, "extent_box" : [0, 180, 0, 90]},
+                          "SE": { "lat_indices" : south_subset_indices, "lon_indices" : east_subset_indices, "extent_box" : [0, 180, -90, 0]},
+                          "SW": { "lat_indices" : south_subset_indices, "lon_indices" : west_subset_indices, "extent_box" : [-180, 0, -90, 0]},
+                          "NW": { "lat_indices" : north_subset_indices, "lon_indices" : west_subset_indices, "extent_box" : [-180, 0, 0, 90]}
+                        }
+    
     for var in var_list:
         if verbose:
             print("Processing "+ var)
@@ -405,19 +409,18 @@ if __name__ == "__main__":
         #Implement overwrite flag
         
         if custom_geo_box:
-            plot_name = os.path.join(out_plot_dir, var + "_Lat" + str(custom_geo_box[2]) + "to" + str(custom_geo_box[3]) + "_Lon" + str(custom_geo_box[0])+ str(custom_geo_box[1]) + "_" + global_plot_name_tags)
+            if verbose:
+                print("Plotting")
+            plot_name = os.path.join(out_plot_dir, var + "_Lat" + str(custom_geo_box[2]) + "to" + str(custom_geo_box[3]) + "_Lon" + str(custom_geo_box[0]) + "to" + str(custom_geo_box[1]) + "_" + global_plot_name_tags)
             grid_subset = grid[int(lon_indices[0][0]) : int(lon_indices[0][-1] + 1), int(lat_indices[0][0]) : int(lat_indices[0][-1] + 1)]
-            success = patch_plot(grid_subset, lat_bins, lon_bins, [lon_ul, lon_lr, lat_lr, lat_ul], variable_plot_lims, cmap, plot_name, 0.5 * grid_x_elem, 0.5 * grid_y_elem, dpi)
+            lat_bin_subset = lat_bins[int(lat_indices[0][0]) : int(lat_indices[0][-1] + 1)]
+            lon_bin_subset = lon_bins[int(lon_indices[0][0]) : int(lon_indices[0][-1] + 1)]
+            success = patch_plot(grid_subset, lat_bin_subset, lon_bin_subset, [lon_ul, lon_lr, lat_lr, lat_ul], variable_plot_lims, cmap, plot_name, float(len(lon_indices[0])), float(len(lat_indices[0])), dpi)
         else:
             #Plot quadrants
-            quadrant_dict = { "NE": { "plot_name" : os.path.join(out_plot_dir, var + "_NE_" + global_plot_name_tags), "lat_indices" : north_subset_indices, "lon_indices" : east_subset_indices, "extent_box" : [0, 180, 0, 90]},
-                              "SE": { "plot_name" : os.path.join(out_plot_dir, var + "_SE_" + global_plot_name_tags), "lat_indices" : south_subset_indices, "lon_indices" : east_subset_indices, "extent_box" : [0, 180, -90, 0]},
-                              "SW": { "plot_name" : os.path.join(out_plot_dir, var + "_SW_" + global_plot_name_tags), "lat_indices" : south_subset_indices, "lon_indices" : west_subset_indices, "extent_box" : [-180, 0, -90, 0]},
-                              "NW": { "plot_name" : os.path.join(out_plot_dir, var + "_NW_" + global_plot_name_tags), "lat_indices" : north_subset_indices, "lon_indices" : west_subset_indices, "extent_box" : [-180, 0, 0, 90]}
-                            }
-
             for q in quadrant_dict.keys():
-                plot_name = quadrant_dict[q]["plot_name"]
+                
+                plot_name = os.path.join(out_plot_dir, var + "_"+q+"_" + global_plot_name_tags)
 
                 if verbose:
                     print("Working on the " + q + " plotting quadrant")
@@ -427,43 +430,14 @@ if __name__ == "__main__":
                         print("Overwriting " + plot_name)
                     if glob(plot_name) and not overwrite:
                         print(plot_name + " exists and overwrite is not set. Moving on.")
+                
                 if not glob(plot_name) or glob(plot_name) and overwrite:
                     grid_subset = grid[int(quadrant_dict[q]["lon_indices"][0][0]) : int(quadrant_dict[q]["lon_indices"][0][-1] + 1), int(quadrant_dict[q]["lat_indices"][0][0]) : int(quadrant_dict[q]["lat_indices"][0][-1] + 1)]
-                    success = patch_plot(grid_subset, lat_bins, lon_bins, quadrant_dict[q]["extent_box"], variable_plot_lims, cmap, plot_name, 0.5 * grid_x_elem, 0.5 * grid_y_elem, dpi)
-            
- #       #NE#
-#        plot_name = "temp_northeast"
-#        if not glob(plot_name) or glob(plot_name) and overwrite:
-#            if verbose:
-#                if not glob(plot_name):
-#                    print("Creating " + plot_name)
-#                if glob(plot_name) and overwrite:
-#                    print("Overwriting " + plot_name)
-#                if glob(plot_name) and not overwrite:
-#                    print(plot_name + " exists and overwrite is not set. Moving on.")
-#            grid_subset = grid[int(east_subset_indices[0][0]) : int(east_subset_indices[0][-1] + 1), int(north_subset_indices[0][0]) : int(north_subset_indices[0][-1] + 1)]
-#            success = patch_plot(grid_subset, lat_bins, lon_bins, [0, 180, 0, 90], variable_plot_lims, cmap, "temp_northeast", 0.5 * grid_x_elem, 0.5 * grid_y_elem, dpi)
-#        
-#        #SE#
-#        plot_name = "temp_southeast"
-#        if not glob(plot_name) or glob(plot_name) and overwrite:
-#            if verbose:
-#                if not glob(plot_name):
-#                    print("Creating " + plot_name)
-#                if glob(plot_name) and overwrite:
-#                    print("Overwriting " + plot_name)
-#                if glob(plot_name) and not overwrite:
-#                    print(plot_name + " exists and overwrite is not set. Moving on.")grid_subset = grid[int(east_subset_indices[0][0]) : int(east_subset_indices[0][-1] + 1), int(south_subset_indices[0][0]) : int(south_subset_indices[0][-1] + 1)]
-#        success = patch_plot(grid_subset, lat_bins, lon_bins, [0, 180, -90, 0], variable_plot_lims, cmap, "temp_southeast", 0.5 * grid_x_elem, 0.5 * grid_y_elem, dpi)
-#        
-#        #SW#
-#        grid_subset = grid[int(west_subset_indices[0][0]) : int(west_subset_indices[0][-1] + 1), int(south_subset_indices[0][0]) : int(south_subset_indices[0][-1] + 1)]
-#        success = patch_plot(grid_subset, lat_bins, lon_bins, [-180, 0, -90, 0], variable_plot_lims, cmap, "temp_southwest", 0.5 * grid_x_elem, 0.5 * grid_y_elem, dpi)
-#        
-#        #Nw#
-#        grid_subset = grid[int(west_subset_indices[0][0]) : int(west_subset_indices[0][-1] + 1), int(north_subset_indices[0][0]) : int(north_subset_indices[0][-1] + 1)]
-#        success = patch_plot(grid_subset, lat_bins, lon_bins, [-180, 0, 0, 90], variable_plot_lims, cmap, "temp_northwest", 0.5 * grid_x_elem, 0.5 * grid_y_elem, dpi)
-        
+                    print grid_subset.shape
+                    print 0.5 * grid_x_elem
+                    print 0.5 * grid_y_elem
+                    print type(0.5 * grid_x_elem)
+                    success = patch_plot(grid_subset, lat_bins, lon_bins, quadrant_dict[q]["extent_box"], variable_plot_lims, cmap, plot_name, 0.5 * grid_x_elem, 0.5 * grid_y_elem, dpi)      
         
     sys.exit()
 
