@@ -174,10 +174,14 @@ if __name__ == "__main__":
     parser.add_argument("-v", "--verbose", help="Prints some basic information during code execution", action="store_true")
     parser.add_argument("-f", "--file", help="Full path to input file name for command line use", default=None)
     parser.add_argument("-c", "--config", help="Full path to text file containing a list of files to process, one filename per line", default=None)
+    parser.add_argument("-g", "--geolocation", help="Custom geolocation box for testing and case study purposes", default=None)
+    parser.add_argument("-r", "--rgb", help="Overlay plots on MODIS RGB for testing and case study purposes", action="store_true")
     args = parser.parse_args()
     verbose = args.verbose
     lite_file = args.file
     config_file = args.config
+    custom_geo_box = args.geolocation
+    rgb = args.rgb
     
 #    if not lite_file and not config_file or lite_file and config_file:
 #        print("Please provide a single file to process with the -f flag OR a file containing a list of files to process with the -c flag.")
@@ -196,7 +200,7 @@ if __name__ == "__main__":
     #Output directory path
     out_plot_dir = "/home/hcronk/worldview/plots"
     #Overwrite existing plots in output directory, if applicable
-    overwrite = True
+    overwrite = False
 
     ### TESTING ###
     #Local paths
@@ -250,7 +254,23 @@ if __name__ == "__main__":
         var_list = user_defined_var_list
     else:
         var_list = data_dict[product].keys()
-
+    
+    if not overwrite:
+        #double check there's something to do
+        if custom_geo_box:
+            for var in var_list:
+                if glob(os.path.join(out_plot_dir, var + "_Lat" + str(custom_geo_box[2]) + "to" + str(custom_geo_box[3]) + "_Lon" + str(custom_geo_box[0])+ str(custom_geo_box[1]) + "_" + global_plot_name_tags)):
+                    var_list.remove(var)
+        else:
+            for var in var_list:
+                print var
+                if glob(os.path.join(out_plot_dir, var + "_NE_" + global_plot_name_tags)) and glob(os.path.join(out_plot_dir, var + "_SE_" + global_plot_name_tags)) and glob(os.path.join(out_plot_dir, var + "_SW_" + global_plot_name_tags)) and glob(os.path.join(out_plot_dir, var + "_SW_" + global_plot_name_tags)):
+                    var_list.remove(var)
+        if not var_list:
+            print("All plots exist. To overwrite, change the value of 'overwrite' to True")
+            print("Exiting.")
+            sys.exit()
+    
     if verbose:
         print("Variables to be plotted: " + str(var_list))
         if overwrite:
@@ -278,10 +298,16 @@ if __name__ == "__main__":
     grid_x_elem = int(360 / gibs_resolution_dict[resolution])
     grid_y_elem = int(180 / gibs_resolution_dict[resolution])
     
-    north_subset_indices = np.where(lat_centers >= 0)
-    east_subset_indices =  np.where(lon_centers >= 0)
-    south_subset_indices = np.where(lat_centers < 0)
-    west_subset_indices = np.where(lon_centers < 0)
+    if custom_geo_box:
+        lon_indices = np.where(np.logical_and(lon_centers >= lon_ul, lon_centers <= lon_lr))
+        lat_indices = np.where(np.logical_and(lat_centers >= lat_lr, lat_centers <= lat_ul))
+    else:
+        #Plot quadrants
+        north_subset_indices = np.where(lat_centers >= 0)
+        east_subset_indices =  np.where(lon_centers >= 0)
+        south_subset_indices = np.where(lat_centers < 0)
+        west_subset_indices = np.where(lon_centers < 0)
+        
 
     for var in var_list:
         if verbose:
@@ -360,21 +386,71 @@ if __name__ == "__main__":
         
         variable_plot_lims = data_dict[product][var]["range"]
         cmap = data_dict[product][var]["cmap"]
-        global_plot_name = os.path.join(var + "_" + global_plot_name_tags)
+        #global_plot_name = os.path.join(var + "_" + global_plot_name_tags)
         
-        northeast_grid_subset = grid[int(east_subset_indices[0][0]) : int(east_subset_indices[0][-1] + 1), int(north_subset_indices[0][0]) : int(north_subset_indices[0][-1] + 1)]
-        southeast_grid_subset = grid[int(east_subset_indices[0][0]) : int(east_subset_indices[0][-1] + 1), int(south_subset_indices[0][0]) : int(south_subset_indices[0][-1] + 1)]
-        southwest_grid_subset = grid[int(west_subset_indices[0][0]) : int(west_subset_indices[0][-1] + 1), int(south_subset_indices[0][0]) : int(south_subset_indices[0][-1] + 1)]
-        northwest_grid_subset = grid[int(west_subset_indices[0][0]) : int(west_subset_indices[0][-1] + 1), int(north_subset_indices[0][0]) : int(north_subset_indices[0][-1] + 1)]
-        
-        #Loop? --replace grid_subset in memory to cut down vs creating all 4
+        #Loop?#
         #Parallelize?#
         #Implement overwrite flag
         
-        success = patch_plot(northeast_grid_subset, lat_bins, lon_bins, [0, 180, 0, 90], variable_plot_lims, cmap, "temp_northeast", 0.5 * grid_x_elem, 0.5 * grid_y_elem, dpi)
-        success = patch_plot(southeast_grid_subset, lat_bins, lon_bins, [0, 180, -90, 0], variable_plot_lims, cmap, "temp_southeast", 0.5 * grid_x_elem, 0.5 * grid_y_elem, dpi)
-        success = patch_plot(southwest_grid_subset, lat_bins, lon_bins, [-180, 0, -90, 0], variable_plot_lims, cmap, "temp_southwest", 0.5 * grid_x_elem, 0.5 * grid_y_elem, dpi)
-        success = patch_plot(northwest_grid_subset, lat_bins, lon_bins, [-180, 0, 0, 90], variable_plot_lims, cmap, "temp_northwest", 0.5 * grid_x_elem, 0.5 * grid_y_elem, dpi)
+        if custom_geo_box:
+            plot_name = os.path.join(out_plot_dir, var + "_Lat" + str(custom_geo_box[2]) + "to" + str(custom_geo_box[3]) + "_Lon" + str(custom_geo_box[0])+ str(custom_geo_box[1]) + "_" + global_plot_name_tags)
+            grid_subset = grid[int(lon_indices[0][0]) : int(lon_indices[0][-1] + 1), int(lat_indices[0][0]) : int(lat_indices[0][-1] + 1)]
+            success = patch_plot(grid_subset, lat_bins, lon_bins, custom_geo_box, variable_plot_lims, cmap, plot_name, 0.5 * grid_x_elem, 0.5 * grid_y_elem, dpi)
+        else:
+            #Plot quadrants
+            quadrant_dict = { "NE": { "plot_name" : os.path.join(out_plot_dir, var + "_NE_" + global_plot_name_tags), "lat_indices" : north_subset_indices, "lon_indices" : east_subset_indices, "extent_box" : [0, 180, 0, 90]},
+                              "SE": { "plot_name" : os.path.join(out_plot_dir, var + "_SE_" + global_plot_name_tags), "lat_indices" : south_subset_indices, "lon_indices" : east_subset_indices, "extent_box" : [0, 180, -90, 0]},
+                              "SW": { "plot_name" : os.path.join(out_plot_dir, var + "_SW_" + global_plot_name_tags), "lat_indices" : south_subset_indices, "lon_indices" : west_subset_indices, "extent_box" : [-180, 0, -90, 0]},
+                              "NW": { "plot_name" : os.path.join(out_plot_dir, var + "_NW_" + global_plot_name_tags), "lat_indices" : north_subset_indices, "lon_indices" : west_subset_indices, "extent_box" : [-180, 0, 0, 90]}
+                            }
+
+            for q in quadrant_dict.keys():
+                plot_name = quadrant_dict[q]["plot_name"]
+
+                if verbose:
+                    print("Working on the " + q + " plotting quadrant")
+                    if not glob(plot_name):
+                        print("Creating " + plot_name)
+                    if glob(plot_name) and overwrite:
+                        print("Overwriting " + plot_name)
+                    if glob(plot_name) and not overwrite:
+                        print(plot_name + " exists and overwrite is not set. Moving on.")
+                if not glob(plot_name) or glob(plot_name) and overwrite:
+                    grid_subset = grid[int(quadrant_dict[q]["lon_indices"][0][0]) : int(quadrant_dict[q]["lon_indices"][0][-1] + 1), int(quadrant_dict[q]["lat_indices"][0][0]) : int(quadrant_dict[q]["lat_indices"][0][-1] + 1)]
+                    success = patch_plot(grid_subset, lat_bins, lon_bins, quadrant_dict[q]["extent_box"], variable_plot_lims, cmap, plot_name, 0.5 * grid_x_elem, 0.5 * grid_y_elem, dpi)
+            
+ #       #NE#
+#        plot_name = "temp_northeast"
+#        if not glob(plot_name) or glob(plot_name) and overwrite:
+#            if verbose:
+#                if not glob(plot_name):
+#                    print("Creating " + plot_name)
+#                if glob(plot_name) and overwrite:
+#                    print("Overwriting " + plot_name)
+#                if glob(plot_name) and not overwrite:
+#                    print(plot_name + " exists and overwrite is not set. Moving on.")
+#            grid_subset = grid[int(east_subset_indices[0][0]) : int(east_subset_indices[0][-1] + 1), int(north_subset_indices[0][0]) : int(north_subset_indices[0][-1] + 1)]
+#            success = patch_plot(grid_subset, lat_bins, lon_bins, [0, 180, 0, 90], variable_plot_lims, cmap, "temp_northeast", 0.5 * grid_x_elem, 0.5 * grid_y_elem, dpi)
+#        
+#        #SE#
+#        plot_name = "temp_southeast"
+#        if not glob(plot_name) or glob(plot_name) and overwrite:
+#            if verbose:
+#                if not glob(plot_name):
+#                    print("Creating " + plot_name)
+#                if glob(plot_name) and overwrite:
+#                    print("Overwriting " + plot_name)
+#                if glob(plot_name) and not overwrite:
+#                    print(plot_name + " exists and overwrite is not set. Moving on.")grid_subset = grid[int(east_subset_indices[0][0]) : int(east_subset_indices[0][-1] + 1), int(south_subset_indices[0][0]) : int(south_subset_indices[0][-1] + 1)]
+#        success = patch_plot(grid_subset, lat_bins, lon_bins, [0, 180, -90, 0], variable_plot_lims, cmap, "temp_southeast", 0.5 * grid_x_elem, 0.5 * grid_y_elem, dpi)
+#        
+#        #SW#
+#        grid_subset = grid[int(west_subset_indices[0][0]) : int(west_subset_indices[0][-1] + 1), int(south_subset_indices[0][0]) : int(south_subset_indices[0][-1] + 1)]
+#        success = patch_plot(grid_subset, lat_bins, lon_bins, [-180, 0, -90, 0], variable_plot_lims, cmap, "temp_southwest", 0.5 * grid_x_elem, 0.5 * grid_y_elem, dpi)
+#        
+#        #Nw#
+#        grid_subset = grid[int(west_subset_indices[0][0]) : int(west_subset_indices[0][-1] + 1), int(north_subset_indices[0][0]) : int(north_subset_indices[0][-1] + 1)]
+#        success = patch_plot(grid_subset, lat_bins, lon_bins, [-180, 0, 0, 90], variable_plot_lims, cmap, "temp_northwest", 0.5 * grid_x_elem, 0.5 * grid_y_elem, dpi)
         
         
     sys.exit()
