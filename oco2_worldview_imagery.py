@@ -19,7 +19,7 @@ import cartopy
 import cartopy.feature as cfeature
 ccrs = cartopy.crs
 
-def stitch_east_west(west_plot, east_plot, global_plot):
+def stitch_west_east(west_plot, east_plot, global_plot):
     """
     Stitches two existing plots (west_plot, east_plot) into one single plot
     """
@@ -78,8 +78,8 @@ def preprocess(var, oco2_file, external_data_file=None):
     
     return data
 
-def regrid_oco2(vertex_latitude, vertex_longitude, grid_lat_centers, grid_lon_centers):
-    
+def regrid_oco2(data, vertex_latitude, vertex_longitude, grid_lat_centers, grid_lon_centers):
+
     grid = np.empty([len(grid_lon_centers), len(grid_lat_centers)], dtype=np.object)
     
     #Create lat/lon corner pairs from vertices
@@ -92,7 +92,7 @@ def regrid_oco2(vertex_latitude, vertex_longitude, grid_lat_centers, grid_lon_ce
     vlon_maxes = vertex_longitude.max(axis=1)
 
     for n, vertices in enumerate(poly):
-        print n
+        #print n
         #print vertices
         #Create a shapely polygon from vertices (Point order: LL, UL, UR, LR, LL)
         pg = [Polygon((x, y) for x, y in vertices)][0]
@@ -120,17 +120,21 @@ def regrid_oco2(vertex_latitude, vertex_longitude, grid_lat_centers, grid_lon_ce
                 x = np.where(ll[1] == lon_centers)[0][0]
                 y = np.where(ll[0] == lat_centers)[0][0]
                 if grid[x,y] is None:
-                    grid[x,y] = [n]
+                    grid[x,y] = [data[n]]
+                    #grid[x,y] = [n]
                 else:
-                    grid[x,y].append(n)
+                    grid[x,y].append(data[n])
+                    #grid[x,y].append(n)
             else:
                 if pg.exterior.distance(pt) <= 1e-3:
                     x = np.where(ll[1] == lon_centers)[0][0]
                     y = np.where(ll[0] == lat_centers)[0][0]
                     if grid[x,y] is None:
-                        grid[x,y] = [n]
+                        grid[x,y] = [data[n]]
+                        #grid[x,y] = [n]
                     else:
-                        grid[x,y].append(n)
+                        grid[x,y].append(data[n])
+                        #grid[x,y].append(n)
     return grid
 
 if __name__ == "__main__":
@@ -144,10 +148,10 @@ if __name__ == "__main__":
     lite_file = args.file
     config_file = args.config
     
-    if not lite_file and not config_file or lite_file and config_file:
-        print("Please provide a single file to process with the -f flag OR a file containing a list of files to process with the -c flag.")
-        print("Exiting.")
-        sys.exit()
+#    if not lite_file and not config_file or lite_file and config_file:
+#        print("Please provide a single file to process with the -f flag OR a file containing a list of files to process with the -c flag.")
+#        print("Exiting.")
+#        sys.exit()
     
     if config_file:
         if glob(config_file):
@@ -158,15 +162,16 @@ if __name__ == "__main__":
 
     #Variables to be plotted, if not all of the ones available. Can be left as an empty list []
     user_defined_var_list = ["xco2"]
-    #Overwrite existing plots, if applicable
-    overwrite = True
-    # Local paths
-    xco2_lite_file_dir = "/data6/OCO2/product/Lite/B8/LtCO2/"
-    sif_lite_file_dir = "/cloudsat/LtSIF/"
+    #Output directory path
     out_plot_dir = "/home/hcronk/worldview/plots"
-
+    #Overwrite existing plots in output directory, if applicable
+    overwrite = True
 
     ### TESTING ###
+    #Local paths
+    xco2_lite_file_dir = "/data6/OCO2/product/Lite/B8/LtCO2/"
+    sif_lite_file_dir = "/cloudsat/LtSIF/"
+    
     ##Test Case 1: Act America Pennsylvania
     #oco2_file = "oco2_LtCO2_160727_B8100r_171007102957s.nc4"
     ##Test Case 2: Somalia, GL_2014-12-30_02638_033
@@ -192,7 +197,7 @@ if __name__ == "__main__":
     data_dict = { "LtCO2" : 
                     { "xco2" : {"data_field_name" : "xco2", "preprocessing" : False, "range": [395, 408], "cmap" : "jet", "quality_info" : {"quality_field_name" : "xco2_quality_flag", "qc_val" :  0, "qc_operator" : operator.eq }}, 
                       "xco2_relative" : {"data_field_name" : None, "preprocessing" : True, "range": [-6, 6], "cmap" : "seismic", "quality_info" : {"quality_field_name" : "xco2_quality_flag", "qc_val" :  0, "qc_operator" : operator.eq }}, 
-                      "tcwv" : {"data_field_name" : "Retrieval/tcwv", "range": [0, 75], "cmap" : "viridis", "quality_info" : {"quality_field_name" : "xco2_quality_flag", "qc_val" :  0, "qc_operator" : operator.eq }}, 
+                      "tcwv" : {"data_field_name" : "Retrieval/tcwv", "range": [0, 75], "cmap" : "viridis", "quality_info" : {}}, 
                     },
                  "LtSIF" : 
                     { "sif757" : {"data_field_name" : "SIF_757nm", "preprocessing" : False, "range": [0, 2], "cmap" : "jet", "quality_info" : {}}, 
@@ -224,7 +229,7 @@ if __name__ == "__main__":
 
     resolution = "500m"
     dpi = 10000
-    regrid = False
+    regrid = True
 
     #These numbers came from the GIBS ICD
     gibs_resolution_dict = {"2km" : 0.017578125, "1km" : 0.0087890625, "500m" : 0.00439453125, "250m" : 0.002197265625}
@@ -238,6 +243,14 @@ if __name__ == "__main__":
     lat_centers = np.arange(lat_bins[0] + gibs_resolution_dict[resolution] / 2., lat_bins[-1] + gibs_resolution_dict[resolution], gibs_resolution_dict[resolution], dtype=float)
     #West to East, starting 1/2km East of the western most bin line and ending 1/2 km east of the easternmost bin line
     lon_centers = np.arange(lon_bins[0] + gibs_resolution_dict[resolution] / 2., lon_bins[-1] + gibs_resolution_dict[resolution], gibs_resolution_dict[resolution], dtype=float)
+    
+    grid_x_elem = int(360 / gibs_resolution_dict[resolution])
+    grid_y_elem = int(180 / gibs_resolution_dict[resolution])
+    
+    north_subset_indices = np.where(lat_centers >= 0)
+    east_subset_indices =  np.where(lon_centers >= 0)
+    south_subset_indices = np.where(lat_centers < 0)
+    west_subset_indices = np.where(lon_centers < 0)
 
     for var in var_list:
         if verbose:
@@ -246,6 +259,12 @@ if __name__ == "__main__":
             print(var + " is not defined in the " + product + " data dictionary. Please add it or check spelling.")
             print("Exiting.")
             sys.exit()
+        
+        if data_dict[product][var]["preprocessing"]:
+            data = preprocessing(var, lite_file)
+        else:
+            data = get_oco2_data(data_dict[product][var]["data_field_name"], lite_file)
+        
         if var in data_dict[product] and regrid:
             var_lat = get_oco2_data(geo_dict[product]["lat"], lite_file)
             var_lon = get_oco2_data(geo_dict[product]["lon"], lite_file)
@@ -254,31 +273,190 @@ if __name__ == "__main__":
             vertex_zero_mask = np.where(np.logical_not(np.any(var_lat == 0.0, axis=1), np.any(var_lon == 0.0, axis=1)))
             vertex_crossDL_mask = np.where(np.logical_not(np.any(var_lon <= -179.9, axis=1), np.any(var_lon >= 179.9, axis=1)))
 
-            total_mask = reduce(np.intersect1d, (vertex_miss_mask, vertex_zero_mask, vertex_crossDL_mask))
+            total_gridding_mask = reduce(np.intersect1d, (vertex_miss_mask, vertex_zero_mask, vertex_crossDL_mask))
+            
+            if data_dict[product][var]["quality_info"]:
+                #"quality_info" : {"quality_field_name" : "xco2_quality_flag", "qc_val" :  0, "qc_operator" : operator.eq }}, 
+                quality = get_oco2_data(data_dict[product][var]["quality_info"]["quality_field_name"], lite_file)
+                quality_mask = np.where(data_dict[product][var]["quality_info"]["qc_operator"](quality, data_dict[product][var]["quality_info"]["qc_val"]))
+                total_mask = reduce(np.intersect1d, (vertex_miss_mask, vertex_zero_mask, vertex_crossDL_mask, quality_mask))
+            else:
+                total_mask = total_gridding_mask
 
-            var_lat = np.squeeze(var_lat[total_mask, :])
-            var_lon = np.squeeze(var_lon[total_mask, :])
+#            var_lat_gridding = np.squeeze(var_lat[total_gridding_mask, :])
+#            var_lon_gridding = np.squeeze(var_lon[total_gridding_mask, :])
+
+            var_lat_gridding = np.squeeze(var_lat[total_mask, :])
+            var_lon_gridding = np.squeeze(var_lon[total_mask, :])
+            data = data[total_mask]
 
             #Get the LtCO2 indices in each GIBS grid box
-            grid = regrid_oco2(var_lat, var_lon, lat_centers, lon_centers)
+            grid = regrid_oco2(data, var_lat_gridding, var_lon_gridding, lat_centers, lon_centers)
             regrid = False
 
-        if data_dict[product][var]["preprocessing"]:
-            data = preprocessing(var, lite_file)
-        else:
-            data = get_oco2_data(data_dict[product][var]["data_field_name"], lite_file)
-            print data.shape
+#        if data_dict[product][var]["preprocessing"]:
+#            data = preprocessing(var, lite_file)
+#        else:
+#            data = get_oco2_data(data_dict[product][var]["data_field_name"], lite_file)
         
-        if data_dict[product][var]["quality_info"]:
-            #"quality_info" : {"quality_field_name" : "xco2_quality_flag", "qc_val" :  0, "qc_operator" : operator.eq }}, 
-            quality = get_oco2_data(data_dict[product][var]["quality_info"]["quality_field_name"], lite_file)
-            quality_mask = np.where(data_dict[product][var]["quality_info"]["qc_operator"](quality, data_dict[product][var]["quality_info"]["qc_val"]))
-            print len(quality_mask[0])
+#        if data_dict[product][var]["quality_info"]:
+#            #"quality_info" : {"quality_field_name" : "xco2_quality_flag", "qc_val" :  0, "qc_operator" : operator.eq }}, 
+#            quality = get_oco2_data(data_dict[product][var]["quality_info"]["quality_field_name"], lite_file)
+#            quality_mask = np.where(data_dict[product][var]["quality_info"]["qc_operator"](quality, data_dict[product][var]["quality_info"]["qc_val"]))
+#            total_mask = reduce(np.intersect1d, (vertex_miss_mask, vertex_zero_mask, vertex_crossDL_mask, quality_mask))
+#        else:
+#            total_mask = total_gridding_mask
         
+        #data_grid = np.empty_like(grid)
+        x_action, y_action = np.nonzero(grid)
         
+        for x, y in zip(x_action, y_action):
+            if grid[x,y] is not None:
+                grid[x,y] = np.mean(grid[x,y])
+
+#        for x, y in zip(x_action, y_action):
+#            #print x,y
+#            #print grid[x,y]
+#            #print data[grid[x,y]]
+#            #print type(data[grid[x,y]])
+#            #print np.float(np.mean([data[g] for g in grid[x,y]]))
+#            if grid[x,y] is not None and np.any(grid[x,y] in total_mask):
+#                #print "Valid"
+#                #print data[grid[x,y]]
+#                #print [(g, g in total_mask) for g in grid[x,y]]
+#                data_grid[x,y] = np.mean([data[g] for g in grid[x,y] if g in total_mask])
+#                #print data_grid[x,y]
+        
+        variable_plot_lims = data_dict[product][var]["range"]
+        global_plot_name = os.path.join(var + "_" + global_plot_name_tags)
+        
+        northeast_grid_subset = grid[int(east_subset_indices[0][0]) : int(east_subset_indices[0][-1] + 1), int(north_subset_indices[0][0]) : int(north_subset_indices[0][-1] + 1)]
+        southeast_grid_subset = grid[int(east_subset_indices[0][0]) : int(east_subset_indices[0][-1] + 1), int(south_subset_indices[0][0]) : int(south_subset_indices[0][-1] + 1)]
+        southwest_grid_subset = grid[int(west_subset_indices[0][0]) : int(west_subset_indices[0][-1] + 1), int(south_subset_indices[0][0]) : int(south_subset_indices[0][-1] + 1)]
+        northwest_grid_subset = grid[int(west_subset_indices[0][0]) : int(west_subset_indices[0][-1] + 1), int(north_subset_indices[0][0]) : int(north_subset_indices[0][-1] + 1)]
+        
+        #Loop?#
+        #Parallelize?#
+        
+        ### Northeast ####
+
+        fig = plt.figure(figsize=(0.5 * grid_x_elem / dpi, 0.5 * grid_y_elem / dpi), dpi=dpi)
+        ax = plt.axes(projection=ccrs.PlateCarree())
+        ax.set_extent([0, 180, 0, 90])
+        ax.outline_patch.set_visible(False)
+
+        xg, yg = np.nonzero(northeast_grid_subset)
+        valid_grid = northeast_grid_subset[xg,yg].astype(float)
+
+        subset_lat_vertex = np.vstack([lat_bins[y], lat_bins[y], lat_bins[y + 1], lat_bins[y + 1]] for y in yg)
+        subset_lon_vertex = np.vstack([lon_bins[x], lon_bins[x + 1], lon_bins[x + 1], lon_bins[x]] for x in xg)
+
+        zip_it = np.dstack([subset_lon_vertex, subset_lat_vertex])
+
+        patches = []
+
+        for row in zip_it:
+            polygon = mpatches.Polygon(row)
+            patches.append(polygon)                 
+        p = mpl.collections.PatchCollection(patches, cmap='jet', edgecolor='none')
+        p.set_array(valid_grid)
+        p.set_clim(variable_plot_lims[0], variable_plot_lims[1])
+        ax.add_collection(p)
 
 
-    variable_plot_lims = data_dict[product][var]["range"]
+        fig.savefig("temp_northeast", bbox_inches='tight', pad_inches=0, dpi=dpi)
+        
+        
+        ### Southeast ####
+
+        fig = plt.figure(figsize=(0.5 * grid_x_elem / dpi, 0.5 * grid_y_elem / dpi), dpi=dpi)
+        ax = plt.axes(projection=ccrs.PlateCarree())
+        ax.set_extent([0, 180, -90, 0])
+        ax.outline_patch.set_visible(False)
+
+        xg, yg = np.nonzero(southeast_grid_subset)
+        valid_grid = southeast_grid_subset[xg,yg].astype(float)
+
+        subset_lat_vertex = np.vstack([lat_bins[y], lat_bins[y], lat_bins[y + 1], lat_bins[y + 1]] for y in yg)
+        subset_lon_vertex = np.vstack([lon_bins[x], lon_bins[x + 1], lon_bins[x + 1], lon_bins[x]] for x in xg)
+
+        zip_it = np.dstack([subset_lon_vertex, subset_lat_vertex])
+
+        patches = []
+
+        for row in zip_it:
+            polygon = mpatches.Polygon(row)
+            patches.append(polygon)                 
+        p = mpl.collections.PatchCollection(patches, cmap='jet', edgecolor='none')
+        p.set_array(valid_grid)
+        p.set_clim(variable_plot_lims[0], variable_plot_lims[1])
+        ax.add_collection(p)
+
+
+        fig.savefig("temp_southeast", bbox_inches='tight', pad_inches=0, dpi=dpi)
+
+
+        ### Southwest ####
+
+        fig = plt.figure(figsize=(0.5 * grid_x_elem / dpi, 0.5 * grid_y_elem / dpi), dpi=dpi)
+        ax = plt.axes(projection=ccrs.PlateCarree())
+        ax.set_extent([-180, 0, -90, 0])
+        ax.outline_patch.set_visible(False)
+
+        xg, yg = np.nonzero(southwest_grid_subset)
+        valid_grid = southwest_grid_subset[xg,yg].astype(float)
+
+        subset_lat_vertex = np.vstack([lat_bins[y], lat_bins[y], lat_bins[y + 1], lat_bins[y + 1]] for y in yg)
+        subset_lon_vertex = np.vstack([lon_bins[x], lon_bins[x + 1], lon_bins[x + 1], lon_bins[x]] for x in xg)
+
+        zip_it = np.dstack([subset_lon_vertex, subset_lat_vertex])
+
+        patches = []
+
+        for row in zip_it:
+            polygon = mpatches.Polygon(row)
+            patches.append(polygon)                 
+        p = mpl.collections.PatchCollection(patches, cmap='jet', edgecolor='none')
+        p.set_array(valid_grid)
+        p.set_clim(variable_plot_lims[0], variable_plot_lims[1])
+        ax.add_collection(p)
+
+
+        fig.savefig("temp_southwest", bbox_inches='tight', pad_inches=0, dpi=dpi)
+        
+        
+        ### Northwest ####
+
+        fig = plt.figure(figsize=(0.5 * grid_x_elem / dpi, 0.5 * grid_y_elem / dpi), dpi=dpi)
+        ax = plt.axes(projection=ccrs.PlateCarree())
+        ax.set_extent([-180, 0, 0, 90])
+        ax.outline_patch.set_visible(False)
+
+        xg, yg = np.nonzero(northwest_grid_subset)
+        valid_grid = northwest_grid_subset[xg,yg].astype(float)
+
+        subset_lat_vertex = np.vstack([lat_bins[y], lat_bins[y], lat_bins[y + 1], lat_bins[y + 1]] for y in yg)
+        subset_lon_vertex = np.vstack([lon_bins[x], lon_bins[x + 1], lon_bins[x + 1], lon_bins[x]] for x in xg)
+
+        zip_it = np.dstack([subset_lon_vertex, subset_lat_vertex])
+
+        patches = []
+
+        for row in zip_it:
+            polygon = mpatches.Polygon(row)
+            patches.append(polygon)                 
+        p = mpl.collections.PatchCollection(patches, cmap='jet', edgecolor='none')
+        p.set_array(valid_grid)
+        p.set_clim(variable_plot_lims[0], variable_plot_lims[1])
+        ax.add_collection(p)
+
+
+        fig.savefig("temp_northwest", bbox_inches='tight', pad_inches=0, dpi=dpi)
+        
+    sys.exit()
+
+
+    
 
 
     sys.exit()
