@@ -46,6 +46,37 @@ def stitch_west_east(west_plot, east_plot, global_plot):
     
     return
 
+def patch_plot(data, grid_lat, grid_lon, extent, data_limits, cmap, out_plot_name, xpix, ypix, dpi):
+    """
+    Plot data polygons on a lat/lon grid.    
+    """
+    fig = plt.figure(figsize=(xpix / dpi, ypix / dpi), dpi=dpi)
+    ax = plt.axes(projection=ccrs.PlateCarree())
+    ax.set_extent(extent)
+    ax.outline_patch.set_visible(False)
+
+    xg, yg = np.nonzero(data)
+    valid_grid = data[xg,yg].astype(float)
+
+    subset_lat_vertex = np.vstack([grid_lat[y], grid_lat[y], grid_lat[y + 1], grid_lat[y + 1]] for y in yg)
+    subset_lon_vertex = np.vstack([grid_lon[x], grid_lon[x + 1], grid_lon[x + 1], grid_lon[x]] for x in xg)
+
+    zip_it = np.dstack([subset_lon_vertex, subset_lat_vertex])
+
+    patches = []
+
+    for row in zip_it:
+        polygon = mpatches.Polygon(row)
+        patches.append(polygon)                 
+    p = mpl.collections.PatchCollection(patches, cmap=cmap, edgecolor='none')
+    p.set_array(valid_grid)
+    p.set_clim(data_limits[0], data_limits[1])
+    ax.add_collection(p)
+
+    fig.savefig(out_plot_name, bbox_inches='tight', pad_inches=0, dpi=dpi)
+    
+    return True
+
 def get_oco2_data(var, oco2_file):
     """
     Extract given variable data from the OCO-2 lite file (.h5 format)
@@ -328,6 +359,7 @@ if __name__ == "__main__":
 #                #print data_grid[x,y]
         
         variable_plot_lims = data_dict[product][var]["range"]
+        cmap = data_dict[product][var]["cmap"]
         global_plot_name = os.path.join(var + "_" + global_plot_name_tags)
         
         northeast_grid_subset = grid[int(east_subset_indices[0][0]) : int(east_subset_indices[0][-1] + 1), int(north_subset_indices[0][0]) : int(north_subset_indices[0][-1] + 1)]
@@ -335,123 +367,15 @@ if __name__ == "__main__":
         southwest_grid_subset = grid[int(west_subset_indices[0][0]) : int(west_subset_indices[0][-1] + 1), int(south_subset_indices[0][0]) : int(south_subset_indices[0][-1] + 1)]
         northwest_grid_subset = grid[int(west_subset_indices[0][0]) : int(west_subset_indices[0][-1] + 1), int(north_subset_indices[0][0]) : int(north_subset_indices[0][-1] + 1)]
         
-        #Loop?#
+        #Loop? --replace grid_subset in memory to cut down vs creating all 4
         #Parallelize?#
+        #Implement overwrite flag
         
-        ### Northeast ####
-
-        fig = plt.figure(figsize=(0.5 * grid_x_elem / dpi, 0.5 * grid_y_elem / dpi), dpi=dpi)
-        ax = plt.axes(projection=ccrs.PlateCarree())
-        ax.set_extent([0, 180, 0, 90])
-        ax.outline_patch.set_visible(False)
-
-        xg, yg = np.nonzero(northeast_grid_subset)
-        valid_grid = northeast_grid_subset[xg,yg].astype(float)
-
-        subset_lat_vertex = np.vstack([lat_bins[y], lat_bins[y], lat_bins[y + 1], lat_bins[y + 1]] for y in yg)
-        subset_lon_vertex = np.vstack([lon_bins[x], lon_bins[x + 1], lon_bins[x + 1], lon_bins[x]] for x in xg)
-
-        zip_it = np.dstack([subset_lon_vertex, subset_lat_vertex])
-
-        patches = []
-
-        for row in zip_it:
-            polygon = mpatches.Polygon(row)
-            patches.append(polygon)                 
-        p = mpl.collections.PatchCollection(patches, cmap='jet', edgecolor='none')
-        p.set_array(valid_grid)
-        p.set_clim(variable_plot_lims[0], variable_plot_lims[1])
-        ax.add_collection(p)
-
-
-        fig.savefig("temp_northeast", bbox_inches='tight', pad_inches=0, dpi=dpi)
+        success = patch_plot(northeast_grid_subset, lat_bins, lon_bins, [0, 180, 0, 90], variable_plot_lims, cmap, "temp_northeast", 0.5 * grid_x_elem, 0.5 * grid_y_elem, dpi)
+        success = patch_plot(southeast_grid_subset, lat_bins, lon_bins, [0, 180, -90, 0], variable_plot_lims, cmap, "temp_southeast", 0.5 * grid_x_elem, 0.5 * grid_y_elem, dpi)
+        success = patch_plot(southwest_grid_subset, lat_bins, lon_bins, [-180, 0, -90, 0], variable_plot_lims, cmap, "temp_southwest", 0.5 * grid_x_elem, 0.5 * grid_y_elem, dpi)
+        success = patch_plot(northwest_grid_subset, lat_bins, lon_bins, [-180, 0, 0, 90], variable_plot_lims, cmap, "temp_northwest", 0.5 * grid_x_elem, 0.5 * grid_y_elem, dpi)
         
-        
-        ### Southeast ####
-
-        fig = plt.figure(figsize=(0.5 * grid_x_elem / dpi, 0.5 * grid_y_elem / dpi), dpi=dpi)
-        ax = plt.axes(projection=ccrs.PlateCarree())
-        ax.set_extent([0, 180, -90, 0])
-        ax.outline_patch.set_visible(False)
-
-        xg, yg = np.nonzero(southeast_grid_subset)
-        valid_grid = southeast_grid_subset[xg,yg].astype(float)
-
-        subset_lat_vertex = np.vstack([lat_bins[y], lat_bins[y], lat_bins[y + 1], lat_bins[y + 1]] for y in yg)
-        subset_lon_vertex = np.vstack([lon_bins[x], lon_bins[x + 1], lon_bins[x + 1], lon_bins[x]] for x in xg)
-
-        zip_it = np.dstack([subset_lon_vertex, subset_lat_vertex])
-
-        patches = []
-
-        for row in zip_it:
-            polygon = mpatches.Polygon(row)
-            patches.append(polygon)                 
-        p = mpl.collections.PatchCollection(patches, cmap='jet', edgecolor='none')
-        p.set_array(valid_grid)
-        p.set_clim(variable_plot_lims[0], variable_plot_lims[1])
-        ax.add_collection(p)
-
-
-        fig.savefig("temp_southeast", bbox_inches='tight', pad_inches=0, dpi=dpi)
-
-
-        ### Southwest ####
-
-        fig = plt.figure(figsize=(0.5 * grid_x_elem / dpi, 0.5 * grid_y_elem / dpi), dpi=dpi)
-        ax = plt.axes(projection=ccrs.PlateCarree())
-        ax.set_extent([-180, 0, -90, 0])
-        ax.outline_patch.set_visible(False)
-
-        xg, yg = np.nonzero(southwest_grid_subset)
-        valid_grid = southwest_grid_subset[xg,yg].astype(float)
-
-        subset_lat_vertex = np.vstack([lat_bins[y], lat_bins[y], lat_bins[y + 1], lat_bins[y + 1]] for y in yg)
-        subset_lon_vertex = np.vstack([lon_bins[x], lon_bins[x + 1], lon_bins[x + 1], lon_bins[x]] for x in xg)
-
-        zip_it = np.dstack([subset_lon_vertex, subset_lat_vertex])
-
-        patches = []
-
-        for row in zip_it:
-            polygon = mpatches.Polygon(row)
-            patches.append(polygon)                 
-        p = mpl.collections.PatchCollection(patches, cmap='jet', edgecolor='none')
-        p.set_array(valid_grid)
-        p.set_clim(variable_plot_lims[0], variable_plot_lims[1])
-        ax.add_collection(p)
-
-
-        fig.savefig("temp_southwest", bbox_inches='tight', pad_inches=0, dpi=dpi)
-        
-        
-        ### Northwest ####
-
-        fig = plt.figure(figsize=(0.5 * grid_x_elem / dpi, 0.5 * grid_y_elem / dpi), dpi=dpi)
-        ax = plt.axes(projection=ccrs.PlateCarree())
-        ax.set_extent([-180, 0, 0, 90])
-        ax.outline_patch.set_visible(False)
-
-        xg, yg = np.nonzero(northwest_grid_subset)
-        valid_grid = northwest_grid_subset[xg,yg].astype(float)
-
-        subset_lat_vertex = np.vstack([lat_bins[y], lat_bins[y], lat_bins[y + 1], lat_bins[y + 1]] for y in yg)
-        subset_lon_vertex = np.vstack([lon_bins[x], lon_bins[x + 1], lon_bins[x + 1], lon_bins[x]] for x in xg)
-
-        zip_it = np.dstack([subset_lon_vertex, subset_lat_vertex])
-
-        patches = []
-
-        for row in zip_it:
-            polygon = mpatches.Polygon(row)
-            patches.append(polygon)                 
-        p = mpl.collections.PatchCollection(patches, cmap='jet', edgecolor='none')
-        p.set_array(valid_grid)
-        p.set_clim(variable_plot_lims[0], variable_plot_lims[1])
-        ax.add_collection(p)
-
-
-        fig.savefig("temp_northwest", bbox_inches='tight', pad_inches=0, dpi=dpi)
         
     sys.exit()
 
