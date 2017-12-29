@@ -174,7 +174,7 @@ if __name__ == "__main__":
     parser.add_argument("-v", "--verbose", help="Prints some basic information during code execution", action="store_true")
     parser.add_argument("-f", "--file", help="Full path to input file name for command line use", default=None)
     parser.add_argument("-c", "--config", help="Full path to text file containing a list of files to process, one filename per line", default=None)
-    parser.add_argument("-g", "--geolocation", help="Custom geolocation box for testing and case study purposes", default=None)
+    parser.add_argument("-g", "--geolocation", help="Custom geolocation box for testing and case study purposes. Fmt: [lat_min, lat_max, lon_min, lon_max]", nargs = '+', default=[])
     parser.add_argument("-r", "--rgb", help="Overlay plots on MODIS RGB for testing and case study purposes", action="store_true")
     args = parser.parse_args()
     verbose = args.verbose
@@ -195,6 +195,18 @@ if __name__ == "__main__":
             print(config_file + " DNE. Exiting.")
             sys.exit()
 
+    if custom_geo_box:
+        bad_chars = "[,]"
+        custom_geo_box = [float(x.strip(bad_chars)) for x in custom_geo_box]
+        if len(custom_geo_box) != 4:
+            print("Custom geolocation box format: [lat_min, lat_max, lon_min, lon_max]")
+            print("Exiting.")
+            sys.exit()
+        lon_ul = custom_geo_box[2]
+        lon_lr = custom_geo_box[3]
+        lat_lr = custom_geo_box[0]
+        lat_ul = custom_geo_box[1]
+    
     #Variables to be plotted, if not all of the ones available. Can be left as an empty list []
     user_defined_var_list = ["xco2"]
     #Output directory path
@@ -395,7 +407,7 @@ if __name__ == "__main__":
         if custom_geo_box:
             plot_name = os.path.join(out_plot_dir, var + "_Lat" + str(custom_geo_box[2]) + "to" + str(custom_geo_box[3]) + "_Lon" + str(custom_geo_box[0])+ str(custom_geo_box[1]) + "_" + global_plot_name_tags)
             grid_subset = grid[int(lon_indices[0][0]) : int(lon_indices[0][-1] + 1), int(lat_indices[0][0]) : int(lat_indices[0][-1] + 1)]
-            success = patch_plot(grid_subset, lat_bins, lon_bins, custom_geo_box, variable_plot_lims, cmap, plot_name, 0.5 * grid_x_elem, 0.5 * grid_y_elem, dpi)
+            success = patch_plot(grid_subset, lat_bins, lon_bins, [lon_ul, lon_lr, lat_lr, lat_ul], variable_plot_lims, cmap, plot_name, 0.5 * grid_x_elem, 0.5 * grid_y_elem, dpi)
         else:
             #Plot quadrants
             quadrant_dict = { "NE": { "plot_name" : os.path.join(out_plot_dir, var + "_NE_" + global_plot_name_tags), "lat_indices" : north_subset_indices, "lon_indices" : east_subset_indices, "extent_box" : [0, 180, 0, 90]},
