@@ -13,7 +13,9 @@ import matplotlib.pyplot as plt
 import json
 from glob import glob
 import matplotlib.patches as mpatches
+import xml.etree.ElementTree as ET
 import matplotlib as mpl
+from osgeo import gdal, osr
 from PIL import Image
 import cartopy
 import cartopy.feature as cfeature
@@ -46,9 +48,74 @@ def stitch_west_east(west_plot, east_plot, global_plot):
     
     return
 
+def update_GIBS_xml(date, xml_file):
+
+    """
+    Puts the date of interest into the GIBS XML file
+    """
+    
+    tree = ET.parse(xml_file)
+    root = tree.getroot()
+
+    url = root[0][0].text
+
+    old_date = re.split('/', url)[6]
+
+    new_url = re.sub(old_date, date, url)
+
+    root[0][0].text = new_url
+    tree.write(xml_file)
+    
+def pull_Aqua_RGB_GIBS(lat_ul, lon_ul, lat_lr, lon_lr, xml_file, tif_file, xsize=1200, ysize=1000):
+    
+    """
+    Pulls the Aqua RGB imagery from WorldView using GIBS and puts it in specified tif file with associated metadata
+    """ 
+    gdal_path = os.popen("which gdal_translate").read().strip()
+    cmd = gdal_path + " -of GTiff -outsize "+str(xsize)+" "+str(ysize)+" -projwin "+str(lon_ul)+" "+str(lat_ul)+" "+str(lon_lr)+" "+str(lat_lr)+" "+xml_file+" "+tif_file
+    os.system(cmd)
+    
+    return True
+
+def prep_RGB(rgb_name, extent, xpix, ypix, dpi):
+    ### Pull in and prep RGB tif file ###
+
+    ds = gdal.Open(code_dir+'/intermediate_RGB.tif')
+
+    data = ds.ReadAsArray()
+    gt = ds.GetGeoTransform()
+    proj = ds.GetProjection()
+
+    inproj = osr.SpatialReference()
+    inproj.ImportFromWkt(proj)
+
+    width = ds.RasterXSize
+    height = ds.RasterYSize
+
+    #Calculate lat/lon lims of RGB
+    minx = gt[0]
+    miny = gt[3] + width*gt[4] + height*gt[5]
+    maxx = gt[0] + width*gt[1] + height*gt[2]
+    maxy = gt[3]
+    
+    ### Plot the RGB ###
+    fig = plt.figure(figsize=(xpix / dpi, ypix / dpi), dpi=dpi)
+
+    img = plt.imread(code_dir+'/intermediate_RGB.tif')
+    img_extent = (minx, maxx, miny, maxy)
+
+    ax = plt.axes(projection=ccrs.PlateCarree())
+    ax.set_extent(extent)
+    ax.outline_patch.set_visible(False)
+    ax.imshow(img, origin='upper', transform=ccrs.PlateCarree(), extent=extent)
+    
+    fig.savefig(rgb_name, bbox_inches='tight', pad_inches=0, dpi=dpi)
+    
+    return True
+
 def patch_plot(data, grid_lat, grid_lon, extent, data_limits, cmap, out_plot_name, xpix, ypix, dpi):
     """
-    Plot data polygons on a lat/lon grid.    
+    Plot data polygons on a lat/lon grid 
     """
     #print "In the function"
     fig = plt.figure(figsize=(xpix / dpi, ypix / dpi), dpi=dpi)
@@ -58,31 +125,10 @@ def patch_plot(data, grid_lat, grid_lon, extent, data_limits, cmap, out_plot_nam
 
     xg, yg = np.nonzero(data)
     
-#    #Bandaid!#
-#    not_too_far_gone = np.where(np.logical_or(xg < len(grid_lon)-1, yg < len(grid_lat)-1))
-#    xg = xg[not_too_far_gone]
-#    yg = yg[not_too_far_gone]
-    
     valid_grid = data[xg,yg].astype(float)
 
     subset_lat_vertex = np.vstack([grid_lat[y], grid_lat[y], grid_lat[y + 1], grid_lat[y + 1]] for y in yg)
     subset_lon_vertex = np.vstack([grid_lon[x], grid_lon[x + 1], grid_lon[x + 1], grid_lon[x]] for x in xg)
-    
-#    subset_lat_vertex = np.array([])
-#    print "Lat dealings"
-#    for y in yg:
-#        print y
-#        print grid_lat[y]
-#        print grid_lat[y+1]
-#    
-#    subset_lon_vertex=np.array([])
-#    print "Lon dealings"
-#    for x in xg:
-#        print x
-#        print grid_lon[x]
-#        print grid_lon[x+1]
-#    
-#    sys.exit()
     
     zip_it = np.dstack([subset_lon_vertex, subset_lat_vertex])
 
@@ -97,6 +143,20 @@ def patch_plot(data, grid_lat, grid_lon, extent, data_limits, cmap, out_plot_nam
     ax.add_collection(p)
 
     fig.savefig(out_plot_name, bbox_inches='tight', pad_inches=0, dpi=dpi)
+    
+    return True
+
+def layer_rgb_and_data(rgb_name, data_plot_name, layered_plot_name):
+    base = Image.open(rgb_name)
+    top = Image.open(data_plot_name)
+    pixel_dat = list(top.getdata())
+    for i, p in enumerate(pixel_dat):
+        if p[:3] == (255, 255, 255):
+            pixel_dat[i] = (255, 255, 255, 0)
+    top.putdata(pixel_dat)
+    base_copy = base.copy()
+    base_copy.paste(top, (0,0), top)
+    base_copy.save(layered_plot_name)
     
     return True
 
@@ -216,6 +276,8 @@ def regrid_oco2(data, vertex_latitude, vertex_longitude, grid_lat_centers, grid_
 
 if __name__ == "__main__":
 
+    code_dir = os.path.dirname(os.path.realpath(__file__))
+    
     parser = argparse.ArgumentParser(description="Flags", prefix_chars='-')
     parser.add_argument("-v", "--verbose", help="Prints some basic information during code execution", action="store_true")
     parser.add_argument("-f", "--file", help="Full path to input file name for command line use", default=None)
@@ -240,7 +302,10 @@ if __name__ == "__main__":
         else:
             print(config_file + " DNE. Exiting.")
             sys.exit()
-
+    
+    if rgb:
+        xml_file = os.path.join(code_dir, "GIBS_Aqua_MODIS_truecolor.xml")
+    
     if custom_geo_box:
         custom_geo_box = [float(x.strip("[,]")) for x in custom_geo_box]
         if len(custom_geo_box) != 4:
@@ -490,6 +555,14 @@ if __name__ == "__main__":
             lat_bin_subset = lat_bins[int(lat_indices[0]) : int(lat_indices[-1]) + 1]
             lon_bin_subset = lon_bins[int(lon_indices[0]) : int(lon_indices[-1]) + 1]
             success = patch_plot(grid_subset, lat_bin_subset, lon_bin_subset, [lon_ul, lon_lr, lat_lr, lat_ul], variable_plot_lims, cmap, plot_name, float(len(lon_indices)), float(len(lat_indices)), dpi)
+            if rgb:
+                rgb_name = os.path.join(out_plot_dir, "RGB_Lat" + str(custom_geo_box[2]) + "to" + str(custom_geo_box[3]) + "_Lon" + str(custom_geo_box[0]) + "to" + str(custom_geo_box[1]) + "_" + global_plot_name_tags)
+                layered_rgb_name = os.path.join(out_plot_dir, var + "_onRGB_Lat" + str(custom_geo_box[2]) + "to" + str(custom_geo_box[3]) + "_Lon" + str(custom_geo_box[0]) + "to" + str(custom_geo_box[1]) + "_" + global_plot_name_tags)
+                
+                success = pull_Aqua_RGB_GIBS(lat_ul, lon_ul, lat_lr, lon_lr, xml_file, code_dir+"/intermediate_RGB.tif")
+                success = prep_RGB(rgb_name, [lon_ul, lon_lr, lat_lr, lat_ul], float(len(lon_indices)), float(len(lat_indices)), dpi)
+                success = layer_rgb_and_data(rgb_name, plot_name, layered_rgb_name)
+        
         else:
             #Plot quadrants
             for q in quadrant_dict.keys():
@@ -510,3 +583,16 @@ if __name__ == "__main__":
                     lat_bin_subset = lat_bins[quadrant_dict[q]["grid_lat_indices"]]
                     lon_bin_subset = lon_bins[quadrant_dict[q]["grid_lon_indices"]]
                     success = patch_plot(grid_subset, lat_bin_subset, lon_bin_subset, quadrant_dict[q]["extent_box"], variable_plot_lims, cmap, plot_name, 0.5 * grid_x_elem, 0.5 * grid_y_elem, dpi)
+                    
+                    if rgb:
+                        lat_ul = quadrant_dict[q]["extent_box"][3]
+                        lon_ul = quadrant_dict[q]["extent_box"][0]
+                        lat_lr = quadrant_dict[q]["extent_box"][2]
+                        lon_lr = quadrant_dict[q]["extent_box"][1]
+                        rgb_name = os.path.join(out_plot_dir, "RGB_"+q+"_" + global_plot_name_tags)
+                        layered_rgb_name = os.path.join(out_plot_dir, var + "_onRGB_"+q+"_" + global_plot_name_tags)
+                        
+                        success = pull_Aqua_RGB_GIBS(lat_ul, lon_ul, lat_lr, lon_lr, xml_file, code_dir+"/intermediate_RGB.tif")
+                        success = prep_RGB(rgb_name, quadrant_dict[q]["extent_box"], 0.5 * grid_x_elem, 0.5 * grid_y_elem, dpi)
+                        success = layer_rgb_and_data(rgb_name, plot_name, layered_rgb_name)
+                    sys.exit()
