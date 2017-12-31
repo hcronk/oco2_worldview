@@ -50,12 +50,19 @@ def patch_plot(data, grid_lat, grid_lon, extent, data_limits, cmap, out_plot_nam
     """
     Plot data polygons on a lat/lon grid.    
     """
+    print "In the function"
     fig = plt.figure(figsize=(xpix / dpi, ypix / dpi), dpi=dpi)
     ax = plt.axes(projection=ccrs.PlateCarree())
     ax.set_extent(extent)
     ax.outline_patch.set_visible(False)
 
     xg, yg = np.nonzero(data)
+    
+    #Bandaid!#
+    not_too_far_gone = np.where(np.logical_or(xg < len(grid_lon)-1, yg < len(grid_lat)-1))
+    xg = xg[not_too_far_gone]
+    yg = yg[not_too_far_gone]
+    
     valid_grid = data[xg,yg].astype(float)
 
     subset_lat_vertex = np.vstack([grid_lat[y], grid_lat[y], grid_lat[y + 1], grid_lat[y + 1]] for y in yg)
@@ -166,6 +173,29 @@ def regrid_oco2(data, vertex_latitude, vertex_longitude, grid_lat_centers, grid_
                     else:
                         grid[x,y].append(data[n])
                         #grid[x,y].append(n)
+                        
+        #Plot polygon vertices and gridpoints to visualize/quality check
+        dot_colors = []
+        for ll in zip_it:
+            pt = Point(ll[0], ll[1])
+            if pt.within(pg):
+                dot_colors.append("cyan")
+            else:
+                if pg.exterior.distance(pt) <= 1e-3:
+                    dot_colors.append("cyan")
+                else:
+                    dot_colors.append("black")
+        fig = plt.figure(figsize=(10,8))
+        ax = fig.add_subplot(111)
+        #plt.scatter(vertices[:,1], vertices[:,0], c="red", edgecolor='none')
+        plt.plot(np.append(vertices[:,1],vertices[0,1]), np.append(vertices[:,0], vertices[0,0]), "-o", c="red")
+        for xy in zip(vertices[:,1], vertices[:,0]):
+            ax.annotate('(%s, %s)' % xy, xy=xy, textcoords='data', fontsize=8.5)
+        plt.scatter(lon_m.flatten(), lat_m.flatten(), c=dot_colors, edgecolor='none')
+        for xy in zip(np.round(lon_m.flatten(), 4), np.round(lat_m.flatten(), 4)):
+            ax.annotate('(%s, %s)' % xy, xy=xy, textcoords='data', rotation=-30, fontsize=8.5)
+        plt.show()
+
     return grid
 
 if __name__ == "__main__":
@@ -301,24 +331,25 @@ if __name__ == "__main__":
     #West to East by 1km bins
     lon_bins = np.arange(-180, 180, gibs_resolution_dict[resolution], dtype=float)
 
-    #South to North, starting 1/2km North of the southern most bin line and ending 1/1 km North of the northern most bin line
+    #South to North, starting 1/2km North of the southern most bin line and ending 1/2 km North of the northern most bin line
     lat_centers = np.arange(lat_bins[0] + gibs_resolution_dict[resolution] / 2., lat_bins[-1] + gibs_resolution_dict[resolution], gibs_resolution_dict[resolution], dtype=float)
     #West to East, starting 1/2km East of the western most bin line and ending 1/2 km east of the easternmost bin line
     lon_centers = np.arange(lon_bins[0] + gibs_resolution_dict[resolution] / 2., lon_bins[-1] + gibs_resolution_dict[resolution], gibs_resolution_dict[resolution], dtype=float)
     
     grid_x_elem = int(360 / gibs_resolution_dict[resolution])
     grid_y_elem = int(180 / gibs_resolution_dict[resolution])
-    
+
     if custom_geo_box:
-        lon_indices = np.where(np.logical_and(lon_centers >= lon_ul, lon_centers <= lon_lr))
-        lat_indices = np.where(np.logical_and(lat_centers >= lat_lr, lat_centers <= lat_ul))
+        lon_indices = np.where(np.logical_and(lon_centers >= lon_ul, lon_centers <= lon_lr))[0]
+        lat_indices = np.where(np.logical_and(lat_centers >= lat_lr, lat_centers <= lat_ul))[0]
     else:
         #Plot quadrants
-        north_subset_indices = np.where(lat_centers >= 0)
-        east_subset_indices =  np.where(lon_centers >= 0)
-        south_subset_indices = np.where(lat_centers < 0)
-        west_subset_indices = np.where(lon_centers < 0)
+        north_subset_indices = np.where(lat_bins >= 0)[0]
+        east_subset_indices =  np.where(lon_bins >= 0)[0]
+        south_subset_indices = np.where(lat_bins < 0)[0]
+        west_subset_indices = np.where(lon_bins < 0)[0]
         
+
         quadrant_dict = { "NE": { "lat_indices" : north_subset_indices, "lon_indices" : east_subset_indices, "extent_box" : [0, 180, 0, 90]},
                           "SE": { "lat_indices" : south_subset_indices, "lon_indices" : east_subset_indices, "extent_box" : [0, 180, -90, 0]},
                           "SW": { "lat_indices" : south_subset_indices, "lon_indices" : west_subset_indices, "extent_box" : [-180, 0, -90, 0]},
@@ -412,10 +443,10 @@ if __name__ == "__main__":
             if verbose:
                 print("Plotting")
             plot_name = os.path.join(out_plot_dir, var + "_Lat" + str(custom_geo_box[2]) + "to" + str(custom_geo_box[3]) + "_Lon" + str(custom_geo_box[0]) + "to" + str(custom_geo_box[1]) + "_" + global_plot_name_tags)
-            grid_subset = grid[int(lon_indices[0][0]) : int(lon_indices[0][-1] + 1), int(lat_indices[0][0]) : int(lat_indices[0][-1] + 1)]
-            lat_bin_subset = lat_bins[int(lat_indices[0][0]) : int(lat_indices[0][-1] + 1)]
-            lon_bin_subset = lon_bins[int(lon_indices[0][0]) : int(lon_indices[0][-1] + 1)]
-            success = patch_plot(grid_subset, lat_bin_subset, lon_bin_subset, [lon_ul, lon_lr, lat_lr, lat_ul], variable_plot_lims, cmap, plot_name, float(len(lon_indices[0])), float(len(lat_indices[0])), dpi)
+            grid_subset = grid[int(lon_indices[0]) : int(lon_indices[-1] + 1), int(lat_indices[0]) : int(lat_indices[-1] + 1)]
+            lat_bin_subset = lat_bins[int(lat_indices[0]) : int(lat_indices[-1] + 1)]
+            lon_bin_subset = lon_bins[int(lon_indices[0]) : int(lon_indices[-1] + 1)]
+            success = patch_plot(grid_subset, lat_bin_subset, lon_bin_subset, [lon_ul, lon_lr, lat_lr, lat_ul], variable_plot_lims, cmap, plot_name, float(len(lon_indices)), float(len(lat_indices)), dpi)
         else:
             #Plot quadrants
             for q in quadrant_dict.keys():
@@ -432,12 +463,10 @@ if __name__ == "__main__":
                         print(plot_name + " exists and overwrite is not set. Moving on.")
                 
                 if not glob(plot_name) or glob(plot_name) and overwrite:
-                    grid_subset = grid[int(quadrant_dict[q]["lon_indices"][0][0]) : int(quadrant_dict[q]["lon_indices"][0][-1] + 1), int(quadrant_dict[q]["lat_indices"][0][0]) : int(quadrant_dict[q]["lat_indices"][0][-1] + 1)]
-                    print grid_subset.shape
-                    print 0.5 * grid_x_elem
-                    print 0.5 * grid_y_elem
-                    print type(0.5 * grid_x_elem)
-                    success = patch_plot(grid_subset, lat_bins, lon_bins, quadrant_dict[q]["extent_box"], variable_plot_lims, cmap, plot_name, 0.5 * grid_x_elem, 0.5 * grid_y_elem, dpi)      
+                    grid_subset = grid[int(quadrant_dict[q]["lon_indices"][0]) : int(quadrant_dict[q]["lon_indices"][-1] + 1), int(quadrant_dict[q]["lat_indices"][0]) : int(quadrant_dict[q]["lat_indices"][-1] + 1)]
+                    lat_bin_subset = lat_bins[int(quadrant_dict[q]["lat_indices"][0]) : int(quadrant_dict[q]["lat_indices"][-1] + 1)]
+                    lon_bin_subset = lon_bins[int(quadrant_dict[q]["lon_indices"][0]) : int(quadrant_dict[q]["lon_indices"][-1] + 1)]
+                    success = patch_plot(grid_subset, lat_bin_subset, lon_bin_subset, quadrant_dict[q]["extent_box"], variable_plot_lims, cmap, plot_name, 0.5 * grid_x_elem, 0.5 * grid_y_elem, dpi)      
         
     sys.exit()
 
