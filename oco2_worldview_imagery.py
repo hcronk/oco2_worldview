@@ -174,27 +174,27 @@ def regrid_oco2(data, vertex_latitude, vertex_longitude, grid_lat_centers, grid_
                         grid[x,y].append(data[n])
                         #grid[x,y].append(n)
                         
-        #Plot polygon vertices and gridpoints to visualize/quality check
-        dot_colors = []
-        for ll in zip_it:
-            pt = Point(ll[0], ll[1])
-            if pt.within(pg):
-                dot_colors.append("cyan")
-            else:
-                if pg.exterior.distance(pt) <= 1e-3:
-                    dot_colors.append("cyan")
-                else:
-                    dot_colors.append("black")
-        fig = plt.figure(figsize=(10,8))
-        ax = fig.add_subplot(111)
-        #plt.scatter(vertices[:,1], vertices[:,0], c="red", edgecolor='none')
-        plt.plot(np.append(vertices[:,1],vertices[0,1]), np.append(vertices[:,0], vertices[0,0]), "-o", c="red")
-        for xy in zip(vertices[:,1], vertices[:,0]):
-            ax.annotate('(%s, %s)' % xy, xy=xy, textcoords='data', fontsize=8.5)
-        plt.scatter(lon_m.flatten(), lat_m.flatten(), c=dot_colors, edgecolor='none')
-        for xy in zip(np.round(lon_m.flatten(), 4), np.round(lat_m.flatten(), 4)):
-            ax.annotate('(%s, %s)' % xy, xy=xy, textcoords='data', rotation=-30, fontsize=8.5)
-        plt.show()
+#        #Plot polygon vertices and gridpoints to visualize/quality check
+#        dot_colors = []
+#        for ll in zip_it:
+#            pt = Point(ll[0], ll[1])
+#            if pt.within(pg):
+#                dot_colors.append("cyan")
+#            else:
+#                if pg.exterior.distance(pt) <= 1e-3:
+#                    dot_colors.append("cyan")
+#                else:
+#                    dot_colors.append("black")
+#        fig = plt.figure(figsize=(10,8))
+#        ax = fig.add_subplot(111)
+#        #plt.scatter(vertices[:,1], vertices[:,0], c="red", edgecolor='none')
+#        plt.plot(np.append(vertices[:,1],vertices[0,1]), np.append(vertices[:,0], vertices[0,0]), "-o", c="red")
+#        for xy in zip(vertices[:,1], vertices[:,0]):
+#            ax.annotate('(%s, %s)' % xy, xy=xy, textcoords='data', fontsize=8.5)
+#        plt.scatter(lon_m.flatten(), lat_m.flatten(), c=dot_colors, edgecolor='none')
+#        for xy in zip(np.round(lon_m.flatten(), 4), np.round(lat_m.flatten(), 4)):
+#            ax.annotate('(%s, %s)' % xy, xy=xy, textcoords='data', rotation=-30, fontsize=8.5)
+#        plt.show()
 
     return grid
 
@@ -467,194 +467,6 @@ if __name__ == "__main__":
                     lat_bin_subset = lat_bins[int(quadrant_dict[q]["lat_indices"][0]) : int(quadrant_dict[q]["lat_indices"][-1] + 1)]
                     lon_bin_subset = lon_bins[int(quadrant_dict[q]["lon_indices"][0]) : int(quadrant_dict[q]["lon_indices"][-1] + 1)]
                     success = patch_plot(grid_subset, lat_bin_subset, lon_bin_subset, quadrant_dict[q]["extent_box"], variable_plot_lims, cmap, plot_name, 0.5 * grid_x_elem, 0.5 * grid_y_elem, dpi)      
-        
-    sys.exit()
 
-
-    
-
-
-    sys.exit()
-    #Read in data
-    lf = LiteCO2File(oco2_file_path)
-    lf.open_file()
-    latitude = lf.get_lat()
-    longitude = lf.get_lon()
-    vertex_latitude = lf.get_vertex_lat()
-    vertex_longitude = lf.get_vertex_lon()
-    data = lf.get_xco2()
-    qf = lf.get_qf()
-    lf.close_file()
-
-    #Cut out the bad quality data
-    quality_mask = np.where(qf == 0)
-    vertex_miss_mask = np.intersect1d(quality_mask, np.where(np.logical_not(np.any(vertex_latitude == -999999, axis=1), np.any(vertex_longitude == -999999, axis=1))))
-    missing_pixels = list(np.intersect1d(quality_mask, np.where(np.logical_and(np.any(vertex_latitude == -999999, axis=1), np.any(vertex_longitude == -999999, axis=1)))[0]))
-    vertex_zero_mask = np.intersect1d(quality_mask, np.where(np.logical_not(np.any(vertex_latitude == 0.0, axis=1), np.any(vertex_longitude == 0.0, axis=1))))
-    zero_pixels = list(np.intersect1d(quality_mask, np.where(np.logical_and(np.any(vertex_latitude == 0.0, axis=1), np.any(vertex_longitude == 0.0, axis=1)))[0]))
-
-    total_mask = np.intersect1d(vertex_miss_mask, vertex_zero_mask)
-
-    if len(missing_pixels) != 0: 
-        with open("good_quality_missing_vertex_geolocation.json", "r") as qc_file:
-            try: 
-                records = json.load(qc_file)
-            except:
-                records = {}
-        if oco2_file_path not in records.keys():
-            records[oco2_file_path] = missing_pixels
-            with open("good_quality_missing_vertex_geolocation.json", "w") as qc_file:
-                json.dump(records, qc_file, indent=4)       
-
-    if len(zero_pixels) != 0: 
-        with open("good_quality_zero_vertex_geolocation.json", "r") as qc_file:
-            try: 
-                records = json.load(qc_file)
-            except:
-                records = {}
-        if oco2_file_path not in records.keys():
-            records[oco2_file_path] = zero_pixels
-            with open("good_quality_zero_vertex_geolocation.json", "w") as qc_file:
-                json.dump(records, qc_file, indent=4)       
-
-    latitude = latitude[total_mask]
-    longitude = longitude[total_mask]
-    vertex_latitude = np.squeeze(vertex_latitude[total_mask, :])
-    vertex_longitude = np.squeeze(vertex_longitude[total_mask, :])
-    data = data[total_mask]
-
-
-
-
-    #    #Plot polygon vertices and gridpoints to visualize/quality check
-    #    fig = plt.figure(figsize=(10,8))
-    #    ax = fig.add_subplot(111)
-    #    #plt.scatter(vertices[:,1], vertices[:,0], c="red", edgecolor='none')
-    #    plt.plot(np.append(vertices[:,1],vertices[0,1]), np.append(vertices[:,0], vertices[0,0]), "-o", c="red")
-    #    for xy in zip(vertices[:,1], vertices[:,0]):
-    #        ax.annotate('(%s, %s)' % xy, xy=xy, textcoords='data', fontsize=8.5)
-    #    plt.scatter(lon_m.flatten(), lat_m.flatten(), c="blue", edgecolor='none')
-    #    for xy in zip(np.round(lon_m.flatten(), 4), np.round(lat_m.flatten(), 4)):
-    #        ax.annotate('(%s, %s)' % xy, xy=xy, textcoords='data', rotation=-30, fontsize=8.5)
-    #    plt.show()
-
-    x_action, y_action = np.nonzero(grid)
-
-    for x, y in zip(x_action, y_action):
-        if grid[x,y] is not None:
-            grid[x,y] = np.mean(grid[x,y])
-
-    # Plot the Eastern Hemisphere
-    #fig = plt.figure(figsize=(0.5 * grid_x_elem / dpi, 0.5 * grid_y_elem / dpi), dpi=dpi)
-    ##ax = plt.subplot(111, projection=ccrs.PlateCarree())
-    #ax = plt.axes(projection=ccrs.PlateCarree())
-    ##ax.set_global()
-    #ax.outline_patch.set_visible(False)
-    ##ax = plt.subplot(111)
-    ##ax.set_extent([
-    #ax.coastlines(resolution='10m', color='black', linewidth=1)
-    #ax.add_feature(cfeature.LAKES, edgecolor='black', facecolor='none')
-    ##fig, ax = plt.subplots(figsize=(10,8), subplot_kw={'projection': ccrs.PlateCarree()})
-
-    xg, yg = np.nonzero(grid)
-    valid_grid = grid[xg,yg].astype(float)
-
-    #print valid_grid.shape
-
-    #subset_lat_vertex = np.vstack([lat_bins[y], lat_bins[y], lat_bins[y + 1], lat_bins[y + 1]] for y in yg)
-    #subset_lon_vertex = np.vstack([lon_bins[x], lon_bins[x + 1], lon_bins[x + 1], lon_bins[x]] for x in xg)
-
-    east_subset_indices =  np.where(lon_centers >= 0)
-    west_subset_indices = np.where(lon_centers < 0)
-
-    #subset_lat_centers = lat_centers[y_subset_indices]
-    #subset_lon_centers = lon_centers[x_subset_indices]
-    east_lon_bins = lon_bins[east_subset_indices]
-    west_lon_bins = lon_bins[west_subset_indices]
-
-    east_grid_subset = grid[int(east_subset_indices[0][0]) : int(east_subset_indices[0][-1] + 1), :]
-    west_grid_subset = grid[int(west_subset_indices[0][0]) : int(west_subset_indices[0][-1] + 1), :]
-
-    ###East####
-
-    fig = plt.figure(figsize=(0.5 * grid_x_elem / dpi, 0.5 * grid_y_elem / dpi), dpi=dpi)
-    #ax = plt.subplot(111, projection=ccrs.PlateCarree())
-    ax = plt.axes(projection=ccrs.PlateCarree())
-    #ax.set_global()
-    ax.set_extent([0, 180, -90, 90])
-    ax.outline_patch.set_visible(False)
-    #ax = plt.subplot(111)
-    #ax.coastlines(resolution='10m', color='black', linewidth=1)
-    #ax.add_feature(cfeature.LAKES, edgecolor='black', facecolor='none')
-    #fig, ax = plt.subplots(figsize=(10,8), subplot_kw={'projection': ccrs.PlateCarree()})
-
-    xg, yg = np.nonzero(east_grid_subset)
-    valid_grid = east_grid_subset[xg,yg].astype(float)
-
-    subset_lat_vertex = np.vstack([lat_bins[y], lat_bins[y], lat_bins[y + 1], lat_bins[y + 1]] for y in yg)
-    subset_lon_vertex = np.vstack([lon_bins[x], lon_bins[x + 1], lon_bins[x + 1], lon_bins[x]] for x in east_subset_indices[0][xg])
-
-
-    zip_it = np.dstack([subset_lon_vertex, subset_lat_vertex])
-
-    patches = []
-
-    for row in zip_it:
-        polygon = mpatches.Polygon(row)
-        patches.append(polygon)                 
-    p = mpl.collections.PatchCollection(patches, cmap='jet', edgecolor='none')
-    p.set_array(valid_grid)
-    p.set_clim(variable_plot_lims[0], variable_plot_lims[1])
-    ax.add_collection(p)
-
-    #plt.axis('off')
-    #fig.axes.get_xaxis().set_visible(False)
-    #fig.axes.get_yaxis().set_visible(False)
-    #ax.set_axis_off()
-    #plt.show()
-    fig.savefig(global_plot_east, bbox_inches='tight', pad_inches=0, dpi=dpi)
-
-    ###West###
-
-    fig = plt.figure(figsize=(0.5 * grid_x_elem / dpi, 0.5 * grid_y_elem / dpi), dpi=dpi)
-    #ax = plt.subplot(111, projection=ccrs.PlateCarree())
-    ax = plt.axes(projection=ccrs.PlateCarree())
-    #ax.set_global()
-    ax.set_extent([-180, 0, -90, 90])
-    ax.outline_patch.set_visible(False)
-    #ax = plt.subplot(111)
-    #ax.set_extent([
-    #ax.coastlines(resolution='10m', color='black', linewidth=1)
-    #ax.add_feature(cfeature.LAKES, edgecolor='black', facecolor='none')
-    #fig, ax = plt.subplots(figsize=(10,8), subplot_kw={'projection': ccrs.PlateCarree()})
-
-    xg, yg = np.nonzero(west_grid_subset)
-    valid_grid = west_grid_subset[xg,yg].astype(float)
-
-    subset_lat_vertex = np.vstack([lat_bins[y], lat_bins[y], lat_bins[y + 1], lat_bins[y + 1]] for y in yg)
-    subset_lon_vertex = np.vstack([lon_bins[x], lon_bins[x + 1], lon_bins[x + 1], lon_bins[x]] for x in west_subset_indices[0][xg])
-
-
-    zip_it = np.dstack([subset_lon_vertex, subset_lat_vertex])
-
-    patches = []
-
-    for row in zip_it:
-        polygon = mpatches.Polygon(row)
-        patches.append(polygon)                 
-    p = mpl.collections.PatchCollection(patches, cmap='jet', edgecolor='none')
-    p.set_array(valid_grid)
-    p.set_clim(variable_plot_lims[0], variable_plot_lims[1])
-    ax.add_collection(p)
-
-    #plt.axis('off')
-    #fig.axes.get_xaxis().set_visible(False)
-    #fig.axes.get_yaxis().set_visible(False)
-    #ax.set_axis_off()
-    #plt.show()
-    fig.savefig(global_plot_west, bbox_inches='tight', pad_inches=0, dpi=dpi)
-
-    if glob(global_plot_east) and glob(global_plot_west) and not glob(global_plot):
-        stitch_east_west(global_plot_west, global_plot_east, global_plot)
 
 main()
