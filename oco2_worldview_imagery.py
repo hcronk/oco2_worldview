@@ -325,7 +325,7 @@ if __name__ == "__main__":
         lat_ul = custom_geo_box[1]
     
     #Variables to be plotted, if not all of the ones available. Can be left as an empty list []
-    user_defined_var_list = ["xco2"]
+    user_defined_var_list = []
     #Output directory path
     out_plot_dir = "/home/hcronk/worldview/plots"
     #Overwrite existing plots in output directory, if applicable
@@ -339,14 +339,14 @@ if __name__ == "__main__":
     ##Test Case 1: Act America Pennsylvania
     #oco2_file = "oco2_LtCO2_160727_B8100r_171007102957s.nc4"
     ##Test Case 2: Somalia, GL_2014-12-30_02638_033
-    oco2_file = "oco2_LtCO2_141230_B8100r_171012035906s.nc4"
+    #oco2_file = "oco2_LtCO2_141230_B8100r_171012035906s.nc4"
     ##Test Case 3: Chicago SIF
-    #oco2_file = "oco2_LtSIF_150820_B8100r_171011083216s.nc4"
+    oco2_file = "oco2_LtSIF_150820_B8100r_171011083216s.nc4"
     ##Test Case 4: Ghent power plant
-    oco2_file = "oco2_LtCO2_150813_B8100r_171009080747s.nc4"
+    #oco2_file = "oco2_LtCO2_150813_B8100r_171009080747s.nc4"
     #This will be what is given in loop/command line
-    lite_file= os.path.join(xco2_lite_file_dir, oco2_file)
-    #lite_file= os.path.join(sif_lite_file_dir, oco2_file)
+    #lite_file= os.path.join(xco2_lite_file_dir, oco2_file)
+    lite_file= os.path.join(sif_lite_file_dir, oco2_file)
     ######
 
     lite_file_basename = os.path.basename(lite_file)
@@ -363,12 +363,12 @@ if __name__ == "__main__":
     data_dict = { "LtCO2" : 
                     { "xco2" : {"data_field_name" : "xco2", "preprocessing" : False, "range": [395, 408], "cmap" : "jet", "quality_info" : {"quality_field_name" : "xco2_quality_flag", "qc_val" :  0, "qc_operator" : operator.eq }}, 
                       "xco2_relative" : {"data_field_name" : None, "preprocessing" : True, "range": [-6, 6], "cmap" : "seismic", "quality_info" : {"quality_field_name" : "xco2_quality_flag", "qc_val" :  0, "qc_operator" : operator.eq }}, 
-                      "tcwv" : {"data_field_name" : "Retrieval/tcwv", "range": [0, 75], "cmap" : "viridis", "quality_info" : {}}, 
+                      "tcwv" : {"data_field_name" : "Retrieval/tcwv", "preprocessing" : False, "range": [0, 75], "cmap" : "viridis", "quality_info" : {}}, 
                     },
                  "LtSIF" : 
                     { "sif757" : {"data_field_name" : "SIF_757nm", "preprocessing" : False, "range": [0, 2], "cmap" : "jet", "quality_info" : {}}, 
-                      "sif771" : {"data_field_name" : "SIF_771nm", "range": [-6, 6], "cmap" : "jet", "quality_info" : {}}, 
-                      "sif_blended" : {"data_field_name" : None, "range": [0, 2], "cmap" : "jet", "quality_info" : {}}
+                      "sif771" : {"data_field_name" : "SIF_771nm", "preprocessing" : False, "range": [-6, 6], "cmap" : "jet", "quality_info" : {}}, 
+                      "sif_blended" : {"data_field_name" : None, "preprocessing" : True, "range": [0, 2], "cmap" : "jet", "quality_info" : {}}
                     }
                 }
     geo_dict = { "LtCO2" : {
@@ -385,7 +385,7 @@ if __name__ == "__main__":
         var_list = user_defined_var_list
     else:
         var_list = data_dict[product].keys()
-    
+
     if not overwrite:
         #double check there's something to do
         if custom_geo_box:
@@ -393,15 +393,15 @@ if __name__ == "__main__":
                 if glob(os.path.join(out_plot_dir, var + "_Lat" + str(custom_geo_box[2]) + "to" + str(custom_geo_box[3]) + "_Lon" + str(custom_geo_box[0]) + "to" + str(custom_geo_box[1]) + "_" + global_plot_name_tags)):
                     var_list.remove(var)
         else:
-            for var in var_list:
-                print var
-                if glob(os.path.join(out_plot_dir, var + "_NE_" + global_plot_name_tags)) and glob(os.path.join(out_plot_dir, var + "_SE_" + global_plot_name_tags)) and glob(os.path.join(out_plot_dir, var + "_SW_" + global_plot_name_tags)) and glob(os.path.join(out_plot_dir, var + "_SW_" + global_plot_name_tags)):
+            loop_list = list(var_list)
+            for var in loop_list:
+                #print var
+                if glob(os.path.join(out_plot_dir, var + "_NE_" + global_plot_name_tags)) and glob(os.path.join(out_plot_dir, var + "_SE_" + global_plot_name_tags)) and glob(os.path.join(out_plot_dir, var + "_SW_" + global_plot_name_tags)) and glob(os.path.join(out_plot_dir, var + "_NW_" + global_plot_name_tags)):
                     var_list.remove(var)
         if not var_list:
             print("All plots exist. To overwrite, change the value of 'overwrite' to True")
             print("Exiting.")
             sys.exit()
-    
     if verbose:
         print("Variables to be plotted: " + str(var_list))
         if overwrite:
@@ -512,7 +512,7 @@ if __name__ == "__main__":
             sys.exit()
         
         if data_dict[product][var]["preprocessing"]:
-            data = preprocessing(var, lite_file)
+            data = preprocess(var, lite_file)
         else:
             data = get_oco2_data(data_dict[product][var]["data_field_name"], lite_file)
         
@@ -588,9 +588,7 @@ if __name__ == "__main__":
         cmap = data_dict[product][var]["cmap"]
         #global_plot_name = os.path.join(var + "_" + global_plot_name_tags)
         
-        #Loop?#
         #Parallelize?#
-        #Implement overwrite flag
         
         if custom_geo_box:
             if verbose:
