@@ -1,4 +1,5 @@
-#from oco2_modis_vistool.OCO2FileOps import LiteCO2File, LiteSIFFile
+import warnings
+warnings.filterwarnings("ignore")
 
 import numpy as np
 from functools import reduce
@@ -21,32 +22,35 @@ import cartopy
 import cartopy.feature as cfeature
 ccrs = cartopy.crs
 
-def stitch_west_east(west_plot, east_plot, global_plot):
+def stitch_quadrants(quadrant_plot_names, result_plot):
     """
-    Stitches two existing plots (west_plot, east_plot) into one single plot
+    Stitches four existing plots into one single plot
     """
-    if not glob(west_plot):
-        print(west_plot + " DNE. Check path. Exiting")
-        sys.exit()
-    if not glob(east_plot):
-        print(east_plot + " DNE. Check path. Exiting")
-        sys.exit()
-        
-    imgs = map(Image.open, [west_plot, east_plot])
-    w, h = zip(*(i.size for i in imgs))
-    total_w = sum(w)
-    max_h = max(h)
     
-    stitched = Image.new('RGB', (total_w, max_h))
+    NE_plot = [n for n in quadrant_plot_names if re.search("NE", n)][0]
+    SE_plot = [n for n in quadrant_plot_names if re.search("SE", n)][0]
+    SW_plot = [n for n in quadrant_plot_names if re.search("SW", n)][0]
+    NW_plot = [n for n in quadrant_plot_names if re.search("NW", n)][0]
     
-    offset = 0
-    for i in imgs:
-        stitched.paste(i, (offset, 0))
-        offset += i.size[0]
+    north_imgs = [Image.open(i) for i in [NW_plot, NE_plot]]
+    min_shape = sorted([(np.sum(i.size), i.size) for i in north_imgs])[0][1]
+    north = np.hstack((np.asarray(i.resize(min_shape)) for i in north_imgs))
+    north_img = Image.fromarray(north)
+    north_img.save("temp_north.png")
     
-    stitched.save(global_plot)
+    south_imgs = [Image.open(i) for i in [SW_plot, SE_plot]]
+    min_shape = sorted([(np.sum(i.size), i.size) for i in south_imgs])[0][1]
+    south = np.hstack((np.asarray(i.resize(min_shape)) for i in south_imgs))
+    south_img = Image.fromarray(south)
+    south_img.save("temp_south.png")
     
-    return
+    global_imgs = [Image.open(i) for i in ["temp_north.png", "temp_south.png"]]
+    min_shape = sorted([(np.sum(i.size), i.size) for i in global_imgs])[0][1]
+    global_stack = np.vstack((np.asarray(i.resize(min_shape)) for i in global_imgs))
+    global_img = Image.fromarray(global_stack)
+    global_img.save(result_plot)
+    
+    return True
 
 def update_GIBS_xml(date, xml_file):
 
@@ -66,11 +70,14 @@ def update_GIBS_xml(date, xml_file):
     root[0][0].text = new_url
     tree.write(xml_file)
     
+    return True
+    
 def pull_Aqua_RGB_GIBS(lat_ul, lon_ul, lat_lr, lon_lr, xml_file, tif_file, xsize=1200, ysize=1000):
     
     """
     Pulls the Aqua RGB imagery from WorldView using GIBS and puts it in specified tif file with associated metadata
     """ 
+    print("\nPulling RGB imagery from GIBS")
     gdal_path = os.popen("which gdal_translate").read().strip()
     cmd = gdal_path + " -of GTiff -outsize "+str(xsize)+" "+str(ysize)+" -projwin "+str(lon_ul)+" "+str(lat_ul)+" "+str(lon_lr)+" "+str(lat_lr)+" "+xml_file+" "+tif_file
     os.system(cmd)
@@ -335,6 +342,8 @@ if __name__ == "__main__":
     oco2_file = "oco2_LtCO2_141230_B8100r_171012035906s.nc4"
     ##Test Case 3: Chicago SIF
     #oco2_file = "oco2_LtSIF_150820_B8100r_171011083216s.nc4"
+    ##Test Case 4: Ghent power plant
+    oco2_file = "oco2_LtCO2_150813_B8100r_171009080747s.nc4"
     #This will be what is given in loop/command line
     lite_file= os.path.join(xco2_lite_file_dir, oco2_file)
     #lite_file= os.path.join(sif_lite_file_dir, oco2_file)
@@ -417,46 +426,82 @@ if __name__ == "__main__":
     #West to East, starting 1/2km East of the western most bin line and ending 1/2 km east of the easternmost bin line
     lon_centers = np.arange(lon_bins[0] + gibs_resolution_dict[resolution] / 2., lon_bins[-1] + gibs_resolution_dict[resolution], gibs_resolution_dict[resolution], dtype=float)
     
-    grid_x_elem = int(360 / gibs_resolution_dict[resolution])
-    grid_y_elem = int(180 / gibs_resolution_dict[resolution])
+    #grid_x_elem = int(360 / gibs_resolution_dict[resolution])
+    #grid_y_elem = int(180 / gibs_resolution_dict[resolution])
 
     if custom_geo_box:
         lon_indices = np.where(np.logical_and(lon_centers >= lon_ul, lon_centers <= lon_lr))[0]
         lat_indices = np.where(np.logical_and(lat_centers >= lat_lr, lat_centers <= lat_ul))[0]
     else:
         #Plot quadrants
-        
-        #The geo grid needs overlap for plotting 
-        #to complete the square grid box on the edges of the subset
+        layered_plot_names = []
+        if rgb:
+            print("RGB overlay is for testing and case study purposes only.")
+            print("Overlaying the full geolocation quadrants on an RGB requires too much memory and exceeds the PIL pixel limit.")
+            print("The quadrants will be plotted to 45 degrees N/S/E/W only for testing the stitching interface.")
+            
+            north_subset_grid_indices = np.where(np.logical_and(lat_bins >= 0, lat_bins <= 45))[0]
+            east_subset_grid_indices = np.where(np.logical_and(lon_bins >= 0, lon_bins <= 45))[0]
+            south_subset_grid_indices = np.where(np.logical_and(lat_bins <= 0, lat_bins >= -45))[0]
+            west_subset_grid_indices = np.where(np.logical_and(lon_bins <= 0, lon_bins >= -45))[0]
 
-        north_subset_grid_indices = np.where(lat_bins >= 0)[0]
-        east_subset_grid_indices =  np.where(lon_bins >= 0)[0]
-        south_subset_grid_indices = np.where(lat_bins <= 0)[0]
-        west_subset_grid_indices = np.where(lon_bins <= 0)[0]
-        
-        north_subset_data_indices = np.where(lat_bins >= 0)[0]
-        east_subset_data_indices =  np.where(lon_bins >= 0)[0]
-        south_subset_data_indices = np.where(lat_bins < 0)[0]
-        west_subset_data_indices = np.where(lon_bins < 0)[0]
-        
+            north_subset_data_indices = np.where(np.logical_and(lat_bins >= 0, lat_bins < 45))[0]
+            east_subset_data_indices = np.where(np.logical_and(lon_bins >= 0, lon_bins < 45))[0]
+            south_subset_data_indices = np.where(np.logical_and(lat_bins < 0, lat_bins >= -45))[0]
+            west_subset_data_indices = np.where(np.logical_and(lon_bins < 0, lon_bins >= -45))[0]
 
-        quadrant_dict = { "NE": { "grid_lat_indices" : north_subset_grid_indices, "grid_lon_indices" : east_subset_grid_indices, 
-                                  "data_lat_indices" : north_subset_data_indices, "data_lon_indices" : east_subset_data_indices,
-                                  "extent_box" : [0, 180, 0, 90]
-                                },
-                          "SE": { "grid_lat_indices" : south_subset_grid_indices, "grid_lon_indices" : east_subset_grid_indices, 
-                                  "data_lat_indices" : south_subset_data_indices, "data_lon_indices" : east_subset_data_indices,
-                                  "extent_box" : [0, 180, -90, 0]
-                                },
-                          "SW": { "grid_lat_indices" : south_subset_grid_indices, "grid_lon_indices" : west_subset_grid_indices, 
-                                  "data_lat_indices" : south_subset_data_indices, "data_lon_indices" : west_subset_data_indices,
-                                  "extent_box" : [-180, 0, -90, 0]
-                                },
-                          "NW": { "grid_lat_indices" : north_subset_grid_indices, "grid_lon_indices" : west_subset_grid_indices, 
-                                  "data_lat_indices" : north_subset_data_indices, "data_lon_indices" : west_subset_data_indices,
-                                  "extent_box" : [-180, 0, 0, 90]
-                                }  
-                         }
+
+            quadrant_dict = { "NE": { "grid_lat_indices" : north_subset_grid_indices, "grid_lon_indices" : east_subset_grid_indices, 
+                                      "data_lat_indices" : north_subset_data_indices, "data_lon_indices" : east_subset_data_indices,
+                                      "extent_box" : [0, 45, 0, 45]
+                                    },
+                              "SE": { "grid_lat_indices" : south_subset_grid_indices, "grid_lon_indices" : east_subset_grid_indices, 
+                                      "data_lat_indices" : south_subset_data_indices, "data_lon_indices" : east_subset_data_indices,
+                                      "extent_box" : [0, 45, -45, 0]
+                                    },
+                              "SW": { "grid_lat_indices" : south_subset_grid_indices, "grid_lon_indices" : west_subset_grid_indices, 
+                                      "data_lat_indices" : south_subset_data_indices, "data_lon_indices" : west_subset_data_indices,
+                                      "extent_box" : [-45, 0, -45, 0]
+                                    },
+                              "NW": { "grid_lat_indices" : north_subset_grid_indices, "grid_lon_indices" : west_subset_grid_indices, 
+                                      "data_lat_indices" : north_subset_data_indices, "data_lon_indices" : west_subset_data_indices,
+                                      "extent_box" : [-45, 0, 0, 45]
+                                    }  
+                             }
+        
+        else:
+            #The geo grid needs overlap for plotting 
+            #to complete the square grid box on the edges of the subset
+
+            north_subset_grid_indices = np.where(lat_bins >= 0)[0]
+            east_subset_grid_indices =  np.where(lon_bins >= 0)[0]
+            south_subset_grid_indices = np.where(lat_bins <= 0)[0]
+            west_subset_grid_indices = np.where(lon_bins <= 0)[0]
+
+            north_subset_data_indices = np.where(lat_bins >= 0)[0]
+            east_subset_data_indices =  np.where(lon_bins >= 0)[0]
+            south_subset_data_indices = np.where(lat_bins < 0)[0]
+            west_subset_data_indices = np.where(lon_bins < 0)[0]
+
+
+            quadrant_dict = { "NE": { "grid_lat_indices" : north_subset_grid_indices, "grid_lon_indices" : east_subset_grid_indices, 
+                                      "data_lat_indices" : north_subset_data_indices, "data_lon_indices" : east_subset_data_indices,
+                                      "extent_box" : [0, 180, 0, 90]
+                                    },
+                              "SE": { "grid_lat_indices" : south_subset_grid_indices, "grid_lon_indices" : east_subset_grid_indices, 
+                                      "data_lat_indices" : south_subset_data_indices, "data_lon_indices" : east_subset_data_indices,
+                                      "extent_box" : [0, 180, -90, 0]
+                                    },
+                              "SW": { "grid_lat_indices" : south_subset_grid_indices, "grid_lon_indices" : west_subset_grid_indices, 
+                                      "data_lat_indices" : south_subset_data_indices, "data_lon_indices" : west_subset_data_indices,
+                                      "extent_box" : [-180, 0, -90, 0]
+                                    },
+                              "NW": { "grid_lat_indices" : north_subset_grid_indices, "grid_lon_indices" : west_subset_grid_indices, 
+                                      "data_lat_indices" : north_subset_data_indices, "data_lon_indices" : west_subset_data_indices,
+                                      "extent_box" : [-180, 0, 0, 90]
+                                    }  
+                             }
+    
     
     for var in var_list:
         if verbose:
@@ -559,6 +604,7 @@ if __name__ == "__main__":
                 rgb_name = os.path.join(out_plot_dir, "RGB_Lat" + str(custom_geo_box[2]) + "to" + str(custom_geo_box[3]) + "_Lon" + str(custom_geo_box[0]) + "to" + str(custom_geo_box[1]) + "_" + global_plot_name_tags)
                 layered_rgb_name = os.path.join(out_plot_dir, var + "_onRGB_Lat" + str(custom_geo_box[2]) + "to" + str(custom_geo_box[3]) + "_Lon" + str(custom_geo_box[0]) + "to" + str(custom_geo_box[1]) + "_" + global_plot_name_tags)
                 
+                success = update_GIBS_xml(date, xml_file)
                 success = pull_Aqua_RGB_GIBS(lat_ul, lon_ul, lat_lr, lon_lr, xml_file, code_dir+"/intermediate_RGB.tif")
                 success = prep_RGB(rgb_name, [lon_ul, lon_lr, lat_lr, lat_ul], float(len(lon_indices)), float(len(lat_indices)), dpi)
                 success = layer_rgb_and_data(rgb_name, plot_name, layered_rgb_name)
@@ -582,7 +628,7 @@ if __name__ == "__main__":
                     grid_subset = grid[int(quadrant_dict[q]["data_lon_indices"][0]) : int(quadrant_dict[q]["data_lon_indices"][-1] + 1), int(quadrant_dict[q]["data_lat_indices"][0]) : int(quadrant_dict[q]["data_lat_indices"][-1] + 1)]
                     lat_bin_subset = lat_bins[quadrant_dict[q]["grid_lat_indices"]]
                     lon_bin_subset = lon_bins[quadrant_dict[q]["grid_lon_indices"]]
-                    success = patch_plot(grid_subset, lat_bin_subset, lon_bin_subset, quadrant_dict[q]["extent_box"], variable_plot_lims, cmap, plot_name, 0.5 * grid_x_elem, 0.5 * grid_y_elem, dpi)
+                    success = patch_plot(grid_subset, lat_bin_subset, lon_bin_subset, quadrant_dict[q]["extent_box"], variable_plot_lims, cmap, plot_name, float(len(quadrant_dict[q]["data_lon_indices"])), float(len(quadrant_dict[q]["data_lat_indices"])), dpi)
                     
                     if rgb:
                         lat_ul = quadrant_dict[q]["extent_box"][3]
@@ -592,7 +638,12 @@ if __name__ == "__main__":
                         rgb_name = os.path.join(out_plot_dir, "RGB_"+q+"_" + global_plot_name_tags)
                         layered_rgb_name = os.path.join(out_plot_dir, var + "_onRGB_"+q+"_" + global_plot_name_tags)
                         
+                        success = update_GIBS_xml(date, xml_file)
                         success = pull_Aqua_RGB_GIBS(lat_ul, lon_ul, lat_lr, lon_lr, xml_file, code_dir+"/intermediate_RGB.tif")
-                        success = prep_RGB(rgb_name, quadrant_dict[q]["extent_box"], 0.5 * grid_x_elem, 0.5 * grid_y_elem, dpi)
+                        success = prep_RGB(rgb_name, quadrant_dict[q]["extent_box"], float(len(quadrant_dict[q]["data_lon_indices"])), float(len(quadrant_dict[q]["data_lat_indices"])), dpi)
                         success = layer_rgb_and_data(rgb_name, plot_name, layered_rgb_name)
-                    sys.exit()
+                        
+                        layered_plot_names.append(layered_rgb_name)
+            
+            if rgb:            
+                success = stitch_quadrants(layered_plot_names, os.path.join(out_plot_dir, var + "_onRGB_stitched_" + global_plot_name_tags))
