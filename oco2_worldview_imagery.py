@@ -86,33 +86,13 @@ def pull_Aqua_RGB_GIBS(lat_ul, lon_ul, lat_lr, lon_lr, xml_file, tif_file, xsize
 
 def prep_RGB(rgb_name, extent, xpix, ypix, dpi):
     ### Pull in and prep RGB tif file ###
-
-    ds = gdal.Open(code_dir+'/intermediate_RGB.tif')
-
-    data = ds.ReadAsArray()
-    gt = ds.GetGeoTransform()
-    proj = ds.GetProjection()
-
-    inproj = osr.SpatialReference()
-    inproj.ImportFromWkt(proj)
-
-    width = ds.RasterXSize
-    height = ds.RasterYSize
-
-    #Calculate lat/lon lims of RGB
-    minx = gt[0]
-    miny = gt[3] + width*gt[4] + height*gt[5]
-    maxx = gt[0] + width*gt[1] + height*gt[2]
-    maxy = gt[3]
-    
     ### Plot the RGB ###
     fig = plt.figure(figsize=(xpix / dpi, ypix / dpi), dpi=dpi)
 
     img = plt.imread(code_dir+'/intermediate_RGB.tif')
-    img_extent = (minx, maxx, miny, maxy)
 
     ax = plt.axes(projection=ccrs.PlateCarree())
-    ax.set_extent(extent)
+    ax.set_extent(extent, crs=ccrs.PlateCarree())
     ax.outline_patch.set_visible(False)
     ax.imshow(img, origin='upper', transform=ccrs.PlateCarree(), extent=extent)
     
@@ -127,7 +107,7 @@ def patch_plot(data, grid_lat, grid_lon, extent, data_limits, cmap, out_plot_nam
     #print "In the function"
     fig = plt.figure(figsize=(xpix / dpi, ypix / dpi), dpi=dpi)
     ax = plt.axes(projection=ccrs.PlateCarree())
-    ax.set_extent(extent)
+    ax.set_extent(extent, crs=ccrs.PlateCarree())
     ax.outline_patch.set_visible(False)
 
     xg, yg = np.nonzero(data)
@@ -189,10 +169,13 @@ def preprocess(var, oco2_file, external_data_file=None):
         oco2_xco2 = get_oco2_data("xco2", oco2_file)
         ref_xco2 = 400.
         data = oco2_xco2 - ref_xco2
+        del oco2_xco2
     elif var == "sif_blended":
         sif757 = get_oco2_data("SIF_757nm", oco2_file)
         sif771 = get_oco2_data("SIF_771nm", oco2_file)
         data = 0.5 * (sif757 + 1.5 * sif771)
+        del sif757
+        del sif771
     else:
         print("No preprocessing required for " + var)
         return
@@ -279,6 +262,8 @@ def regrid_oco2(data, vertex_latitude, vertex_longitude, grid_lat_centers, grid_
 #            ax.annotate('(%s, %s)' % xy, xy=xy, textcoords='data', rotation=-30, fontsize=8.5)
 #        plt.show()
 
+    del poly
+    
     return grid
 
 if __name__ == "__main__":
@@ -299,7 +284,7 @@ if __name__ == "__main__":
     rgb = args.rgb
     
     if not lite_file and not config_file or lite_file and config_file:
-        print("Please provide a single file to process with the -f flag OR a file containing a list of files to process with the -c flag.")
+        print("Please provide a single file to process with the @f flag OR a file containing a list of files to process with the @c flag.")
         print("Exiting.")
         sys.exit()
     
@@ -339,13 +324,13 @@ if __name__ == "__main__":
     overwrite = True
 
     data_dict = { "LtCO2" : 
-                    { "xco2" : {"data_field_name" : "xco2", "preprocessing" : False, "range": [395, 408], "cmap" : "jet", "quality_info" : {"quality_field_name" : "xco2_quality_flag", "qc_val" :  0, "qc_operator" : operator.eq }}, 
-                      "xco2_relative" : {"data_field_name" : None, "preprocessing" : True, "range": [-6, 6], "cmap" : "seismic", "quality_info" : {"quality_field_name" : "xco2_quality_flag", "qc_val" :  0, "qc_operator" : operator.eq }}, 
+                    { "xco2" : {"data_field_name" : "xco2", "preprocessing" : False, "range": [380, 430], "cmap" : "jet", "quality_info" : {"quality_field_name" : "xco2_quality_flag", "qc_val" :  0, "qc_operator" : operator.eq }}, 
+                      "xco2_relative" : {"data_field_name" : None, "preprocessing" : True, "range": [-6, 6], "cmap" : "RdYlBu", "quality_info" : {"quality_field_name" : "xco2_quality_flag", "qc_val" :  0, "qc_operator" : operator.eq }}, 
                       "tcwv" : {"data_field_name" : "Retrieval/tcwv", "preprocessing" : False, "range": [0, 75], "cmap" : "viridis", "quality_info" : {}}, 
                     },
                  "LtSIF" : 
                     { "sif757" : {"data_field_name" : "SIF_757nm", "preprocessing" : False, "range": [0, 2], "cmap" : "jet", "quality_info" : {}}, 
-                      "sif771" : {"data_field_name" : "SIF_771nm", "preprocessing" : False, "range": [-6, 6], "cmap" : "jet", "quality_info" : {}}, 
+                      "sif771" : {"data_field_name" : "SIF_771nm", "preprocessing" : False, "range": [0, 2], "cmap" : "jet", "quality_info" : {}}, 
                       "sif_blended" : {"data_field_name" : None, "preprocessing" : True, "range": [0, 2], "cmap" : "jet", "quality_info" : {}}
                     }
                 }
@@ -451,6 +436,7 @@ if __name__ == "__main__":
                                     }  
                              }
     
+    
     for lite_file in files:
         if verbose:
             print("Processing " + lite_file)  
@@ -494,6 +480,7 @@ if __name__ == "__main__":
                 print("This is the default behavior. To change, change the value of 'overwrite' to False")
 
         regrid = True
+        #Parallelize variable processing?#
         for var in var_list:
             if verbose:
                 print("Processing "+ var)
@@ -522,6 +509,8 @@ if __name__ == "__main__":
                     quality = get_oco2_data(data_dict[product][var]["quality_info"]["quality_field_name"], lite_file)
                     quality_mask = np.where(data_dict[product][var]["quality_info"]["qc_operator"](quality, data_dict[product][var]["quality_info"]["qc_val"]))
                     total_mask = reduce(np.intersect1d, (vertex_miss_mask, vertex_zero_mask, vertex_crossDL_mask, quality_mask))
+                    del quality
+                    del quality_mask
                 else:
                     total_mask = total_gridding_mask
 
@@ -540,7 +529,17 @@ if __name__ == "__main__":
 
                 #Get the LtCO2 indices in each GIBS grid box
                 grid = regrid_oco2(data, var_lat_gridding, var_lon_gridding, lat_centers, lon_centers)
-                regrid = False
+                #regrid = False
+                del total_gridding_mask
+                del total_mask
+                del var_lat_gridding
+                del var_lon_gridding
+                del data
+                del var_lat
+                del var_lon
+                del vertex_miss_mask
+                del vertex_zero_mask
+                del vertex_crossDL_mask
 
     #        if data_dict[product][var]["preprocessing"]:
     #            data = preprocessing(var, lite_file)
@@ -561,6 +560,9 @@ if __name__ == "__main__":
             for x, y in zip(x_action, y_action):
                 if grid[x,y] is not None:
                     grid[x,y] = np.mean(grid[x,y])
+            
+            del x_action
+            del y_action
 
     #        for x, y in zip(x_action, y_action):
     #            #print x,y
@@ -579,17 +581,24 @@ if __name__ == "__main__":
             cmap = data_dict[product][var]["cmap"]
             #global_plot_name = os.path.join(var + "_" + global_plot_name_tags)
 
-            #Parallelize?#
 
             if custom_geo_box:
                 if verbose:
                     print("Plotting")
                 plot_name = os.path.join(out_plot_dir, var + "_Lat" + str(custom_geo_box[2]) + "to" + str(custom_geo_box[3]) + "_Lon" + str(custom_geo_box[0]) + "to" + str(custom_geo_box[1]) + "_" + global_plot_name_tags)
                 grid_subset = grid[int(lon_indices[0]) : int(lon_indices[-1] + 1), int(lat_indices[0]) : int(lat_indices[-1] + 1)]
+                del grid
                 lat_bin_subset = lat_bins[int(lat_indices[0]) : ]
-                lon_bin_subset = lon_bins[int(lon_indices[0]) : ]
+                lon_bin_subset = lon_bins[int(lon_indices[0]) : ] 
                 success = patch_plot(grid_subset, lat_bin_subset, lon_bin_subset, [lon_ul, lon_lr, lat_lr, lat_ul], variable_plot_lims, cmap, plot_name, float(len(lon_indices)), float(len(lat_indices)), dpi)
+                
+                del grid_subset
+                del lat_bin_subset
+                del lon_bin_subset
+                
                 if rgb:
+                    if verbose:
+                        print("RGB Dealings")
                     rgb_name = os.path.join(out_plot_dir, "RGB_Lat" + str(custom_geo_box[2]) + "to" + str(custom_geo_box[3]) + "_Lon" + str(custom_geo_box[0]) + "to" + str(custom_geo_box[1]) + "_" + global_plot_name_tags)
                     layered_rgb_name = os.path.join(out_plot_dir, var + "_onRGB_Lat" + str(custom_geo_box[2]) + "to" + str(custom_geo_box[3]) + "_Lon" + str(custom_geo_box[0]) + "to" + str(custom_geo_box[1]) + "_" + global_plot_name_tags)
 
@@ -600,6 +609,7 @@ if __name__ == "__main__":
 
             else:
                 #Plot quadrants
+                #Parallelize?#
                 for q in quadrant_dict.keys():
 
                     plot_name = os.path.join(out_plot_dir, var + "_"+q+"_" + global_plot_name_tags)
@@ -615,10 +625,15 @@ if __name__ == "__main__":
 
                     if not glob(plot_name) or glob(plot_name) and overwrite:
                         grid_subset = grid[int(quadrant_dict[q]["data_lon_indices"][0]) : int(quadrant_dict[q]["data_lon_indices"][-1] + 1), int(quadrant_dict[q]["data_lat_indices"][0]) : int(quadrant_dict[q]["data_lat_indices"][-1] + 1)]
+                        del grid
                         lat_bin_subset = lat_bins[quadrant_dict[q]["grid_lat_indices"]]
                         lon_bin_subset = lon_bins[quadrant_dict[q]["grid_lon_indices"]]
                         success = patch_plot(grid_subset, lat_bin_subset, lon_bin_subset, quadrant_dict[q]["extent_box"], variable_plot_lims, cmap, plot_name, float(len(quadrant_dict[q]["data_lon_indices"])), float(len(quadrant_dict[q]["data_lat_indices"])), dpi)
-
+                        
+                        del grid_subset
+                        del lat_bin_subset
+                        del lon_bin_subset
+                        
                         if rgb:
                             lat_ul = quadrant_dict[q]["extent_box"][3]
                             lon_ul = quadrant_dict[q]["extent_box"][0]
