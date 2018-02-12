@@ -9,9 +9,11 @@ import operator
 import sys
 import re
 import h5py
+import pandas as pd
 from shapely.geometry import Polygon, Point, LineString
 import matplotlib.pyplot as plt
 import json
+import urllib
 from glob import glob
 import matplotlib.patches as mpatches
 import xml.etree.ElementTree as ET
@@ -166,10 +168,18 @@ def preprocess(var, oco2_file, external_data_file=None):
     Do any necessary processing to get data for the given variable
     """
     if var == "xco2_relative":
+        filename = os.path.basename(external_data_file)       
+        urllib.urlretrieve(external_data_file, filename)
+        df = pd.read_csv(filename, comment="#", na_values=-99.99, header=None, \
+                        names=['year', 'month', 'decimal date', 'average', 'interpolated', 'seasonal corr trend', 'num days'], \
+                        delim_whitespace=True)
+        yyyy = int("20" + re.split("_", os.path.basename(oco2_file))[2][0:2])
+        mm = int(re.split("_", os.path.basename(oco2_file))[2][2:4])
+        ref_xco2 = float(df["average"][df.index[df["year"] == yyyy] & df.index[df["month"] == mm]])
         oco2_xco2 = get_oco2_data("xco2", oco2_file)
-        ref_xco2 = 400.
         data = oco2_xco2 - ref_xco2
         del oco2_xco2
+        del df
     elif var == "sif_blended":
         sif757 = get_oco2_data("SIF_757nm", oco2_file)
         sif771 = get_oco2_data("SIF_771nm", oco2_file)
@@ -325,7 +335,7 @@ if __name__ == "__main__":
 
     data_dict = { "LtCO2" : 
                     { "xco2" : {"data_field_name" : "xco2", "preprocessing" : False, "range": [380, 430], "cmap" : "jet", "quality_info" : {"quality_field_name" : "xco2_quality_flag", "qc_val" :  0, "qc_operator" : operator.eq }}, 
-                      "xco2_relative" : {"data_field_name" : None, "preprocessing" : True, "range": [-6, 6], "cmap" : "RdYlBu", "quality_info" : {"quality_field_name" : "xco2_quality_flag", "qc_val" :  0, "qc_operator" : operator.eq }}, 
+                      "xco2_relative" : {"data_field_name" : None, "preprocessing" : "ftp://aftp.cmdl.noaa.gov/products/trends/co2/co2_mm_mlo.txt", "range": [-6, 6], "cmap" : "RdYlBu", "quality_info" : {"quality_field_name" : "xco2_quality_flag", "qc_val" :  0, "qc_operator" : operator.eq }}, 
                       "tcwv" : {"data_field_name" : "Retrieval/tcwv", "preprocessing" : False, "range": [0, 75], "cmap" : "viridis", "quality_info" : {}}, 
                     },
                  "LtSIF" : 
@@ -490,7 +500,10 @@ if __name__ == "__main__":
                 sys.exit()
 
             if data_dict[product][var]["preprocessing"]:
-                data = preprocess(var, lite_file)
+                if type(data_dict[product][var]["preprocessing"]) == str:
+                    data = preprocess(var, lite_file, data_dict[product][var]["preprocessing"])
+                else:
+                     data = preprocess(var, lite_file)
             else:
                 data = get_oco2_data(data_dict[product][var]["data_field_name"], lite_file)
 
@@ -625,7 +638,6 @@ if __name__ == "__main__":
 
                     if not glob(plot_name) or glob(plot_name) and overwrite:
                         grid_subset = grid[int(quadrant_dict[q]["data_lon_indices"][0]) : int(quadrant_dict[q]["data_lon_indices"][-1] + 1), int(quadrant_dict[q]["data_lat_indices"][0]) : int(quadrant_dict[q]["data_lat_indices"][-1] + 1)]
-                        del grid
                         lat_bin_subset = lat_bins[quadrant_dict[q]["grid_lat_indices"]]
                         lon_bin_subset = lon_bins[quadrant_dict[q]["grid_lon_indices"]]
                         success = patch_plot(grid_subset, lat_bin_subset, lon_bin_subset, quadrant_dict[q]["extent_box"], variable_plot_lims, cmap, plot_name, float(len(quadrant_dict[q]["data_lon_indices"])), float(len(quadrant_dict[q]["data_lat_indices"])), dpi)
@@ -648,6 +660,6 @@ if __name__ == "__main__":
                             success = layer_rgb_and_data(rgb_name, plot_name, layered_rgb_name)
 
                             layered_plot_names.append(layered_rgb_name)
-
+                del grid
                 if rgb:            
                     success = stitch_quadrants(layered_plot_names, os.path.join(out_plot_dir, var + "_onRGB_stitched_" + global_plot_name_tags))
