@@ -188,11 +188,11 @@ def ftp_pull(path, filename):
     with open(filename, "wb") as f:
         cnx.retrbinary("RETR " + filename, f.write)
     
-    cnx.close()
-    
     if glob(filename) and os.path.getsize(filename) == cnx.size(filename):
+        cnx.close()
         return True
     else:
+        cnx.close()
         return False
 
 def preprocess(var, oco2_file, external_data_file=None):
@@ -204,7 +204,7 @@ def preprocess(var, oco2_file, external_data_file=None):
         ftp_path= os.path.dirname(external_data_file)
         success = ftp_pull(ftp_path, ftp_file)
         if success:
-            df = pd.read_csv(filename, comment="#", na_values=-99.99, header=None, \
+            df = pd.read_csv(ftp_file, comment="#", na_values=-99.99, header=None, \
                             names=['year', 'month', 'decimal date', 'average', 'interpolated', 'seasonal corr trend', 'num days'], \
                             delim_whitespace=True)
             yyyy = int("20" + re.split("_", os.path.basename(oco2_file))[2][0:2])
