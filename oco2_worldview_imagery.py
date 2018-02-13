@@ -13,7 +13,7 @@ import pandas as pd
 from shapely.geometry import Polygon, Point, LineString
 import matplotlib.pyplot as plt
 import json
-import urllib
+from ftplib import FTP
 from glob import glob
 import matplotlib.patches as mpatches
 import xml.etree.ElementTree as ET
@@ -163,23 +163,60 @@ def get_oco2_data(var, oco2_file):
     f.close()
     return data
 
+def ftp_pull(path, filename):
+    
+    path_tokens = re.split("/", path)
+    ftp_name = path_tokens[2]
+    
+    count = 0
+    tries = 5
+    
+    while count < tries:
+	try:
+	    #print("Connection attempt number " + str(count+1) + " for " + product)
+	    cnx = FTP(ftp_name)
+	    break
+	except:
+	    print("Connection failed, trying again.")
+	count += 1
+
+    cnx.login()
+    
+    cwd = re.split(ftp_name, path)[-1]
+    cnx.cwd(cwd)
+    
+    with open(filename, "wb") as f:
+        cnx.retrbinary("RETR " + filename, f.write)
+    
+    cnx.close()
+    
+    if glob(filename) and os.path.getsize(filename) == cnx.size(filename):
+        return True
+    else:
+        return False
+
 def preprocess(var, oco2_file, external_data_file=None):
     """
     Do any necessary processing to get data for the given variable
     """
     if var == "xco2_relative":
-        filename = os.path.basename(external_data_file)       
-        urllib.urlretrieve(external_data_file, filename)
-        df = pd.read_csv(filename, comment="#", na_values=-99.99, header=None, \
-                        names=['year', 'month', 'decimal date', 'average', 'interpolated', 'seasonal corr trend', 'num days'], \
-                        delim_whitespace=True)
-        yyyy = int("20" + re.split("_", os.path.basename(oco2_file))[2][0:2])
-        mm = int(re.split("_", os.path.basename(oco2_file))[2][2:4])
-        ref_xco2 = float(df["average"][df.index[df["year"] == yyyy] & df.index[df["month"] == mm]])
-        oco2_xco2 = get_oco2_data("xco2", oco2_file)
-        data = oco2_xco2 - ref_xco2
-        del oco2_xco2
-        del df
+        ftp_file = os.path.basename(external_data_file)
+        ftp_path= os.path.dirname(external_data_file)
+        success = ftp_pull(ftp_path, ftp_file)
+        if success:
+            df = pd.read_csv(filename, comment="#", na_values=-99.99, header=None, \
+                            names=['year', 'month', 'decimal date', 'average', 'interpolated', 'seasonal corr trend', 'num days'], \
+                            delim_whitespace=True)
+            yyyy = int("20" + re.split("_", os.path.basename(oco2_file))[2][0:2])
+            mm = int(re.split("_", os.path.basename(oco2_file))[2][2:4])
+            ref_xco2 = float(df["average"][df.index[df["year"] == yyyy] & df.index[df["month"] == mm]])
+            oco2_xco2 = get_oco2_data("xco2", oco2_file)
+            data = oco2_xco2 - ref_xco2
+            del oco2_xco2
+            del df
+        else:
+            print("Unable to retrieve " + external_data_file)
+            sys.exit()  
     elif var == "sif_blended":
         sif757 = get_oco2_data("SIF_757nm", oco2_file)
         sif771 = get_oco2_data("SIF_771nm", oco2_file)
@@ -327,7 +364,7 @@ if __name__ == "__main__":
         lat_ul = custom_geo_box[1]
     
     #Variables to be plotted, if not all of the ones available. Can be left as an empty list []
-    user_defined_var_list = []
+    user_defined_var_list = ["xco2_relative"]
     #Output directory path
     out_plot_dir = "/home/hcronk/worldview/plots/for_feedback_1"
     #Overwrite existing plots in output directory, if applicable
