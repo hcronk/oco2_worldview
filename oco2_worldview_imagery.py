@@ -133,6 +133,16 @@ def patch_plot(data, grid_lat, grid_lon, extent, data_limits, cmap, out_plot_nam
 
     fig.savefig(out_plot_name, bbox_inches='tight', pad_inches=0, dpi=dpi)
     
+    del xg
+    del yg
+    del valid_grid
+    del subset_lat_vertex
+    del subset_lon_vertex
+    del zip_it
+    del polygon
+    del patches
+    del p
+    
     return True
 
 def layer_rgb_and_data(rgb_name, data_plot_name, layered_plot_name):
@@ -310,6 +320,9 @@ def regrid_oco2(data, vertex_latitude, vertex_longitude, grid_lat_centers, grid_
 #        plt.show()
 
     del poly
+    del lat_m
+    del lon_m
+    del zip_it
     
     return grid
 
@@ -364,9 +377,9 @@ if __name__ == "__main__":
         lat_ul = custom_geo_box[1]
     
     #Variables to be plotted, if not all of the ones available. Can be left as an empty list []
-    user_defined_var_list = ["xco2_relative"]
+    user_defined_var_list = []
     #Output directory path
-    out_plot_dir = "/home/hcronk/worldview/plots/for_feedback_1"
+    out_plot_dir = "/home/hcronk/worldview/plots/operational_test"
     #Overwrite existing plots in output directory, if applicable
     overwrite = True
 
@@ -591,20 +604,6 @@ if __name__ == "__main__":
                 del vertex_zero_mask
                 del vertex_crossDL_mask
 
-    #        if data_dict[product][var]["preprocessing"]:
-    #            data = preprocessing(var, lite_file)
-    #        else:
-    #            data = get_oco2_data(data_dict[product][var]["data_field_name"], lite_file)
-
-    #        if data_dict[product][var]["quality_info"]:
-    #            #"quality_info" : {"quality_field_name" : "xco2_quality_flag", "qc_val" :  0, "qc_operator" : operator.eq }}, 
-    #            quality = get_oco2_data(data_dict[product][var]["quality_info"]["quality_field_name"], lite_file)
-    #            quality_mask = np.where(data_dict[product][var]["quality_info"]["qc_operator"](quality, data_dict[product][var]["quality_info"]["qc_val"]))
-    #            total_mask = reduce(np.intersect1d, (vertex_miss_mask, vertex_zero_mask, vertex_crossDL_mask, quality_mask))
-    #        else:
-    #            total_mask = total_gridding_mask
-
-            #data_grid = np.empty_like(grid)
             x_action, y_action = np.nonzero(grid)
 
             for x, y in zip(x_action, y_action):
@@ -614,22 +613,8 @@ if __name__ == "__main__":
             del x_action
             del y_action
 
-    #        for x, y in zip(x_action, y_action):
-    #            #print x,y
-    #            #print grid[x,y]
-    #            #print data[grid[x,y]]
-    #            #print type(data[grid[x,y]])
-    #            #print np.float(np.mean([data[g] for g in grid[x,y]]))
-    #            if grid[x,y] is not None and np.any(grid[x,y] in total_mask):
-    #                #print "Valid"
-    #                #print data[grid[x,y]]
-    #                #print [(g, g in total_mask) for g in grid[x,y]]
-    #                data_grid[x,y] = np.mean([data[g] for g in grid[x,y] if g in total_mask])
-    #                #print data_grid[x,y]
-
             variable_plot_lims = data_dict[product][var]["range"]
             cmap = data_dict[product][var]["cmap"]
-            #global_plot_name = os.path.join(var + "_" + global_plot_name_tags)
 
 
             if custom_geo_box:
