@@ -215,11 +215,11 @@ def preprocess(var, oco2_file, external_data_file=None):
         success = ftp_pull(ftp_path, ftp_file)
         if success:
             df = pd.read_csv(ftp_file, comment="#", na_values=-99.99, header=None, \
-                            names=['year', 'month', 'decimal date', 'average', 'interpolated', 'seasonal corr trend', 'num days'], \
-                            delim_whitespace=True)
+                            names=['year', 'month', 'day', 'trend'], delim_whitespace=True)
             yyyy = int("20" + re.split("_", os.path.basename(oco2_file))[2][0:2])
             mm = int(re.split("_", os.path.basename(oco2_file))[2][2:4])
-            ref_xco2 = float(df["average"][df.index[df["year"] == yyyy] & df.index[df["month"] == mm]])
+            dd = int(re.split("_", os.path.basename(oco2_file))[2][4:6])
+            ref_xco2 = float(df["trend"][df.index[df["year"] == yyyy] & df.index[df["month"] == mm] & df.index[df["day"] == dd]])
             oco2_xco2 = get_oco2_data("xco2", oco2_file)
             data = oco2_xco2 - ref_xco2
             del oco2_xco2
@@ -377,7 +377,7 @@ if __name__ == "__main__":
         lat_ul = custom_geo_box[1]
     
     #Variables to be plotted, if not all of the ones available. Can be left as an empty list []
-    user_defined_var_list = []
+    user_defined_var_list = ["xco2_relative"]
     #Output directory path
     out_plot_dir = "/home/hcronk/worldview/plots/operational_test"
     #Overwrite existing plots in output directory, if applicable
@@ -385,7 +385,7 @@ if __name__ == "__main__":
 
     data_dict = { "LtCO2" : 
                     { "xco2" : {"data_field_name" : "xco2", "preprocessing" : False, "range": [380, 430], "cmap" : "jet", "quality_info" : {"quality_field_name" : "xco2_quality_flag", "qc_val" :  0, "qc_operator" : operator.eq }}, 
-                      "xco2_relative" : {"data_field_name" : None, "preprocessing" : "ftp://aftp.cmdl.noaa.gov/products/trends/co2/co2_mm_mlo.txt", "range": [-6, 6], "cmap" : "RdYlBu", "quality_info" : {"quality_field_name" : "xco2_quality_flag", "qc_val" :  0, "qc_operator" : operator.eq }}, 
+                      "xco2_relative" : {"data_field_name" : None, "preprocessing" : "ftp://aftp.cmdl.noaa.gov/products/trends/co2/co2_trend_gl.txt", "range": [-6, 6], "cmap" : "RdYlBu", "quality_info" : {"quality_field_name" : "xco2_quality_flag", "qc_val" :  0, "qc_operator" : operator.eq }}, 
                       "tcwv" : {"data_field_name" : "Retrieval/tcwv", "preprocessing" : False, "range": [0, 75], "cmap" : "viridis", "quality_info" : {}}, 
                     },
                  "LtSIF" : 
