@@ -113,6 +113,8 @@ def patch_plot(data, grid_lat, grid_lon, extent, data_limits, cmap, out_plot_nam
     ax.outline_patch.set_visible(False)
 
     xg, yg = np.nonzero(data)
+    if not xg.size or not yg.size:
+        return False
     
     valid_grid = data[xg,yg].astype(float)
 
@@ -377,9 +379,9 @@ if __name__ == "__main__":
         lat_ul = custom_geo_box[1]
     
     #Variables to be plotted, if not all of the ones available. Can be left as an empty list []
-    user_defined_var_list = ["xco2_relative"]
+    user_defined_var_list = []
     #Output directory path
-    out_plot_dir = "/home/hcronk/worldview/plots/operational_test"
+    out_plot_dir = "/home/hcronk/worldview/plots/STM_March2018"
     #Overwrite existing plots in output directory, if applicable
     overwrite = True
 
@@ -631,6 +633,9 @@ if __name__ == "__main__":
                 del lat_bin_subset
                 del lon_bin_subset
                 
+                if not success:
+                    continue
+                
                 if rgb:
                     if verbose:
                         print("RGB Dealings")
@@ -667,6 +672,10 @@ if __name__ == "__main__":
                         del grid_subset
                         del lat_bin_subset
                         del lon_bin_subset
+                        
+                        if not success:
+                            del grid
+                            continue
                         
                         if rgb:
                             lat_ul = quadrant_dict[q]["extent_box"][3]
