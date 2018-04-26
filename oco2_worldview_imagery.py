@@ -338,12 +338,23 @@ if __name__ == "__main__":
     parser.add_argument("@c", "@@config", help="Full path to text file containing a list of files to process, one filename per line", default=None)
     parser.add_argument("@g", "@@geolocation", help="Custom geolocation box for testing and case study purposes. Fmt: [lat_min, lat_max, lon_min, lon_max]", nargs = '+', default=[])
     parser.add_argument("@r", "@@rgb", help="Overlay plots on MODIS RGB for testing and case study purposes", action="store_true")
+    parser.add_argument("@o", "@@output_dir", help="Output directory for plots", default=os.path.join(code_dir, "plots"))
+    parser.add_argument("@a", "@@vars", help="Variables to plot", nargs = '+', default=[])
     args = parser.parse_args()
     verbose = args.verbose
     lite_file = args.file
     config_file = args.config
     custom_geo_box = args.geolocation
     rgb = args.rgb
+    out_plot_dir = args.output_dir
+    user_defined_var_list = args.vars
+    
+    if user_defined_var_list:
+        user_defined_var_list = [x.strip("[,]") for x in user_defined_var_list]
+    
+    if not os.path.exists(out_plot_dir):
+        os.makedirs(out_plot_dir)
+
     
     if not lite_file and not config_file or lite_file and config_file:
         print("Please provide a single file to process with the @f flag OR a file containing a list of files to process with the @c flag.")
@@ -379,9 +390,9 @@ if __name__ == "__main__":
         lat_ul = custom_geo_box[1]
     
     #Variables to be plotted, if not all of the ones available. Can be left as an empty list []
-    user_defined_var_list = []
+    user_defined_var_list = ["xco2_relative"]
     #Output directory path
-    out_plot_dir = "/home/hcronk/worldview/plots/STM_March2018"
+    #out_plot_dir = "/home/hcronk/worldview/plots/STM_March2018"
     #Overwrite existing plots in output directory, if applicable
     overwrite = True
 
@@ -523,7 +534,7 @@ if __name__ == "__main__":
             #double check there's something to do
             if custom_geo_box:
                 for var in var_list:
-                    if glob(os.path.join(out_plot_dir, var + "_Lat" + str(custom_geo_box[2]) + "to" + str(custom_geo_box[3]) + "_Lon" + str(custom_geo_box[0]) + "to" + str(custom_geo_box[1]) + "_" + global_plot_name_tags)):
+                    if glob(os.path.join(out_plot_dir, var + "_Lat" + str(custom_geo_box[0]) + "to" + str(custom_geo_box[1]) + "_Lon" + str(custom_geo_box[2]) + "to" + str(custom_geo_box[3]) + "_" + global_plot_name_tags)):
                         var_list.remove(var)
             else:
                 loop_list = list(var_list)
@@ -620,9 +631,10 @@ if __name__ == "__main__":
 
 
             if custom_geo_box:
+                # custom_geo_box format: [lat_min, lat_max, lon_min, lon_max]
                 if verbose:
                     print("Plotting")
-                plot_name = os.path.join(out_plot_dir, var + "_Lat" + str(custom_geo_box[2]) + "to" + str(custom_geo_box[3]) + "_Lon" + str(custom_geo_box[0]) + "to" + str(custom_geo_box[1]) + "_" + global_plot_name_tags)
+                plot_name = os.path.join(out_plot_dir, var + "_Lat" + str(custom_geo_box[0]) + "to" + str(custom_geo_box[1]) + "_Lon" + str(custom_geo_box[2]) + "to" + str(custom_geo_box[3]) + "_" + global_plot_name_tags)
                 grid_subset = grid[int(lon_indices[0]) : int(lon_indices[-1] + 1), int(lat_indices[0]) : int(lat_indices[-1] + 1)]
                 del grid
                 lat_bin_subset = lat_bins[int(lat_indices[0]) : ]
@@ -639,8 +651,8 @@ if __name__ == "__main__":
                 if rgb:
                     if verbose:
                         print("RGB Dealings")
-                    rgb_name = os.path.join(out_plot_dir, "RGB_Lat" + str(custom_geo_box[2]) + "to" + str(custom_geo_box[3]) + "_Lon" + str(custom_geo_box[0]) + "to" + str(custom_geo_box[1]) + "_" + global_plot_name_tags)
-                    layered_rgb_name = os.path.join(out_plot_dir, var + "_onRGB_Lat" + str(custom_geo_box[2]) + "to" + str(custom_geo_box[3]) + "_Lon" + str(custom_geo_box[0]) + "to" + str(custom_geo_box[1]) + "_" + global_plot_name_tags)
+                    rgb_name = os.path.join(out_plot_dir, "RGB_Lat" + str(custom_geo_box[0]) + "to" + str(custom_geo_box[1]) + "_Lon" + str(custom_geo_box[2]) + "to" + str(custom_geo_box[3]) + "_" + global_plot_name_tags)
+                    layered_rgb_name = os.path.join(out_plot_dir, var + "_onRGB_Lat" + str(custom_geo_box[0]) + "to" + str(custom_geo_box[1]) + "_Lon" + str(custom_geo_box[2]) + "to" + str(custom_geo_box[3]) + "_" + global_plot_name_tags)
 
                     success = update_GIBS_xml(date, xml_file)
                     success = pull_Aqua_RGB_GIBS(lat_ul, lon_ul, lat_lr, lon_lr, xml_file, code_dir+"/intermediate_RGB.tif")
