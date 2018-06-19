@@ -55,9 +55,9 @@ def stitch_quadrants(quadrant_plot_names, result_plot):
     return True
 
 def update_GIBS_xml(date, xml_file):
-
     """
-    Puts the date of interest into the GIBS XML file
+    Puts the date of interest into the GIBS XML file.
+    For research mode, not operations
     """
     
     tree = ET.parse(xml_file)
@@ -75,10 +75,11 @@ def update_GIBS_xml(date, xml_file):
     return True
     
 def pull_Aqua_RGB_GIBS(lat_ul, lon_ul, lat_lr, lon_lr, xml_file, tif_file, xsize=1200, ysize=1000):
-    
     """
-    Pulls the Aqua RGB imagery from WorldView using GIBS and puts it in specified tif file with associated metadata
+    Pulls the Aqua RGB imagery from WorldView using GIBS and puts it in specified tif file with associated metadata.
+    For research mode, not operations
     """ 
+    
     print("\nPulling RGB imagery from GIBS")
     gdal_path = os.popen("which gdal_translate").read().strip()
     cmd = gdal_path + " -of GTiff -outsize "+str(xsize)+" "+str(ysize)+" -projwin "+str(lon_ul)+" "+str(lat_ul)+" "+str(lon_lr)+" "+str(lat_lr)+" "+xml_file+" "+tif_file
@@ -87,8 +88,11 @@ def pull_Aqua_RGB_GIBS(lat_ul, lon_ul, lat_lr, lon_lr, xml_file, tif_file, xsize
     return True
 
 def prep_RGB(rgb_name, extent, xpix, ypix, dpi):
-    ### Pull in and prep RGB tif file ###
-    ### Plot the RGB ###
+    """
+    Prepares the RGB geotiff for layering with the data and writes it to a png
+    For research mode, not operations
+    """
+    
     fig = plt.figure(figsize=(xpix / dpi, ypix / dpi), dpi=dpi)
 
     img = plt.imread(code_dir+'/intermediate_RGB.tif')
@@ -104,7 +108,8 @@ def prep_RGB(rgb_name, extent, xpix, ypix, dpi):
 
 def patch_plot(data, grid_lat, grid_lon, extent, data_limits, cmap, out_plot_name, xpix, ypix, dpi):
     """
-    Plot data polygons on a lat/lon grid 
+    Plot data polygons on a lat/lon grid
+    In operational path
     """
     #print "In the function"
     fig = plt.figure(figsize=(xpix / dpi, ypix / dpi), dpi=dpi)
@@ -148,6 +153,11 @@ def patch_plot(data, grid_lat, grid_lon, extent, data_limits, cmap, out_plot_nam
     return True
 
 def layer_rgb_and_data(rgb_name, data_plot_name, layered_plot_name):
+    """
+    Layers the data PNG on top of the RGB PNG
+    For research mode, not operations
+    """
+    
     base = Image.open(rgb_name)
     top = Image.open(data_plot_name)
     pixel_dat = list(top.getdata())
@@ -164,6 +174,7 @@ def layer_rgb_and_data(rgb_name, data_plot_name, layered_plot_name):
 def get_oco2_data(var, oco2_file):
     """
     Extract given variable data from the OCO-2 lite file (.h5 format)
+    In operational path
     """
     f = h5py.File(oco2_file, "r")
     try: 
@@ -176,6 +187,9 @@ def get_oco2_data(var, oco2_file):
     return data
 
 def ftp_pull(path, filename):
+    """Pulls data via FTP
+    In operational path for pulling Reference XCO2 dataset from NOAA ESRL
+    """
     
     path_tokens = re.split("/", path)
     ftp_name = path_tokens[2]
@@ -210,7 +224,9 @@ def ftp_pull(path, filename):
 def preprocess(var, oco2_file, external_data_file=None):
     """
     Do any necessary processing to get data for the given variable
+    In operational path
     """
+    
     if var == "xco2_relative":
         ftp_file = os.path.basename(external_data_file)
         ftp_path= os.path.dirname(external_data_file)
@@ -242,7 +258,11 @@ def preprocess(var, oco2_file, external_data_file=None):
     return data
 
 def regrid_oco2(data, vertex_latitude, vertex_longitude, grid_lat_centers, grid_lon_centers):
-
+    """
+    Put OCO-2 data on a regular grid
+    In operational path
+    """
+    
     grid = np.empty([len(grid_lon_centers), len(grid_lat_centers)], dtype=np.object)
     
     #Create lat/lon corner pairs from vertices
