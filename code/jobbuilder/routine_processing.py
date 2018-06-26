@@ -4,12 +4,17 @@ code_dir = os.path.join(os.path.dirname(os.path.realpath(__file__)), os.path.par
 sys.path.append(code_dir)
 from oco2_worldview_imagery import oco2_worldview_imagery
 from glob import glob
+import operator
+import re
 
 #Global Variables
 overwrite = False
 lite_file_dirs = {"LtCO2": "/data6/OCO2/product/Lite/B8/LtCO2", 
                   "LtSIF": "/cloudsat/LtSIF"}
-output_dir = 
+out_plot_dir = "/home/hcronk/worldview/plots/jobbuilder_testing"
+lockfile_dir = "/home/hcronk/worldview/processing_status"
+try_threshold = 3 #(number of times to try to process before moving to issues for analysis)
+try_wait = 3600 #(number of seconds to wait before trying to reprocess a failed job)
 
 data_dict = { "LtCO2" : 
                 { "xco2" : {"data_field_name" : "xco2", "preprocessing" : False, "range": [380, 430], "cmap" : "jet", "quality_info" : {"quality_field_name" : "xco2_quality_flag", "qc_val" :  0, "qc_operator" : operator.eq }}, 
@@ -22,124 +27,120 @@ data_dict = { "LtCO2" :
                   "sif_blended" : {"data_field_name" : None, "preprocessing" : True, "range": [0, 2], "cmap" : "jet", "quality_info" : {}}
                 }
             }
-
-resolution = "500m"
-
-#These numbers came from the GIBS ICD
-gibs_resolution_dict = {"2km" : 0.017578125, "1km" : 0.0087890625, "500m" : 0.00439453125, "250m" : 0.002197265625}
-
-#South to North by 1/2 km bins, starting at -90 and ending at 89.
-lat_bins = np.arange(-90, 90, gibs_resolution_dict[resolution], dtype=float)
-#West to East by 1km bins
-lon_bins = np.arange(-180, 180, gibs_resolution_dict[resolution], dtype=float)
-
-#South to North, starting 1/2km North of the southern most bin line and ending 1/2 km North of the northern most bin line
-lat_centers = np.arange(lat_bins[0] + gibs_resolution_dict[resolution] / 2., lat_bins[-1] + gibs_resolution_dict[resolution], gibs_resolution_dict[resolution], dtype=float)
-#West to East, starting 1/2km East of the western most bin line and ending 1/2 km east of the easternmost bin line
-lon_centers = np.arange(lon_bins[0] + gibs_resolution_dict[resolution] / 2., lon_bins[-1] + gibs_resolution_dict[resolution], gibs_resolution_dict[resolution], dtype=float)
+            
+tile_dict = { "NE": {"extent_box" : [0, 180, 0, 90]
+                    },
+              "SE": {"extent_box" : [0, 180, -90, 0]
+                    },
+              "SW": {"extent_box" : [-180, 0, -90, 0]
+                    },
+              "NW": {"extent_box" : [-180, 0, 0, 90]
+                    }
+            }
 
 
-#Default is to process 4 quadrants per day per variable                      
-north_subset_grid_indices = np.where(lat_bins >= 0)[0]
-east_subset_grid_indices =  np.where(lon_bins >= 0)[0]
-south_subset_grid_indices = np.where(lat_bins <= 0)[0]
-west_subset_grid_indices = np.where(lon_bins <= 0)[0]
+def find_unprocessed_file(lite_product, verbose=False):
+    for f in glob(os.path.join(lite_file_dirs[lite_product], "*")):
+        if verbose:
+            print(f)
+        lite_file_basename = os.path.basename(f)
+        file_tokens = re.split("_", lite_file_basename)
+        yymmdd = file_tokens[2]
+        version = file_tokens[3]
+        
+        plot_tags = yymmdd + "_" + version + ".png"
+        for v in data_dict[lite_product].keys():
+            if verbose:
+                print(v)
+            for t in tile_dict.keys():
+                if verbose:
+                    print(t)
+                out_plot_name = get_image_filename(v, tile_dict[t]["extent_box"], plot_tags)
+                if not glob(out_plot_name):
+                    job_file = re.sub("png", "json", os.path.basename(out_plot_name))
+                    processing_or_problem = check_processing_or_problem(job_file)
+                    if not processing_or_problem:
+                        build_config(f, lite_product, v, out_plot_name, job_file)
+            
 
-north_subset_data_indices = np.where(lat_bins >= 0)[0]
-east_subset_data_indices =  np.where(lon_bins >= 0)[0]
-south_subset_data_indices = np.where(lat_bins < 0)[0]
-west_subset_data_indices = np.where(lon_bins < 0)[0]
-
-
-quadrant_dict = { "NE": { "grid_lat_indices" : north_subset_grid_indices, "grid_lon_indices" : east_subset_grid_indices, 
-                          "data_lat_indices" : north_subset_data_indices, "data_lon_indices" : east_subset_data_indices,
-                          "extent_box" : [0, 180, 0, 90]
-                        },
-                  "SE": { "grid_lat_indices" : south_subset_grid_indices, "grid_lon_indices" : east_subset_grid_indices, 
-                          "data_lat_indices" : south_subset_data_indices, "data_lon_indices" : east_subset_data_indices,
-                          "extent_box" : [0, 180, -90, 0]
-                        },
-                  "SW": { "grid_lat_indices" : south_subset_grid_indices, "grid_lon_indices" : west_subset_grid_indices, 
-                          "data_lat_indices" : south_subset_data_indices, "data_lon_indices" : west_subset_data_indices,
-                          "extent_box" : [-180, 0, -90, 0]
-                        },
-                  "NW": { "grid_lat_indices" : north_subset_grid_indices, "grid_lon_indices" : west_subset_grid_indices, 
-                          "data_lat_indices" : north_subset_data_indices, "data_lon_indices" : west_subset_data_indices,
-                          "extent_box" : [-180, 0, 0, 90]
-                        }  
-                 }
-
-
-def build_config(oco2_file, variable, overwrite=overwrite, rgb=False, debug=False, verbose=False):
+def build_config(oco2_file, lite_product, var, out_plot_name, job_file, overwrite=overwrite, rgb=False, debug=False, verbose=False):
+    
+    global lockfile
     
     config_dict = {}
     
+    config_dict["lite_file"] = oco2_file
+    config_dict["var"] = data_dict[lite_product][var]
     config_dict["rgb"] = rgb
     
+    with open(job_file, "w") as config_file:
+        json.dump(config_dict, config_file, indent=4, sort_keys=True)
+    
+    if debug:
+        print(job_file + " created for subsequent debugging")
+	os.remove(lockfile)
+	sys.exit()
+	
+    run_job(job_file, verbose=verbose)
+
+
     
     
+def get_image_filename(var, extent_box, plot_name_tags):
+    """
+    Build the filename of the output image
+    """
+    
+    return os.path.join(out_plot_dir, var + "_Lat" + str(extent_box[2]) + "to" + str(extent_box[3]) + "_Lon" + str(extent_box[0]) + "to" + str(extent_box[1]) + "_" + plot_name_tags)
+
+def check_processing_or_problem(job_file):
+    """
+    Check if the job is already processing or if there is a problem with it.
+    problem == the job has been run and faild more times than the try threshold defined globally
+    """
+    
+    global lockfile
+    global issue_file
+    
+    #Check for / create lockfile
+    basename = re.sub("json", "proc", os.path.basename(job_file))
+    lockfile = os.path.join(lockfile_dir, "processing", basename)
+    issue_file = os.path.join(lockfile_dir, "problem", basename)
+
+    if glob(issue_file):
+	return True
+
+    if glob(lockfile):
+	with open(lockfile, "r") as lf:
+	    tries = lf.readlines()
+	
+	latest_try = tries[-1].rstrip("\n")
+	latest_try_dt = datetime.datetime.strptime(re.split("\.", latest_try)[0], "%Y-%m-%d %H:%M:%S")
+	today = datetime.datetime.now()
+	delta_t = (today - latest_try_dt).total_seconds()
+	if delta_t <= try_wait:
+	    #Give it some time before trying to process again
+	    return True
+	
+	if len(tries) > try_threshold:
+	    shutil.copy(lockfile, issue_file)
+	    if glob(issue_file) and os.stat(lockfile).st_size == os.stat(issue_file).st_size:
+		os.remove(lockfile)
+	    return True
+	else:
+	    with open(lockfile, "a") as lf:
+		lf.write(str(datetime.datetime.now()) + "\n")
+	    return False
+    else:
+	#Create lockfile
+	with open(lockfile, "w") as lf:
+	    lf.write(str(datetime.datetime.now()) + "\n")
+    
+        return False
+
     
 if __name__ == "__main__":
 
-    files_to_
-    
-    if custom_geo_box:
-        custom_geo_box = [float(x.strip("[,]")) for x in custom_geo_box]
-        if len(custom_geo_box) != 4:
-            print("Custom geolocation box format: [lat_min, lat_max, lon_min, lon_max]")
-            print("Exiting.")
-            sys.exit()
-        lon_ul = custom_geo_box[2]
-        lon_lr = custom_geo_box[3]
-        lat_lr = custom_geo_box[0]
-        lat_ul = custom_geo_box[1]
-
-    if custom_geo_box:
-        lon_indices = np.where(np.logical_and(lon_centers >= lon_ul, lon_centers <= lon_lr))[0]
-        lat_indices = np.where(np.logical_and(lat_centers >= lat_lr, lat_centers <= lat_ul))[0]
-    else:
-        #Plot quadrants
-        layered_plot_names = []
-        if rgb:
-            print("RGB overlay is for testing and case study purposes only.")
-            print("Overlaying the full geolocation quadrants on an RGB requires too much memory and exceeds the PIL pixel limit.")
-            print("The quadrants will be plotted to 45 degrees N/S/E/W only for testing the stitching interface.")
-            
-            north_subset_grid_indices = np.where(np.logical_and(lat_bins >= 0, lat_bins <= 45))[0]
-            east_subset_grid_indices = np.where(np.logical_and(lon_bins >= 0, lon_bins <= 45))[0]
-            south_subset_grid_indices = np.where(np.logical_and(lat_bins <= 0, lat_bins >= -45))[0]
-            west_subset_grid_indices = np.where(np.logical_and(lon_bins <= 0, lon_bins >= -45))[0]
-
-            north_subset_data_indices = np.where(np.logical_and(lat_bins >= 0, lat_bins < 45))[0]
-            east_subset_data_indices = np.where(np.logical_and(lon_bins >= 0, lon_bins < 45))[0]
-            south_subset_data_indices = np.where(np.logical_and(lat_bins < 0, lat_bins >= -45))[0]
-            west_subset_data_indices = np.where(np.logical_and(lon_bins < 0, lon_bins >= -45))[0]
-
-
-            quadrant_dict = { "NE": { "grid_lat_indices" : north_subset_grid_indices, "grid_lon_indices" : east_subset_grid_indices, 
-                                      "data_lat_indices" : north_subset_data_indices, "data_lon_indices" : east_subset_data_indices,
-                                      "extent_box" : [0, 45, 0, 45]
-                                    },
-                              "SE": { "grid_lat_indices" : south_subset_grid_indices, "grid_lon_indices" : east_subset_grid_indices, 
-                                      "data_lat_indices" : south_subset_data_indices, "data_lon_indices" : east_subset_data_indices,
-                                      "extent_box" : [0, 45, -45, 0]
-                                    },
-                              "SW": { "grid_lat_indices" : south_subset_grid_indices, "grid_lon_indices" : west_subset_grid_indices, 
-                                      "data_lat_indices" : south_subset_data_indices, "data_lon_indices" : west_subset_data_indices,
-                                      "extent_box" : [-45, 0, -45, 0]
-                                    },
-                              "NW": { "grid_lat_indices" : north_subset_grid_indices, "grid_lon_indices" : west_subset_grid_indices, 
-                                      "data_lat_indices" : north_subset_data_indices, "data_lon_indices" : west_subset_data_indices,
-                                      "extent_box" : [-45, 0, 0, 45]
-                                    }  
-                             }
-        
-        else:
-            #The geo grid needs overlap for plotting 
-            #to complete the square grid box on the edges of the subset
-
-
-    
-    for p in out_in_product_map.keys():
+    for p in data_dict.keys():
 	find_unprocessed_file(p)
     
