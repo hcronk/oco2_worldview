@@ -55,3 +55,42 @@ if __name__ == "__main__":
             print("Custom geolocation box format: [lat_min, lat_max, lon_min, lon_max]")
             print("Exiting.")
             sys.exit()
+#Stuff moved from main code that should probably end up here            
+    if user_defined_var_list:
+        var_list = user_defined_var_list
+    else:
+        var_list = data_dict[product].keys()
+        
+    
+    
+    for var in var_list:
+        if verbose:
+            print("Processing "+ var)
+        if var not in data_dict[product].keys():
+            print(var + " is not defined in the " + product + " data dictionary. Please add it or check spelling.")
+            print("Exiting.")
+            sys.exit()
+    
+    
+    if not overwrite:
+        #double check there's something to do
+        if custom_geo_box:
+            for var in var_list:
+                if glob(os.path.join(out_plot_dir, var + "_Lat" + str(custom_geo_box[0]) + "to" + str(custom_geo_box[1]) + "_Lon" + str(custom_geo_box[2]) + "to" + str(custom_geo_box[3]) + "_" + global_plot_name_tags)):
+                    var_list.remove(var)
+        else:
+            loop_list = list(var_list)
+            for var in loop_list:
+                #print var
+                if glob(os.path.join(out_plot_dir, var + "_NE_" + global_plot_name_tags)) and glob(os.path.join(out_plot_dir, var + "_SE_" + global_plot_name_tags)) and glob(os.path.join(out_plot_dir, var + "_SW_" + global_plot_name_tags)) and glob(os.path.join(out_plot_dir, var + "_NW_" + global_plot_name_tags)):
+                    var_list.remove(var)
+        if not var_list:
+            print("All plots exist. To overwrite, change the value of 'overwrite' to True")
+            print("Exiting.")
+            sys.exit()
+    if verbose:
+        print("Variables to be plotted: " + str(var_list))
+        if overwrite:
+            print("Any existing plots for these variables in " + out_plot_dir + " will be overwritten")
+            print("This is the default behavior. To change, change the value of 'overwrite' to False")
+
