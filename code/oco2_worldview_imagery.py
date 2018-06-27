@@ -12,7 +12,8 @@ import h5py
 import pandas as pd
 from shapely.geometry import Polygon, Point, LineString
 import matplotlib.pyplot as plt
-import json
+#import json
+import pickle
 from ftplib import FTP
 from glob import glob
 import matplotlib.patches as mpatches
@@ -53,6 +54,32 @@ lat_centers = np.arange(lat_bins[0] + gibs_resolution_dict[resolution] / 2., lat
 #West to East, starting 1/2km East of the western most bin line and ending 1/2 km east of the easternmost bin line
 lon_centers = np.arange(lon_bins[0] + gibs_resolution_dict[resolution] / 2., lon_bins[-1] + gibs_resolution_dict[resolution], gibs_resolution_dict[resolution], dtype=float)
 
+def read_job_file(job_file):
+    """
+    Read job description configuration file created by the routine_processing.py or 
+    on_demand_processing.py job builders.
+    """
+    if not job_file:
+        print("Please supply the path and name a job description configuration file using -c")
+        sys.exit()
+
+    if not glob(job_file):
+        print("The job description congfiguration file " + job_file + " DNE")
+        sys.exit()
+
+    with open(job_file, "rb") as jf:
+        contents = pickle.load(jf)
+    
+    lite_file = contents["lite_file"]
+    product = contents["product"]
+    var = contents["var"]
+    preprocessing = contents["preprocessing"]
+    data_field_name = contents["data_field_name"]
+    quality_info = contents["quality_info"]
+    var_range = contents["range"]
+    cmap = contents["cmap"]
+    
+    return lite_file, product, var, preprocessing, data_field_name, quality_info, var_range, cmap
 
 def stitch_quadrants(quadrant_plot_names, result_plot):
     """
@@ -419,7 +446,7 @@ def regrid_oco2(data, vertex_latitude, vertex_longitude, grid_lat_centers, grid_
 
 def oco2_worldview_imagery(job_file, verbose=False):
     
-    lite_file, extent_box, rgb, out_plot_dir, user_defined_var_list, verbose
+    lite_file, product, var, preprocessing, data_field_name, quality_info, variable_plot_lims, cmap = read_job_file(job_file)
 
     if verbose:
         print("Processing " + lite_file)  
@@ -433,189 +460,149 @@ def oco2_worldview_imagery(job_file, verbose=False):
 
     date = "20" + yymmdd[:2] + "-" + yymmdd[2:4] + "-" + yymmdd[4:]
 
-    global_plot_name_tags = yymmdd + "_" + version + ".png"
+    #regrid = True
 
-    if user_defined_var_list:
-        var_list = user_defined_var_list
+    if preprocessing:
+        if type(preprocessing) == str:
+            data = preprocess(var, lite_file, preprocessing)
+        else:
+             data = preprocess(var, lite_file)
     else:
-        var_list = data_dict[product].keys()  
+        data = get_oco2_data(data_field_name, lite_file)
 
-    if not overwrite:
-        #double check there's something to do
-        if custom_geo_box:
-            for var in var_list:
-                if glob(os.path.join(out_plot_dir, var + "_Lat" + str(custom_geo_box[0]) + "to" + str(custom_geo_box[1]) + "_Lon" + str(custom_geo_box[2]) + "to" + str(custom_geo_box[3]) + "_" + global_plot_name_tags)):
-                    var_list.remove(var)
-        else:
-            loop_list = list(var_list)
-            for var in loop_list:
-                #print var
-                if glob(os.path.join(out_plot_dir, var + "_NE_" + global_plot_name_tags)) and glob(os.path.join(out_plot_dir, var + "_SE_" + global_plot_name_tags)) and glob(os.path.join(out_plot_dir, var + "_SW_" + global_plot_name_tags)) and glob(os.path.join(out_plot_dir, var + "_NW_" + global_plot_name_tags)):
-                    var_list.remove(var)
-        if not var_list:
-            print("All plots exist. To overwrite, change the value of 'overwrite' to True")
-            print("Exiting.")
-            sys.exit()
-    if verbose:
-        print("Variables to be plotted: " + str(var_list))
-        if overwrite:
-            print("Any existing plots for these variables in " + out_plot_dir + " will be overwritten")
-            print("This is the default behavior. To change, change the value of 'overwrite' to False")
+    var_lat = get_oco2_data(geo_dict[product]["lat"], lite_file)
+    var_lon = get_oco2_data(geo_dict[product]["lon"], lite_file)
+    #Cut out the missing data and the data that crosses the date line
+    vertex_miss_mask = np.where(np.logical_not(np.any(var_lat == -999999, axis=1), np.any(var_lon == -999999, axis=1)))
+    vertex_zero_mask = np.where(np.logical_not(np.any(var_lat == 0.0, axis=1), np.any(var_lon == 0.0, axis=1)))
+    vertex_crossDL_mask = np.where(np.logical_not(np.any(var_lon <= -179.9, axis=1), np.any(var_lon >= 179.9, axis=1)))
 
-    regrid = True
-    #Parallelize variable processing?#
-    for var in var_list:
-        if verbose:
-            print("Processing "+ var)
-        if var not in data_dict[product].keys():
-            print(var + " is not defined in the " + product + " data dictionary. Please add it or check spelling.")
-            print("Exiting.")
-            sys.exit()
+    total_gridding_mask = reduce(np.intersect1d, (vertex_miss_mask, vertex_zero_mask, vertex_crossDL_mask))
 
-        if data_dict[product][var]["preprocessing"]:
-            if type(data_dict[product][var]["preprocessing"]) == str:
-                data = preprocess(var, lite_file, data_dict[product][var]["preprocessing"])
-            else:
-                 data = preprocess(var, lite_file)
-        else:
-            data = get_oco2_data(data_dict[product][var]["data_field_name"], lite_file)
-
-        if var in data_dict[product] and regrid:
-            var_lat = get_oco2_data(geo_dict[product]["lat"], lite_file)
-            var_lon = get_oco2_data(geo_dict[product]["lon"], lite_file)
-            #Cut out the missing data and the data that crosses the date line
-            vertex_miss_mask = np.where(np.logical_not(np.any(var_lat == -999999, axis=1), np.any(var_lon == -999999, axis=1)))
-            vertex_zero_mask = np.where(np.logical_not(np.any(var_lat == 0.0, axis=1), np.any(var_lon == 0.0, axis=1)))
-            vertex_crossDL_mask = np.where(np.logical_not(np.any(var_lon <= -179.9, axis=1), np.any(var_lon >= 179.9, axis=1)))
-
-            total_gridding_mask = reduce(np.intersect1d, (vertex_miss_mask, vertex_zero_mask, vertex_crossDL_mask))
-
-            if data_dict[product][var]["quality_info"]:
-                #"quality_info" : {"quality_field_name" : "xco2_quality_flag", "qc_val" :  0, "qc_operator" : operator.eq }}, 
-                quality = get_oco2_data(data_dict[product][var]["quality_info"]["quality_field_name"], lite_file)
-                quality_mask = np.where(data_dict[product][var]["quality_info"]["qc_operator"](quality, data_dict[product][var]["quality_info"]["qc_val"]))
-                total_mask = reduce(np.intersect1d, (vertex_miss_mask, vertex_zero_mask, vertex_crossDL_mask, quality_mask))
-                del quality
-                del quality_mask
-            else:
-                total_mask = total_gridding_mask
+    if quality_info:
+        #"quality_info" : {"quality_field_name" : "xco2_quality_flag", "qc_val" :  0, "qc_operator" : operator.eq }}, 
+        quality = get_oco2_data(quality_info["quality_field_name"], lite_file)
+        quality_mask = np.where(quality_info["qc_operator"](quality, quality_info["qc_val"]))
+        total_mask = reduce(np.intersect1d, (vertex_miss_mask, vertex_zero_mask, vertex_crossDL_mask, quality_mask))
+        del quality
+        del quality_mask
+    else:
+        total_mask = total_gridding_mask
 
 #            var_lat_gridding = np.squeeze(var_lat[total_gridding_mask, :])
 #            var_lon_gridding = np.squeeze(var_lon[total_gridding_mask, :])
 
-            var_lat_gridding = np.squeeze(var_lat[total_mask, :])
-            var_lon_gridding = np.squeeze(var_lon[total_mask, :])
-            data = data[total_mask]
+    var_lat_gridding = np.squeeze(var_lat[total_mask, :])
+    var_lon_gridding = np.squeeze(var_lon[total_mask, :])
+    data = data[total_mask]
 
-            #print lat_bins[0], lat_bins[-1]
-            #print lon_bins[0], lon_bins[-1]
-            #print np.min(var_lat_gridding), np.max(var_lat_gridding)
-            #print np.min(var_lon_gridding), np.max(var_lon_gridding)
-            #sys.exit()
+    #print lat_bins[0], lat_bins[-1]
+    #print lon_bins[0], lon_bins[-1]
+    #print np.min(var_lat_gridding), np.max(var_lat_gridding)
+    #print np.min(var_lon_gridding), np.max(var_lon_gridding)
+    #sys.exit()
 
-            #Get the LtCO2 indices in each GIBS grid box
-            grid = regrid_oco2(data, var_lat_gridding, var_lon_gridding, lat_centers, lon_centers)
-            #regrid = False
-            del total_gridding_mask
-            del total_mask
-            del var_lat_gridding
-            del var_lon_gridding
-            del data
-            del var_lat
-            del var_lon
-            del vertex_miss_mask
-            del vertex_zero_mask
-            del vertex_crossDL_mask
+    #Get the LtCO2 indices in each GIBS grid box
+    grid = regrid_oco2(data, var_lat_gridding, var_lon_gridding, lat_centers, lon_centers)
+    #regrid = False
+    del total_gridding_mask
+    del total_mask
+    del var_lat_gridding
+    del var_lon_gridding
+    del data
+    del var_lat
+    del var_lon
+    del vertex_miss_mask
+    del vertex_zero_mask
+    del vertex_crossDL_mask
 
-        x_action, y_action = np.nonzero(grid)
+    x_action, y_action = np.nonzero(grid)
 
-        for x, y in zip(x_action, y_action):
-            if grid[x,y] is not None:
-                grid[x,y] = np.mean(grid[x,y])
+    for x, y in zip(x_action, y_action):
+        if grid[x,y] is not None:
+            grid[x,y] = np.mean(grid[x,y])
 
-        del x_action
-        del y_action
-
-        variable_plot_lims = data_dict[product][var]["range"]
-        cmap = data_dict[product][var]["cmap"]
+    del x_action
+    del y_action
 
 
-        if custom_geo_box:
-            # custom_geo_box format: [lat_min, lat_max, lon_min, lon_max]
+
+    if custom_geo_box:
+        # custom_geo_box format: [lat_min, lat_max, lon_min, lon_max]
+        if verbose:
+            print("Plotting")
+        plot_name = os.path.join(out_plot_dir, var + "_Lat" + str(custom_geo_box[0]) + "to" + str(custom_geo_box[1]) + "_Lon" + str(custom_geo_box[2]) + "to" + str(custom_geo_box[3]) + "_" + global_plot_name_tags)
+        grid_subset = grid[int(lon_indices[0]) : int(lon_indices[-1] + 1), int(lat_indices[0]) : int(lat_indices[-1] + 1)]
+        del grid
+        lat_bin_subset = lat_bins[int(lat_indices[0]) : ]
+        lon_bin_subset = lon_bins[int(lon_indices[0]) : ] 
+        success = patch_plot(grid_subset, lat_bin_subset, lon_bin_subset, [lon_ul, lon_lr, lat_lr, lat_ul], variable_plot_lims, cmap, plot_name, float(len(lon_indices)), float(len(lat_indices)), dpi)
+
+        del grid_subset
+        del lat_bin_subset
+        del lon_bin_subset
+
+        if not success:
+            return
+
+        if rgb:
             if verbose:
-                print("Plotting")
-            plot_name = os.path.join(out_plot_dir, var + "_Lat" + str(custom_geo_box[0]) + "to" + str(custom_geo_box[1]) + "_Lon" + str(custom_geo_box[2]) + "to" + str(custom_geo_box[3]) + "_" + global_plot_name_tags)
-            grid_subset = grid[int(lon_indices[0]) : int(lon_indices[-1] + 1), int(lat_indices[0]) : int(lat_indices[-1] + 1)]
-            del grid
-            lat_bin_subset = lat_bins[int(lat_indices[0]) : ]
-            lon_bin_subset = lon_bins[int(lon_indices[0]) : ] 
-            success = patch_plot(grid_subset, lat_bin_subset, lon_bin_subset, [lon_ul, lon_lr, lat_lr, lat_ul], variable_plot_lims, cmap, plot_name, float(len(lon_indices)), float(len(lat_indices)), dpi)
+                print("RGB Dealings")
+            rgb_name = os.path.join(out_plot_dir, "RGB_Lat" + str(custom_geo_box[0]) + "to" + str(custom_geo_box[1]) + "_Lon" + str(custom_geo_box[2]) + "to" + str(custom_geo_box[3]) + "_" + global_plot_name_tags)
+            layered_rgb_name = os.path.join(out_plot_dir, var + "_onRGB_Lat" + str(custom_geo_box[0]) + "to" + str(custom_geo_box[1]) + "_Lon" + str(custom_geo_box[2]) + "to" + str(custom_geo_box[3]) + "_" + global_plot_name_tags)
 
-            del grid_subset
-            del lat_bin_subset
-            del lon_bin_subset
+            success = update_GIBS_xml(date, xml_file)
+            success = pull_Aqua_RGB_GIBS(lat_ul, lon_ul, lat_lr, lon_lr, xml_file, code_dir+"/intermediate_RGB.tif")
+            success = prep_RGB(rgb_name, [lon_ul, lon_lr, lat_lr, lat_ul], float(len(lon_indices)), float(len(lat_indices)), dpi)
+            success = layer_rgb_and_data(rgb_name, plot_name, layered_rgb_name)
 
-            if not success:
-                continue
+    else:
+        #Plot quadrants
+        #Parallelize?#
+        for q in quadrant_dict.keys():
 
-            if rgb:
-                if verbose:
-                    print("RGB Dealings")
-                rgb_name = os.path.join(out_plot_dir, "RGB_Lat" + str(custom_geo_box[0]) + "to" + str(custom_geo_box[1]) + "_Lon" + str(custom_geo_box[2]) + "to" + str(custom_geo_box[3]) + "_" + global_plot_name_tags)
-                layered_rgb_name = os.path.join(out_plot_dir, var + "_onRGB_Lat" + str(custom_geo_box[0]) + "to" + str(custom_geo_box[1]) + "_Lon" + str(custom_geo_box[2]) + "to" + str(custom_geo_box[3]) + "_" + global_plot_name_tags)
+            plot_name = os.path.join(out_plot_dir, var + "_"+q+"_" + global_plot_name_tags)
 
-                success = update_GIBS_xml(date, xml_file)
-                success = pull_Aqua_RGB_GIBS(lat_ul, lon_ul, lat_lr, lon_lr, xml_file, code_dir+"/intermediate_RGB.tif")
-                success = prep_RGB(rgb_name, [lon_ul, lon_lr, lat_lr, lat_ul], float(len(lon_indices)), float(len(lat_indices)), dpi)
-                success = layer_rgb_and_data(rgb_name, plot_name, layered_rgb_name)
+            if verbose:
+                print("Working on the " + q + " plotting quadrant")
+                if not glob(plot_name):
+                    print("Creating " + plot_name)
+                if glob(plot_name) and overwrite:
+                    print("Overwriting " + plot_name)
+                if glob(plot_name) and not overwrite:
+                    print(plot_name + " exists and overwrite is not set. Moving on.")
 
-        else:
-            #Plot quadrants
-            #Parallelize?#
-            for q in quadrant_dict.keys():
+            if not glob(plot_name) or glob(plot_name) and overwrite:
+                grid_subset = grid[int(quadrant_dict[q]["data_lon_indices"][0]) : int(quadrant_dict[q]["data_lon_indices"][-1] + 1), int(quadrant_dict[q]["data_lat_indices"][0]) : int(quadrant_dict[q]["data_lat_indices"][-1] + 1)]
+                lat_bin_subset = lat_bins[quadrant_dict[q]["grid_lat_indices"]]
+                lon_bin_subset = lon_bins[quadrant_dict[q]["grid_lon_indices"]]
+                success = patch_plot(grid_subset, lat_bin_subset, lon_bin_subset, quadrant_dict[q]["extent_box"], variable_plot_lims, cmap, plot_name, float(len(quadrant_dict[q]["data_lon_indices"])), float(len(quadrant_dict[q]["data_lat_indices"])), dpi)
 
-                plot_name = os.path.join(out_plot_dir, var + "_"+q+"_" + global_plot_name_tags)
+                del grid_subset
+                del lat_bin_subset
+                del lon_bin_subset
 
-                if verbose:
-                    print("Working on the " + q + " plotting quadrant")
-                    if not glob(plot_name):
-                        print("Creating " + plot_name)
-                    if glob(plot_name) and overwrite:
-                        print("Overwriting " + plot_name)
-                    if glob(plot_name) and not overwrite:
-                        print(plot_name + " exists and overwrite is not set. Moving on.")
+                if not success:
+                    del grid
+                    continue
 
-                if not glob(plot_name) or glob(plot_name) and overwrite:
-                    grid_subset = grid[int(quadrant_dict[q]["data_lon_indices"][0]) : int(quadrant_dict[q]["data_lon_indices"][-1] + 1), int(quadrant_dict[q]["data_lat_indices"][0]) : int(quadrant_dict[q]["data_lat_indices"][-1] + 1)]
-                    lat_bin_subset = lat_bins[quadrant_dict[q]["grid_lat_indices"]]
-                    lon_bin_subset = lon_bins[quadrant_dict[q]["grid_lon_indices"]]
-                    success = patch_plot(grid_subset, lat_bin_subset, lon_bin_subset, quadrant_dict[q]["extent_box"], variable_plot_lims, cmap, plot_name, float(len(quadrant_dict[q]["data_lon_indices"])), float(len(quadrant_dict[q]["data_lat_indices"])), dpi)
+                if rgb:
+                    lat_ul = quadrant_dict[q]["extent_box"][3]
+                    lon_ul = quadrant_dict[q]["extent_box"][0]
+                    lat_lr = quadrant_dict[q]["extent_box"][2]
+                    lon_lr = quadrant_dict[q]["extent_box"][1]
+                    rgb_name = os.path.join(out_plot_dir, "RGB_"+q+"_" + global_plot_name_tags)
+                    layered_rgb_name = os.path.join(out_plot_dir, var + "_onRGB_"+q+"_" + global_plot_name_tags)
 
-                    del grid_subset
-                    del lat_bin_subset
-                    del lon_bin_subset
+                    success = update_GIBS_xml(date, xml_file)
+                    success = pull_Aqua_RGB_GIBS(lat_ul, lon_ul, lat_lr, lon_lr, xml_file, code_dir+"/intermediate_RGB.tif")
+                    success = prep_RGB(rgb_name, quadrant_dict[q]["extent_box"], float(len(quadrant_dict[q]["data_lon_indices"])), float(len(quadrant_dict[q]["data_lat_indices"])), dpi)
+                    success = layer_rgb_and_data(rgb_name, plot_name, layered_rgb_name)
 
-                    if not success:
-                        del grid
-                        continue
-
-                    if rgb:
-                        lat_ul = quadrant_dict[q]["extent_box"][3]
-                        lon_ul = quadrant_dict[q]["extent_box"][0]
-                        lat_lr = quadrant_dict[q]["extent_box"][2]
-                        lon_lr = quadrant_dict[q]["extent_box"][1]
-                        rgb_name = os.path.join(out_plot_dir, "RGB_"+q+"_" + global_plot_name_tags)
-                        layered_rgb_name = os.path.join(out_plot_dir, var + "_onRGB_"+q+"_" + global_plot_name_tags)
-
-                        success = update_GIBS_xml(date, xml_file)
-                        success = pull_Aqua_RGB_GIBS(lat_ul, lon_ul, lat_lr, lon_lr, xml_file, code_dir+"/intermediate_RGB.tif")
-                        success = prep_RGB(rgb_name, quadrant_dict[q]["extent_box"], float(len(quadrant_dict[q]["data_lon_indices"])), float(len(quadrant_dict[q]["data_lat_indices"])), dpi)
-                        success = layer_rgb_and_data(rgb_name, plot_name, layered_rgb_name)
-
-                        layered_plot_names.append(layered_rgb_name)
-            del grid
-            if rgb:            
-                success = stitch_quadrants(layered_plot_names, os.path.join(out_plot_dir, var + "_onRGB_stitched_" + global_plot_name_tags))
+                    layered_plot_names.append(layered_rgb_name)
+        del grid
+        if rgb:            
+            success = stitch_quadrants(layered_plot_names, os.path.join(out_plot_dir, var + "_onRGB_stitched_" + global_plot_name_tags))
     
     return True
                     
