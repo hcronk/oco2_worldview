@@ -6,9 +6,11 @@ from oco2_worldview_imagery import oco2_worldview_imagery
 from glob import glob
 import operator
 import re
+import datetime
+#import json
+import pickle
 
 #Global Variables
-overwrite = False
 lite_file_dirs = {"LtCO2": "/data6/OCO2/product/Lite/B8/LtCO2", 
                   "LtSIF": "/cloudsat/LtSIF"}
 out_plot_dir = "/home/hcronk/worldview/plots/jobbuilder_testing"
@@ -57,33 +59,38 @@ def find_unprocessed_file(lite_product, verbose=False):
                     print(t)
                 out_plot_name = get_image_filename(v, tile_dict[t]["extent_box"], plot_tags)
                 if not glob(out_plot_name):
-                    job_file = re.sub("png", "json", os.path.basename(out_plot_name))
+                    #job_file = re.sub("png", "json", os.path.basename(out_plot_name))
+                    job_file = re.sub("png", "pkl", os.path.basename(out_plot_name))
                     processing_or_problem = check_processing_or_problem(job_file)
                     if not processing_or_problem:
                         build_config(f, lite_product, v, out_plot_name, job_file)
             
 
-def build_config(oco2_file, lite_product, var, out_plot_name, job_file, overwrite=overwrite, rgb=False, debug=False, verbose=False):
+def build_config(oco2_file, lite_product, var, out_plot_name, job_file, rgb=False, debug=False, verbose=False):
     
     global lockfile
     
-    config_dict = {}
+    config_dict = data_dict[lite_product][var]
     
     config_dict["lite_file"] = oco2_file
-    config_dict["var"] = data_dict[lite_product][var]
+    config_dict["product"] = lite_product
+    config_dict["var"] = var
+    config_dict["out_plot_name"] = out_plot_name
     config_dict["rgb"] = rgb
     
-    with open(job_file, "w") as config_file:
-        json.dump(config_dict, config_file, indent=4, sort_keys=True)
+#    with open(job_file, "w") as config_file:
+#        json.dump(config_dict, config_file, indent=4, sort_keys=True)
+    
+    with open(job_file, "wb") as config_file:
+        pickle.dump(config_dict, config_file)
     
     if debug:
         print(job_file + " created for subsequent debugging")
 	os.remove(lockfile)
 	sys.exit()
-	
-    run_job(job_file, verbose=verbose)
 
-
+    sys.exit()
+    #run_job(job_file, verbose=verbose)
     
     
 def get_image_filename(var, extent_box, plot_name_tags):
@@ -142,5 +149,5 @@ def check_processing_or_problem(job_file):
 if __name__ == "__main__":
 
     for p in data_dict.keys():
-	find_unprocessed_file(p)
+        find_unprocessed_file(p)
     
