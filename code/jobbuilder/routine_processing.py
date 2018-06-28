@@ -63,10 +63,10 @@ def find_unprocessed_file(lite_product, verbose=False):
                     job_file = re.sub("png", "pkl", os.path.basename(out_plot_name))
                     processing_or_problem = check_processing_or_problem(job_file)
                     if not processing_or_problem:
-                        build_config(f, lite_product, v, out_plot_name, job_file)
+                        build_config(f, lite_product, v, tile_dict[t]["extent_box"], out_plot_name, job_file)
             
 
-def build_config(oco2_file, lite_product, var, out_plot_name, job_file, rgb=False, debug=False, verbose=False):
+def build_config(oco2_file, lite_product, var, extent_box, out_plot_name, job_file, rgb=False, debug=False, verbose=False):
     
     global lockfile
     
@@ -75,6 +75,7 @@ def build_config(oco2_file, lite_product, var, out_plot_name, job_file, rgb=Fals
     config_dict["lite_file"] = oco2_file
     config_dict["product"] = lite_product
     config_dict["var"] = var
+    config_dict["extent_box"] = extent_box
     config_dict["out_plot_name"] = out_plot_name
     config_dict["rgb"] = rgb
     

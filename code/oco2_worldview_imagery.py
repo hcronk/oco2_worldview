@@ -76,10 +76,13 @@ def read_job_file(job_file):
     preprocessing = contents["preprocessing"]
     data_field_name = contents["data_field_name"]
     quality_info = contents["quality_info"]
+    extent_box = contents["extent_box"]
+    plot_name = contents["out_plot_name"]
     var_range = contents["range"]
     cmap = contents["cmap"]
+    rgb = contents["rgb"]
     
-    return lite_file, product, var, preprocessing, data_field_name, quality_info, var_range, cmap
+    return lite_file, product, var, preprocessing, data_field_name, quality_info, extent_box, plot_name, var_range, cmap, rgb
 
 def stitch_quadrants(quadrant_plot_names, result_plot):
     """
@@ -353,7 +356,7 @@ def extent_box_to_indices(extent_box):
     return lat_data_indices, lon_data_indices, lat_grid_indices, lon_grid_indices        
 
 
-def regrid_oco2(data, vertex_latitude, vertex_longitude, grid_lat_centers, grid_lon_centers):
+def regrid_oco2(data, vertex_latitude, vertex_longitude, grid_lat_centers, grid_lon_centers, debug=False):
     """
     Put OCO-2 data on a regular grid
     In operational path
@@ -444,9 +447,9 @@ def regrid_oco2(data, vertex_latitude, vertex_longitude, grid_lat_centers, grid_
     
     return grid
 
-def oco2_worldview_imagery(job_file, verbose=False):
+def oco2_worldview_imagery(job_file, verbose=False, debug=False, stitch=False):
     
-    lite_file, product, var, preprocessing, data_field_name, quality_info, variable_plot_lims, cmap = read_job_file(job_file)
+    lite_file, product, var, preprocessing, data_field_name, quality_info, extent_box, plot_name, variable_plot_lims, cmap, rgb = read_job_file(job_file)
 
     if verbose:
         print("Processing " + lite_file)  
@@ -489,22 +492,13 @@ def oco2_worldview_imagery(job_file, verbose=False):
     else:
         total_mask = total_gridding_mask
 
-#            var_lat_gridding = np.squeeze(var_lat[total_gridding_mask, :])
-#            var_lon_gridding = np.squeeze(var_lon[total_gridding_mask, :])
-
     var_lat_gridding = np.squeeze(var_lat[total_mask, :])
     var_lon_gridding = np.squeeze(var_lon[total_mask, :])
     data = data[total_mask]
 
-    #print lat_bins[0], lat_bins[-1]
-    #print lon_bins[0], lon_bins[-1]
-    #print np.min(var_lat_gridding), np.max(var_lat_gridding)
-    #print np.min(var_lon_gridding), np.max(var_lon_gridding)
-    #sys.exit()
-
-    #Get the LtCO2 indices in each GIBS grid box
+    #Get the Lite File indices in each GIBS grid box
     grid = regrid_oco2(data, var_lat_gridding, var_lon_gridding, lat_centers, lon_centers)
-    #regrid = False
+    
     del total_gridding_mask
     del total_mask
     del var_lat_gridding
@@ -524,84 +518,42 @@ def oco2_worldview_imagery(job_file, verbose=False):
 
     del x_action
     del y_action
+    
+    lat_data_indices, lon_data_indices, lat_grid_indices, lon_grid_indices = extent_box_to_indices(extent_box)
 
+    if verbose:
+        print("Plotting")
+    grid_subset = grid[int(lon_data_indices[0]) : int(lon_data_indices[-1] + 1), int(lat_data_indices[0]) : int(lat_data_indices[-1] + 1)]
+    del grid
+    lat_bin_subset = lat_bins[lat_grid_indices]
+    lon_bin_subset = lon_bins[lon_grid_indices]
+    success = patch_plot(grid_subset, lat_bin_subset, lon_bin_subset, extent_box, variable_plot_lims, cmap, plot_name, float(len(lon_data_indices)), float(len(lat_data_indices)), dpi)
 
+    del grid_subset
+    del lat_bin_subset
+    del lon_bin_subset
 
-    if custom_geo_box:
-        # custom_geo_box format: [lat_min, lat_max, lon_min, lon_max]
+    if not success:
+        return
+
+    if rgb:
         if verbose:
-            print("Plotting")
-        plot_name = os.path.join(out_plot_dir, var + "_Lat" + str(custom_geo_box[0]) + "to" + str(custom_geo_box[1]) + "_Lon" + str(custom_geo_box[2]) + "to" + str(custom_geo_box[3]) + "_" + global_plot_name_tags)
-        grid_subset = grid[int(lon_indices[0]) : int(lon_indices[-1] + 1), int(lat_indices[0]) : int(lat_indices[-1] + 1)]
-        del grid
-        lat_bin_subset = lat_bins[int(lat_indices[0]) : ]
-        lon_bin_subset = lon_bins[int(lon_indices[0]) : ] 
-        success = patch_plot(grid_subset, lat_bin_subset, lon_bin_subset, [lon_ul, lon_lr, lat_lr, lat_ul], variable_plot_lims, cmap, plot_name, float(len(lon_indices)), float(len(lat_indices)), dpi)
-
-        del grid_subset
-        del lat_bin_subset
-        del lon_bin_subset
-
-        if not success:
-            return
-
-        if rgb:
-            if verbose:
-                print("RGB Dealings")
-            rgb_name = os.path.join(out_plot_dir, "RGB_Lat" + str(custom_geo_box[0]) + "to" + str(custom_geo_box[1]) + "_Lon" + str(custom_geo_box[2]) + "to" + str(custom_geo_box[3]) + "_" + global_plot_name_tags)
-            layered_rgb_name = os.path.join(out_plot_dir, var + "_onRGB_Lat" + str(custom_geo_box[0]) + "to" + str(custom_geo_box[1]) + "_Lon" + str(custom_geo_box[2]) + "to" + str(custom_geo_box[3]) + "_" + global_plot_name_tags)
+            print("RGB Dealings")
+            lat_ul = quadrant_dict[q]["extent_box"][3]
+            lon_ul = quadrant_dict[q]["extent_box"][0]
+            lat_lr = quadrant_dict[q]["extent_box"][2]
+            lon_lr = quadrant_dict[q]["extent_box"][1]
+            rgb_name = os.path.join(out_plot_dir, "RGB_"+q+"_" + global_plot_name_tags)
+            layered_rgb_name = os.path.join(out_plot_dir, var + "_onRGB_"+q+"_" + global_plot_name_tags)
 
             success = update_GIBS_xml(date, xml_file)
             success = pull_Aqua_RGB_GIBS(lat_ul, lon_ul, lat_lr, lon_lr, xml_file, code_dir+"/intermediate_RGB.tif")
-            success = prep_RGB(rgb_name, [lon_ul, lon_lr, lat_lr, lat_ul], float(len(lon_indices)), float(len(lat_indices)), dpi)
+            success = prep_RGB(rgb_name, quadrant_dict[q]["extent_box"], float(len(quadrant_dict[q]["data_lon_indices"])), float(len(quadrant_dict[q]["data_lat_indices"])), dpi)
             success = layer_rgb_and_data(rgb_name, plot_name, layered_rgb_name)
 
-    else:
-        #Plot quadrants
-        #Parallelize?#
-        for q in quadrant_dict.keys():
-
-            plot_name = os.path.join(out_plot_dir, var + "_"+q+"_" + global_plot_name_tags)
-
-            if verbose:
-                print("Working on the " + q + " plotting quadrant")
-                if not glob(plot_name):
-                    print("Creating " + plot_name)
-                if glob(plot_name) and overwrite:
-                    print("Overwriting " + plot_name)
-                if glob(plot_name) and not overwrite:
-                    print(plot_name + " exists and overwrite is not set. Moving on.")
-
-            if not glob(plot_name) or glob(plot_name) and overwrite:
-                grid_subset = grid[int(quadrant_dict[q]["data_lon_indices"][0]) : int(quadrant_dict[q]["data_lon_indices"][-1] + 1), int(quadrant_dict[q]["data_lat_indices"][0]) : int(quadrant_dict[q]["data_lat_indices"][-1] + 1)]
-                lat_bin_subset = lat_bins[quadrant_dict[q]["grid_lat_indices"]]
-                lon_bin_subset = lon_bins[quadrant_dict[q]["grid_lon_indices"]]
-                success = patch_plot(grid_subset, lat_bin_subset, lon_bin_subset, quadrant_dict[q]["extent_box"], variable_plot_lims, cmap, plot_name, float(len(quadrant_dict[q]["data_lon_indices"])), float(len(quadrant_dict[q]["data_lat_indices"])), dpi)
-
-                del grid_subset
-                del lat_bin_subset
-                del lon_bin_subset
-
-                if not success:
-                    del grid
-                    continue
-
-                if rgb:
-                    lat_ul = quadrant_dict[q]["extent_box"][3]
-                    lon_ul = quadrant_dict[q]["extent_box"][0]
-                    lat_lr = quadrant_dict[q]["extent_box"][2]
-                    lon_lr = quadrant_dict[q]["extent_box"][1]
-                    rgb_name = os.path.join(out_plot_dir, "RGB_"+q+"_" + global_plot_name_tags)
-                    layered_rgb_name = os.path.join(out_plot_dir, var + "_onRGB_"+q+"_" + global_plot_name_tags)
-
-                    success = update_GIBS_xml(date, xml_file)
-                    success = pull_Aqua_RGB_GIBS(lat_ul, lon_ul, lat_lr, lon_lr, xml_file, code_dir+"/intermediate_RGB.tif")
-                    success = prep_RGB(rgb_name, quadrant_dict[q]["extent_box"], float(len(quadrant_dict[q]["data_lon_indices"])), float(len(quadrant_dict[q]["data_lat_indices"])), dpi)
-                    success = layer_rgb_and_data(rgb_name, plot_name, layered_rgb_name)
-
-                    layered_plot_names.append(layered_rgb_name)
+            layered_plot_names.append(layered_rgb_name)
         del grid
-        if rgb:            
+        if rgb and stitch:            
             success = stitch_quadrants(layered_plot_names, os.path.join(out_plot_dir, var + "_onRGB_stitched_" + global_plot_name_tags))
     
     return True
@@ -611,10 +563,14 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="OCO-2 Worldview imagery generation job", prefix_chars='-')
     parser.add_argument("-c", "--config_file", help="Path to the job configuration file", required=True)
     parser.add_argument("-v", "--verbose", help="Prints some basic information during code execution", action="store_true")
+    parser.add_argument("-d", "--debug", help="Plot polygon vertices and gridpoints to visualize/quality check", action="store_true")
+    parser.add_argument("-s", "--stitch", help="Stitch a list of given files together", default=[])
     args = parser.parse_args()
 
     job_file = args.config_file
     verbose = args.verbose
+    debug = args.debug
+    stitch = args.stitch
     
     
     success = oco2_worldview_imagery(job_file, verbose=verbose)
