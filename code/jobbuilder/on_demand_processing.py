@@ -4,6 +4,7 @@ import argparse
 from glob import glob
 import operator
 import re
+import numpy as np
 from routine_processing import get_image_filename, check_processing_or_problem, build_config
 
 #Global Variables
@@ -105,7 +106,7 @@ if __name__ == "__main__":
 
     for lf in files:
         if verbose:
-            print("Processing " + lite_file)  
+            print("Processing " + lf)  
         
         lite_file_basename = os.path.basename(lf)
         file_tokens = re.split("_", lite_file_basename)
@@ -124,8 +125,6 @@ if __name__ == "__main__":
             var_list = data_dict[product].keys()  
 
         for var in var_list:
-            if verbose:
-                print("Processing "+ var)
             if var not in data_dict[product].keys():
                 print(var + " is not defined in the " + product + " data dictionary. Please add it or check spelling.")
                 print("Exiting.")
@@ -142,7 +141,7 @@ if __name__ == "__main__":
                 loop_list = list(var_list)
                 for var in loop_list:
                     if verbose:
-                        print(v)
+                        print(var)
                     for t in tile_dict.keys():
                         if verbose:
                             print(t)
@@ -161,6 +160,8 @@ if __name__ == "__main__":
                 print("To change this behavior, remove the @w command line option")
         
         for var in var_list:
+            if verbose:
+                print("Creating config file for " + var)
             if extent_box:
                 out_plot_name = get_image_filename(out_plot_dir, var, extent_box, plot_tags)
                 job_file = re.sub("png", "pkl", os.path.basename(out_plot_name))
@@ -171,9 +172,9 @@ if __name__ == "__main__":
                 for t in tile_dict.keys():
                     if verbose:
                         print(t)
-                    out_plot_name = get_image_filename(out_plot_dir, v, tile_dict[t]["extent_box"], plot_tags)
+                    out_plot_name = get_image_filename(out_plot_dir, var, tile_dict[t]["extent_box"], plot_tags)
                     job_file = re.sub("png", "pkl", os.path.basename(out_plot_name))
                     processing_or_problem = check_processing_or_problem(job_file)
                     if not processing_or_problem:
-                        build_config(lf, product, v, tile_dict[t]["extent_box"], out_plot_name, job_file, rgb=rgb, debug=debug, verbose=verbose)
-            sys.exit()
+                        build_config(lf, product, var, tile_dict[t]["extent_box"], out_plot_name, job_file, rgb=rgb, debug=debug, verbose=verbose)
+            #sys.exit()
