@@ -40,10 +40,11 @@ if __name__ == "__main__":
     parser.add_argument("@f", "@@file", help="Full path to input file name for command line use", default=None)
     parser.add_argument("@l", "@@file_list", help="Full path to text file containing a list of files to process, one filename per line", default=None)
     parser.add_argument("@g", "@@geolocation", help="Lat/Lon extent box to plot. Fmt: [lat_min, lat_max, lon_min, lon_max]", nargs = '+', default=[])
-    parser.add_argument("@r", "@@rgb", help="Overlay plots on MODIS RGB for testing and case study purposes", default=os.path.join(code_dir, "GIBS_Aqua_MODIS_truecolor.xml"))
+    parser.add_argument("@r", "@@rgb", help="Overlay plots on MODIS RGB for testing and case study purposes", action="store_true")
     parser.add_argument("@o", "@@output_dir", help="Output directory for plots", default=os.path.join(code_dir, "plots"))
     parser.add_argument("@a", "@@vars", help="Variables to plot", nargs = '+', default=[])
     parser.add_argument("@w", "@@overwrite", help="Overwrite existing plots", action="store_true")
+    parser.add_argument("@b", "@@debug", help="Just create job config file for debugging", action="store_true")
     args = parser.parse_args()
     
     verbose = args.verbose
@@ -54,6 +55,7 @@ if __name__ == "__main__":
     out_plot_dir = args.output_dir
     user_defined_var_list = args.vars
     overwrite = args.overwrite
+    debug = args.debug
     
     if user_defined_var_list:
         user_defined_var_list = [x.strip("[,]") for x in user_defined_var_list]      
@@ -97,6 +99,9 @@ if __name__ == "__main__":
         lat_lr = custom_geo_box[0]
         lat_ul = custom_geo_box[1]
         extent_box = [lon_ul, lon_lr, lat_lr, lat_ul]
+
+    if rgb:
+        rgb = os.path.join(code_dir, "GIBS_Aqua_MODIS_truecolor.xml")
 
     for lf in files:
         if verbose:
@@ -159,10 +164,9 @@ if __name__ == "__main__":
             if extent_box:
                 out_plot_name = get_image_filename(out_plot_dir, var, extent_box, plot_tags)
                 job_file = re.sub("png", "pkl", os.path.basename(out_plot_name))
-                print job_file
                 processing_or_problem = check_processing_or_problem(job_file)
                 if not processing_or_problem:
-                    build_config(lf, product, var, extent_box, out_plot_name, job_file)
+                    build_config(lf, product, var, extent_box, out_plot_name, job_file, rgb=rgb, debug=debug, verbose=verbose)
             else:
                 for t in tile_dict.keys():
                     if verbose:
@@ -171,5 +175,5 @@ if __name__ == "__main__":
                     job_file = re.sub("png", "pkl", os.path.basename(out_plot_name))
                     processing_or_problem = check_processing_or_problem(job_file)
                     if not processing_or_problem:
-                        build_config(lf, product, v, tile_dict[t]["extent_box"], out_plot_name, job_file)
+                        build_config(lf, product, v, tile_dict[t]["extent_box"], out_plot_name, job_file, rgb=rgb, debug=debug, verbose=verbose)
             sys.exit()

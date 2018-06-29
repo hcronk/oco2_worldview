@@ -539,22 +539,25 @@ def oco2_worldview_imagery(job_file, verbose=False, debug=False, stitch=False):
     if rgb:
         if verbose:
             print("RGB Dealings")
-            lat_ul = quadrant_dict[q]["extent_box"][3]
-            lon_ul = quadrant_dict[q]["extent_box"][0]
-            lat_lr = quadrant_dict[q]["extent_box"][2]
-            lon_lr = quadrant_dict[q]["extent_box"][1]
-            rgb_name = os.path.join(out_plot_dir, "RGB_"+q+"_" + global_plot_name_tags)
-            layered_rgb_name = os.path.join(out_plot_dir, var + "_onRGB_"+q+"_" + global_plot_name_tags)
+        lat_ul = extent_box[3]
+        lon_ul = extent_box[0]
+        lat_lr = extent_box[2]
+        lon_lr = extent_box[1]
+        out_plot_dir = os.path.dirname(plot_name)
+        just_plot_name = os.path.basename(plot_name)
+        rgb_name = os.path.join(out_plot_dir, re.sub(var, "RGB", just_plot_name))
+        layered_rgb_name = os.path.join(out_plot_dir, re.sub(var, var +"_onRGB", just_plot_name))
+        #rgb_name = os.path.join(out_plot_dir, "RGB_"+q+"_" + global_plot_name_tags)
+        #layered_rgb_name = os.path.join(out_plot_dir, var + "_onRGB_"+q+"_" + global_plot_name_tags)
 
-            success = update_GIBS_xml(date, xml_file)
-            success = pull_Aqua_RGB_GIBS(lat_ul, lon_ul, lat_lr, lon_lr, xml_file, code_dir+"/intermediate_RGB.tif")
-            success = prep_RGB(rgb_name, quadrant_dict[q]["extent_box"], float(len(quadrant_dict[q]["data_lon_indices"])), float(len(quadrant_dict[q]["data_lat_indices"])), dpi)
-            success = layer_rgb_and_data(rgb_name, plot_name, layered_rgb_name)
+        success = update_GIBS_xml(date, rgb)
+        success = pull_Aqua_RGB_GIBS(lat_ul, lon_ul, lat_lr, lon_lr, rgb, code_dir+"/intermediate_RGB.tif")
+        success = prep_RGB(rgb_name, extent_box, float(len(lon_data_indices)), float(len(lat_data_indices)), dpi)
+        success = layer_rgb_and_data(rgb_name, plot_name, layered_rgb_name)
 
-            layered_plot_names.append(layered_rgb_name)
-        del grid
-        if rgb and stitch:            
-            success = stitch_quadrants(layered_plot_names, os.path.join(out_plot_dir, var + "_onRGB_stitched_" + global_plot_name_tags))
+        #layered_plot_names.append(layered_rgb_name)
+    #if rgb and stitch:            
+    #    success = stitch_quadrants(layered_plot_names, os.path.join(out_plot_dir, var + "_onRGB_stitched_" + global_plot_name_tags))
     
     return True
                     
