@@ -91,8 +91,8 @@ def build_config(oco2_file, lite_product, var, extent_box, out_plot_name, job_fi
 	os.remove(lockfile)
 	sys.exit()
 
-    sys.exit()
-    #run_job(job_file, verbose=verbose)
+    #sys.exit()
+    run_job(job_file, verbose=verbose)
     
     
 def get_image_filename(out_plot_dir, var, extent_box, plot_name_tags):
@@ -146,6 +146,49 @@ def check_processing_or_problem(job_file):
 	    lf.write(str(datetime.datetime.now()) + "\n")
     
         return False
+
+def run_job(job_file, verbose=False):
+    
+    global lockfile
+    global issue_file
+
+    success = oco2_worldview_imagery(job_file, verbose=verbose)
+    
+    if success:
+        with open(job_file, "rb") as jf:
+            contents = pickle.load(jf)
+    
+        plot_name = contents["out_plot_name"]
+        rgb = rgb = contents["rgb"]
+        
+        job_worked = check_job_worked(plot_name, rgb)
+    
+    if success and job_worked:
+        os.remove(job_file)
+	os.remove(lockfile)
+	if glob(issue_file):
+	    os.remove(issue_file)
+        if rgb:
+            out_plot_dir = os.path.dirname(plot_name)
+            just_plot_name = os.path.basename(plot_name)
+            rgb_name = os.path.join(out_plot_dir, re.sub(var, "RGB", just_plot_name))
+            os.remove(rgb_name)        
+
+def check_job_worked(plot_name, rgb=False):
+ 
+    #Check the file exists
+    if rgb:
+        just_plot_name = os.path.basename(plot_name)
+        layered_rgb_name = os.path.join(out_plot_dir, re.sub(var, var +"_onRGB", just_plot_name))
+        if glob(plot_name) and glob(layered_rgb_name):
+            return True
+        else:
+            return False
+    else:
+        if glob(plot_name):
+            return True
+        else:
+            return False
 
     
 if __name__ == "__main__":
