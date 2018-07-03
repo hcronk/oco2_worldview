@@ -106,7 +106,7 @@ if __name__ == "__main__":
 
     for lf in files:
         if verbose:
-            print("Processing " + lf)  
+            print("Checking " + lf)  
         
         lite_file_basename = os.path.basename(lf)
         file_tokens = re.split("_", lite_file_basename)
@@ -124,57 +124,52 @@ if __name__ == "__main__":
         else:
             var_list = data_dict[product].keys()  
 
-        for var in var_list:
+        loop_list = list(var_list)
+        for var in loop_list:
             if var not in data_dict[product].keys():
-                print(var + " is not defined in the " + product + " data dictionary. Please add it or check spelling.")
-                print("Exiting.")
-                sys.exit()
-    
-        if not overwrite:
-            #double check there's something to do
-            if extent_box:
-                for var in var_list:
-                    out_plot_name = get_image_filename(out_plot_dir, var, extent_box, plot_tags)
-                    if glob(out_plot_name):
-                        var_list.remove(var)
-            else:
-                loop_list = list(var_list)
-                for var in loop_list:
-                    if verbose:
-                        print(var)
-                    for t in tile_dict.keys():
-                        if verbose:
-                            print(t)
-                        out_plot_name = get_image_filename(out_plot_dir, var, tile_dict[t]["extent_box"], plot_tags)
-                        if glob(out_plot_name):
-                            var_list.remove(var)
-            if not var_list:
-                print("All plots exist. To overwrite, change the value of 'overwrite' to True by setting the @w command line option")
-                print("Exiting.")
-                sys.exit()
+                if verbose:
+                    print(var + " is not defined in the " + product + " data dictionary. Please add it or check spelling.")
+                var_list.remove(var)
         
-        if verbose:
-            print("Variables to be plotted: " + str(var_list))
-            if overwrite:
-                print("Any existing plots for these variables in " + out_plot_dir + " will be overwritten")
-                print("To change this behavior, remove the @w command line option")
+        if not var_list:
+            print("No variables to plot.")
+            print("Exiting.")
+            sys.exit()
         
-        for var in var_list:
-            if verbose:
-                print("Creating config file for " + var)
-            if extent_box:
+        if extent_box:
+            for var in var_list:
+                if verbose:
+                    print("Checking " + var)
                 out_plot_name = get_image_filename(out_plot_dir, var, extent_box, plot_tags)
-                job_file = re.sub("png", "pkl", os.path.basename(out_plot_name))
-                processing_or_problem = check_processing_or_problem(job_file)
-                if not processing_or_problem:
-                    build_config(lf, product, var, extent_box, out_plot_name, job_file, rgb=rgb, debug=debug, verbose=verbose)
-            else:
+                if not overwrite and glob(out_plot_name):
+                    if verbose:
+                        print(out_plot_name + " exists and will not be overwritten.")
+                        print("To overwrite, change the value of 'overwrite' to True by setting the @w command line option")
+                    continue
+                else:
+                    job_file = re.sub("png", "pkl", os.path.basename(out_plot_name))
+                    processing_or_problem = check_processing_or_problem(job_file, verbose=verbose)
+                    if not processing_or_problem:
+                        if verbose:
+                            print("Creating config file for " + var)
+                        build_config(lf, product, var, extent_box, out_plot_name, job_file, rgb=rgb, debug=debug, verbose=verbose)
+        else:
+            for var in var_list:
+                if verbose:
+                    print("Checking " + var)
                 for t in tile_dict.keys():
                     if verbose:
-                        print(t)
+                        print("Checking " + t + " tile")
                     out_plot_name = get_image_filename(out_plot_dir, var, tile_dict[t]["extent_box"], plot_tags)
-                    job_file = re.sub("png", "pkl", os.path.basename(out_plot_name))
-                    processing_or_problem = check_processing_or_problem(job_file)
-                    if not processing_or_problem:
-                        build_config(lf, product, var, tile_dict[t]["extent_box"], out_plot_name, job_file, rgb=rgb, debug=debug, verbose=verbose)
-            #sys.exit()
+                    if not overwrite and glob(out_plot_name):
+                        if verbose:
+                            print(out_plot_name + " exists and will not be overwritten.")
+                            print("To overwrite, change the value of 'overwrite' to True by setting the @w command line option")
+                        continue
+                    else:
+                        job_file = re.sub("png", "pkl", os.path.basename(out_plot_name))
+                        processing_or_problem = check_processing_or_problem(job_file, verbose=verbose)
+                        if not processing_or_problem:
+                            if verbose:
+                                print("Creating config file for " + var)
+                            build_config(lf, product, var, tile_dict[t]["extent_box"], out_plot_name, job_file, rgb=rgb, debug=debug, verbose=verbose)
