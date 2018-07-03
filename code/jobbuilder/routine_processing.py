@@ -9,6 +9,7 @@ import re
 import datetime
 #import json
 import pickle
+from multiprocessing import Process
 
 #Global Variables
 lite_file_dirs = {"LtCO2": "/data6/OCO2/product/Lite/B8/LtCO2", 
@@ -92,8 +93,15 @@ def build_config(oco2_file, lite_product, var, extent_box, out_plot_name, job_fi
 	sys.exit()
 
     #sys.exit()
-    run_job(job_file, verbose=verbose)
-    
+    #start process here, give arguments, after runs and returns, daemon=true to make sure children die if parent does _process = Process(number of cores), return true/false
+    #not multithreading
+    process = Process(target=run_job, args=(job_file, verbose))
+    process.daemon = True
+    process.start()
+    process.join()
+    if process.is_alive():
+        process.terminate()
+    #run_job(job_file, verbose=verbose)    
     
 def get_image_filename(out_plot_dir, var, extent_box, plot_name_tags):
     """
@@ -102,7 +110,7 @@ def get_image_filename(out_plot_dir, var, extent_box, plot_name_tags):
     
     return os.path.join(out_plot_dir, var + "_Lat" + str(extent_box[2]) + "to" + str(extent_box[3]) + "_Lon" + str(extent_box[0]) + "to" + str(extent_box[1]) + "_" + plot_name_tags)
 
-def check_processing_or_problem(job_file):
+def check_processing_or_problem(job_file, verbose=False):
     """
     Check if the job is already processing or if there is a problem with it.
     problem == the job has been run and faild more times than the try threshold defined globally
@@ -117,10 +125,12 @@ def check_processing_or_problem(job_file):
     issue_file = os.path.join(lockfile_dir, "problem", basename)
 
     if glob(issue_file):
-	return True
+	if verbose:
+            print("There is a problem with the job " + job_file)
+        return True
 
     if glob(lockfile):
-	with open(lockfile, "r") as lf:
+        with open(lockfile, "r") as lf:
 	    tries = lf.readlines()
 	
 	latest_try = tries[-1].rstrip("\n")
@@ -129,13 +139,17 @@ def check_processing_or_problem(job_file):
 	delta_t = (today - latest_try_dt).total_seconds()
 	if delta_t <= try_wait:
 	    #Give it some time before trying to process again
+            if verbose:
+                print(job_file + " is already processing")
 	    return True
 	
 	if len(tries) > try_threshold:
 	    shutil.copy(lockfile, issue_file)
 	    if glob(issue_file) and os.stat(lockfile).st_size == os.stat(issue_file).st_size:
 		os.remove(lockfile)
-	    return True
+	    if verbose:
+                print("There is a problem with the job " + job_file)
+            return True
 	else:
 	    with open(lockfile, "a") as lf:
 		lf.write(str(datetime.datetime.now()) + "\n")
