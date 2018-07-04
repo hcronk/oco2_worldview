@@ -450,7 +450,7 @@ def regrid_oco2(data, vertex_latitude, vertex_longitude, grid_lat_centers, grid_
 def oco2_worldview_imagery(job_file, verbose=False, debug=False, stitch=False):
     
     if verbose:
-    print("Processing " + job_file) 
+        print("Processing " + job_file) 
     
     lite_file, product, var, preprocessing, data_field_name, quality_info, extent_box, plot_name, variable_plot_lims, cmap, rgb = read_job_file(job_file) 
 
