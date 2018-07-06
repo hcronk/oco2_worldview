@@ -84,15 +84,15 @@ def read_job_file(job_file):
     
     return lite_file, product, var, preprocessing, data_field_name, quality_info, extent_box, plot_name, var_range, cmap, rgb
 
-def stitch_quadrants(quadrant_plot_names, result_plot):
+def stitch_quadrants(quadrant_plot_name_dict, result_plot):
     """
     Stitches four existing plots into one single plot
     """
     
-    NE_plot = [n for n in quadrant_plot_names if re.search("NE", n)][0]
-    SE_plot = [n for n in quadrant_plot_names if re.search("SE", n)][0]
-    SW_plot = [n for n in quadrant_plot_names if re.search("SW", n)][0]
-    NW_plot = [n for n in quadrant_plot_names if re.search("NW", n)][0]
+    NE_plot = quadrant_plot_name_dict["NE"]
+    SE_plot = quadrant_plot_name_dict["SE"]
+    SW_plot = quadrant_plot_name_dict["SW"]
+    NW_plot = quadrant_plot_name_dict["NW"]
     
     north_imgs = [Image.open(i) for i in [NW_plot, NE_plot]]
     min_shape = sorted([(np.sum(i.size), i.size) for i in north_imgs])[0][1]
