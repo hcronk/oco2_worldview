@@ -6,6 +6,9 @@ import operator
 import re
 import numpy as np
 from routine_processing import get_image_filename, check_processing_or_problem, build_config
+code_dir = os.path.join(os.path.dirname(os.path.realpath(__file__)), os.path.pardir)
+sys.path.append(code_dir)
+from oco2_worldview_imagery import stitch_quadrants
 
 #Global Variables
 data_dict = { "LtCO2" : 
@@ -46,6 +49,7 @@ if __name__ == "__main__":
     parser.add_argument("@a", "@@vars", help="Variables to plot", nargs = '+', default=[])
     parser.add_argument("@w", "@@overwrite", help="Overwrite existing plots", action="store_true")
     parser.add_argument("@b", "@@debug", help="Just create job config file for debugging", action="store_true")
+    parser.add_argument("@t", "@@stitch", help="Stitch together four quadrant plots", action="store_true")
     args = parser.parse_args()
     
     verbose = args.verbose
@@ -57,6 +61,7 @@ if __name__ == "__main__":
     user_defined_var_list = args.vars
     overwrite = args.overwrite
     debug = args.debug
+    stitch = args.stitch
     
     if user_defined_var_list:
         user_defined_var_list = [x.strip("[,]") for x in user_defined_var_list]      
@@ -100,6 +105,19 @@ if __name__ == "__main__":
         lat_lr = custom_geo_box[0]
         lat_ul = custom_geo_box[1]
         extent_box = [lon_ul, lon_lr, lat_lr, lat_ul]
+    else:
+        if stitch:
+            print("Overlaying the full geolocation quadrants exceeds the PIL pixel limit.")
+            print("The quadrants will be plotted to 45 degrees N/S/E/W only for testing the stitching interface.")
+            tile_dict = { "NE": {"extent_box" : [0, 45, 0, 45]
+                                },
+                          "SE": {"extent_box" : [0, 45, -45, 0]
+                                },
+                          "SW": {"extent_box" : [-45, 0, -45, 0]
+                                },
+                          "NW": {"extent_box" : [-45, 0, 0, 45]
+                                }
+                        }
 
     if rgb:
         rgb = os.path.join(code_dir, "GIBS_Aqua_MODIS_truecolor.xml")
@@ -157,10 +175,20 @@ if __name__ == "__main__":
             for var in var_list:
                 if verbose:
                     print("Checking " + var)
+                if stitch:
+                    plots_to_stitch = {}
                 for t in tile_dict.keys():
                     if verbose:
                         print("Checking " + t + " tile")
                     out_plot_name = get_image_filename(out_plot_dir, var, tile_dict[t]["extent_box"], plot_tags)
+                    if stitch:
+                        if rgb:
+                            out_plot_dir = os.path.dirname(out_plot_name)
+                            just_plot_name = os.path.basename(out_plot_name)
+                            layered_rgb_name = os.path.join(out_plot_dir, re.sub(var, var +"_onRGB", just_plot_name))
+                            plots_to_stitch[t] = layered_rgb_name
+                        else:
+                            plots_to_stitch[t] = out_plot_name
                     if not overwrite and glob(out_plot_name):
                         if verbose:
                             print(out_plot_name + " exists and will not be overwritten.")
@@ -173,3 +201,10 @@ if __name__ == "__main__":
                             if verbose:
                                 print("Creating config file for " + var)
                             build_config(lf, product, var, tile_dict[t]["extent_box"], out_plot_name, job_file, rgb=rgb, debug=debug, verbose=verbose)
+                if stitch:
+                    tokens = re.split("_", plots_to_stitch["NE"])
+                    absorb = [tokens.remove(token) for token in tokens if re.search("Lon", token)]
+                    intermediate = ""
+                    stitched_plot_name = "".join([intermediate + token + "_" if not re.search("Lat", token) else intermediate + "stitched_" for token in tokens])[:-1]
+                    success = stitch_quadrants(plots_to_stitch, os.path.join(out_plot_dir, stitched_plot_name))
+            
