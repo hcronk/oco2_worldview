@@ -173,9 +173,10 @@ def run_job(job_file, verbose=False):
             contents = pickle.load(jf)
     
         plot_name = contents["out_plot_name"]
-        rgb = rgb = contents["rgb"]
+        rgb = contents["rgb"]
+        var = contents["var"]
         
-        job_worked = check_job_worked(plot_name, rgb)
+        job_worked = check_job_worked(plot_name, var, rgb)
     
     if success and job_worked:
         os.remove(job_file)
@@ -188,7 +189,7 @@ def run_job(job_file, verbose=False):
             rgb_name = os.path.join(out_plot_dir, re.sub(var, "RGB", just_plot_name))
             os.remove(rgb_name)        
 
-def check_job_worked(plot_name, rgb=False):
+def check_job_worked(plot_name, var, rgb=False):
  
     #Check the file exists
     if rgb:
