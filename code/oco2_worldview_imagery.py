@@ -448,7 +448,7 @@ def regrid_oco2(data, vertex_latitude, vertex_longitude, grid_lat_centers, grid_
     
     return grid
 
-def oco2_worldview_imagery(job_file, verbose=False, debug=False, stitch=False):
+def oco2_worldview_imagery(job_file, verbose=False, debug=False):
     
     if verbose:
         print("Processing " + job_file) 
@@ -555,10 +555,6 @@ def oco2_worldview_imagery(job_file, verbose=False, debug=False, stitch=False):
         success = pull_Aqua_RGB_GIBS(lat_ul, lon_ul, lat_lr, lon_lr, rgb, code_dir+"/intermediate_RGB.tif")
         success = prep_RGB(rgb_name, extent_box, float(len(lon_data_indices)), float(len(lat_data_indices)), dpi)
         success = layer_rgb_and_data(rgb_name, plot_name, layered_rgb_name)
-
-        #layered_plot_names.append(layered_rgb_name)
-    #if rgb and stitch:            
-    #    success = stitch_quadrants(layered_plot_names, os.path.join(out_plot_dir, var + "_onRGB_stitched_" + global_plot_name_tags))
     
     return True
                     
@@ -568,13 +564,11 @@ if __name__ == "__main__":
     parser.add_argument("-c", "--config_file", help="Path to the job configuration file", required=True)
     parser.add_argument("-v", "--verbose", help="Prints some basic information during code execution", action="store_true")
     parser.add_argument("-d", "--debug", help="Plot polygon vertices and gridpoints to visualize/quality check", action="store_true")
-    parser.add_argument("-s", "--stitch", help="Stitch a list of given files together", default=[])
     args = parser.parse_args()
 
     job_file = args.config_file
     verbose = args.verbose
     debug = args.debug
-    stitch = args.stitch
     
     
     success = oco2_worldview_imagery(job_file, verbose=verbose, debug=debug)
