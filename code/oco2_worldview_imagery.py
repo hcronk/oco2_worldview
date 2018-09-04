@@ -418,27 +418,28 @@ def regrid_oco2(data, vertex_latitude, vertex_longitude, grid_lat_centers, grid_
                         grid[x,y].append(data[n])
                         #grid[x,y].append(n)
                         
-#        #Plot polygon vertices and gridpoints to visualize/quality check
-#        dot_colors = []
-#        for ll in zip_it:
-#            pt = Point(ll[0], ll[1])
-#            if pt.within(pg):
-#                dot_colors.append("cyan")
-#            else:
-#                if pg.exterior.distance(pt) <= 1e-3:
-#                    dot_colors.append("cyan")
-#                else:
-#                    dot_colors.append("black")
-#        fig = plt.figure(figsize=(10,8))
-#        ax = fig.add_subplot(111)
-#        #plt.scatter(vertices[:,1], vertices[:,0], c="red", edgecolor='none')
-#        plt.plot(np.append(vertices[:,1],vertices[0,1]), np.append(vertices[:,0], vertices[0,0]), "-o", c="red")
-#        for xy in zip(vertices[:,1], vertices[:,0]):
-#            ax.annotate('(%s, %s)' % xy, xy=xy, textcoords='data', fontsize=8.5)
-#        plt.scatter(lon_m.flatten(), lat_m.flatten(), c=dot_colors, edgecolor='none')
-#        for xy in zip(np.round(lon_m.flatten(), 4), np.round(lat_m.flatten(), 4)):
-#            ax.annotate('(%s, %s)' % xy, xy=xy, textcoords='data', rotation=-30, fontsize=8.5)
-#        plt.show()
+        if debug:
+            #Plot polygon vertices and gridpoints to visualize/quality check
+            dot_colors = []
+            for ll in zip_it:
+                pt = Point(ll[0], ll[1])
+                if pt.within(pg):
+                    dot_colors.append("cyan")
+                else:
+                    if pg.exterior.distance(pt) <= 1e-3:
+                        dot_colors.append("cyan")
+                    else:
+                        dot_colors.append("black")
+            fig = plt.figure(figsize=(10,8))
+            ax = fig.add_subplot(111)
+            #plt.scatter(vertices[:,1], vertices[:,0], c="red", edgecolor='none')
+            plt.plot(np.append(vertices[:,1],vertices[0,1]), np.append(vertices[:,0], vertices[0,0]), "-o", c="red")
+            for xy in zip(vertices[:,1], vertices[:,0]):
+                ax.annotate('(%s, %s)' % xy, xy=xy, textcoords='data', fontsize=8.5)
+            plt.scatter(lon_m.flatten(), lat_m.flatten(), c=dot_colors, edgecolor='none')
+            for xy in zip(np.round(lon_m.flatten(), 4), np.round(lat_m.flatten(), 4)):
+                ax.annotate('(%s, %s)' % xy, xy=xy, textcoords='data', rotation=-30, fontsize=8.5)
+            plt.show()
 
     del poly
     del lat_m
@@ -497,7 +498,7 @@ def oco2_worldview_imagery(job_file, verbose=False, debug=False, stitch=False):
     data = data[total_mask]
 
     #Get the Lite File indices in each GIBS grid box
-    grid = regrid_oco2(data, var_lat_gridding, var_lon_gridding, lat_centers, lon_centers)
+    grid = regrid_oco2(data, var_lat_gridding, var_lon_gridding, lat_centers, lon_centers, debug=debug)
     
     del total_gridding_mask
     del total_mask
@@ -576,4 +577,4 @@ if __name__ == "__main__":
     stitch = args.stitch
     
     
-    success = oco2_worldview_imagery(job_file, verbose=verbose)
+    success = oco2_worldview_imagery(job_file, verbose=verbose, debug=debug)
