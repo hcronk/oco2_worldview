@@ -40,7 +40,7 @@ GEO_DICT = { "LtCO2" : {
             }          
 
 RESOLUTION = "500m"
-dpi = 10000
+DPI = 10000
 
 #These numbers came from the GIBS ICD
 gibs_resolution_dict = {"2km" : 0.017578125, "1km" : 0.0087890625, "500m" : 0.00439453125, "250m" : 0.002197265625}
@@ -138,13 +138,13 @@ def pull_Aqua_RGB_GIBS(lat_ul, lon_ul, lat_lr, lon_lr, xml_file, tif_file, xsize
     
     return True
 
-def prep_RGB(rgb_name, extent, xpix, ypix, dpi):
+def prep_RGB(rgb_name, extent, xpix, ypix):
     """
     Prepares the RGB geotiff for layering with the data and writes it to a png
     For research mode, not operations
     """
     
-    fig = plt.figure(figsize=(xpix / dpi, ypix / dpi), dpi=dpi)
+    fig = plt.figure(figsize=(xpix / DPI, ypix / DPI), dpi=DPI)
 
     img = plt.imread(CODE_DIR+'/intermediate_RGB.tif')
 
@@ -153,17 +153,17 @@ def prep_RGB(rgb_name, extent, xpix, ypix, dpi):
     ax.outline_patch.set_visible(False)
     ax.imshow(img, origin='upper', transform=ccrs.PlateCarree(), extent=extent)
     
-    fig.savefig(rgb_name, bbox_inches='tight', pad_inches=0, dpi=dpi)
+    fig.savefig(rgb_name, bbox_inches='tight', pad_inches=0, dpi=DPI)
     
     return True
 
-def patch_plot(data, grid_lat, grid_lon, extent, data_limits, cmap, out_plot_name, xpix, ypix, dpi):
+def patch_plot(data, grid_lat, grid_lon, extent, data_limits, cmap, out_plot_name, xpix, ypix):
     """
     Plot data polygons on a lat/lon grid
     In operational path
     """
     #print "In the function"
-    fig = plt.figure(figsize=(xpix / dpi, ypix / dpi), dpi=dpi)
+    fig = plt.figure(figsize=(xpix / DPI, ypix / DPI), dpi=DPI)
     ax = plt.axes(projection=ccrs.PlateCarree())
     ax.set_extent(extent, crs=ccrs.PlateCarree())
     ax.outline_patch.set_visible(False)
@@ -189,7 +189,7 @@ def patch_plot(data, grid_lat, grid_lon, extent, data_limits, cmap, out_plot_nam
     p.set_clim(data_limits[0], data_limits[1])
     ax.add_collection(p)
 
-    fig.savefig(out_plot_name, bbox_inches='tight', pad_inches=0, dpi=dpi)
+    fig.savefig(out_plot_name, bbox_inches='tight', pad_inches=0, dpi=DPI)
     
     del xg
     del yg
@@ -518,7 +518,7 @@ def oco2_worldview_imagery(job_file, verbose=False, debug=False):
     del grid
     lat_bin_subset = lat_bins[lat_grid_indices]
     lon_bin_subset = lon_bins[lon_grid_indices]
-    success = patch_plot(grid_subset, lat_bin_subset, lon_bin_subset, job_info.extent_box, job_info.range, job_info.cmap, job_info.out_plot_name, float(len(lon_data_indices)), float(len(lat_data_indices)), dpi)
+    success = patch_plot(grid_subset, lat_bin_subset, lon_bin_subset, job_info.extent_box, job_info.range, job_info.cmap, job_info.out_plot_name, float(len(lon_data_indices)), float(len(lat_data_indices)))
 
     del grid_subset
     del lat_bin_subset
@@ -543,7 +543,7 @@ def oco2_worldview_imagery(job_file, verbose=False, debug=False):
 
         success = update_GIBS_xml(date, job_info.rgb)
         success = pull_Aqua_RGB_GIBS(lat_ul, lon_ul, lat_lr, lon_lr, job_info.rgb, CODE_DIR+"/intermediate_RGB.tif")
-        success = prep_RGB(rgb_name, job_info.extent_box, float(len(lon_data_indices)), float(len(lat_data_indices)), dpi)
+        success = prep_RGB(rgb_name, job_info.extent_box, float(len(lon_data_indices)), float(len(lat_data_indices)))
         success = layer_rgb_and_data(rgb_name, job_info.out_plot_name, layered_rgb_name)
     
     return True
