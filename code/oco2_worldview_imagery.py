@@ -27,9 +27,9 @@ import cartopy.feature as cfeature
 ccrs = cartopy.crs
 
 #Global Variables
-code_dir = os.path.dirname(os.path.realpath(__file__))
+CODE_DIR = os.path.dirname(os.path.realpath(__file__))
 
-geo_dict = { "LtCO2" : {
+GEO_DICT = { "LtCO2" : {
                 "lat" : "vertex_latitude",
                 "lon" : "vertex_longitude"
                 },
@@ -39,21 +39,21 @@ geo_dict = { "LtCO2" : {
                 }
             }          
 
-resolution = "500m"
+RESOLUTION = "500m"
 dpi = 10000
 
 #These numbers came from the GIBS ICD
 gibs_resolution_dict = {"2km" : 0.017578125, "1km" : 0.0087890625, "500m" : 0.00439453125, "250m" : 0.002197265625}
 
 #South to North by 1/2 km bins, starting at -90 and ending at 89.
-lat_bins = np.arange(-90, 90, gibs_resolution_dict[resolution], dtype=float)
+lat_bins = np.arange(-90, 90, gibs_resolution_dict[RESOLUTION], dtype=float)
 #West to East by 1km bins
-lon_bins = np.arange(-180, 180, gibs_resolution_dict[resolution], dtype=float)
+lon_bins = np.arange(-180, 180, gibs_resolution_dict[RESOLUTION], dtype=float)
 
 #South to North, starting 1/2km North of the southern most bin line and ending 1/2 km North of the northern most bin line
-lat_centers = np.arange(lat_bins[0] + gibs_resolution_dict[resolution] / 2., lat_bins[-1] + gibs_resolution_dict[resolution], gibs_resolution_dict[resolution], dtype=float)
+lat_centers = np.arange(lat_bins[0] + gibs_resolution_dict[RESOLUTION] / 2., lat_bins[-1] + gibs_resolution_dict[RESOLUTION], gibs_resolution_dict[RESOLUTION], dtype=float)
 #West to East, starting 1/2km East of the western most bin line and ending 1/2 km east of the easternmost bin line
-lon_centers = np.arange(lon_bins[0] + gibs_resolution_dict[resolution] / 2., lon_bins[-1] + gibs_resolution_dict[resolution], gibs_resolution_dict[resolution], dtype=float)
+lon_centers = np.arange(lon_bins[0] + gibs_resolution_dict[RESOLUTION] / 2., lon_bins[-1] + gibs_resolution_dict[RESOLUTION], gibs_resolution_dict[RESOLUTION], dtype=float)
 
 def read_job_file(job_file):
     """
@@ -146,7 +146,7 @@ def prep_RGB(rgb_name, extent, xpix, ypix, dpi):
     
     fig = plt.figure(figsize=(xpix / dpi, ypix / dpi), dpi=dpi)
 
-    img = plt.imread(code_dir+'/intermediate_RGB.tif')
+    img = plt.imread(CODE_DIR+'/intermediate_RGB.tif')
 
     ax = plt.axes(projection=ccrs.PlateCarree())
     ax.set_extent(extent, crs=ccrs.PlateCarree())
@@ -464,8 +464,8 @@ def oco2_worldview_imagery(job_file, verbose=False, debug=False):
     else:
         data = get_oco2_data(job_info.data_field_name, job_info.lite_file)
 
-    var_lat = get_oco2_data(geo_dict[job_info.product]["lat"], job_info.lite_file)
-    var_lon = get_oco2_data(geo_dict[job_info.product]["lon"], job_info.lite_file)
+    var_lat = get_oco2_data(GEO_DICT[job_info.product]["lat"], job_info.lite_file)
+    var_lon = get_oco2_data(GEO_DICT[job_info.product]["lon"], job_info.lite_file)
     #Cut out the missing data and the data that crosses the date line
     vertex_miss_mask = np.where(np.logical_not(np.any(var_lat == -999999, axis=1), np.any(var_lon == -999999, axis=1)))
     vertex_zero_mask = np.where(np.logical_not(np.any(var_lat == 0.0, axis=1), np.any(var_lon == 0.0, axis=1)))
@@ -542,7 +542,7 @@ def oco2_worldview_imagery(job_file, verbose=False, debug=False):
         #layered_rgb_name = os.path.join(out_plot_dir, var + "_onRGB_"+q+"_" + global_plot_name_tags)
 
         success = update_GIBS_xml(date, job_info.rgb)
-        success = pull_Aqua_RGB_GIBS(lat_ul, lon_ul, lat_lr, lon_lr, job_info.rgb, code_dir+"/intermediate_RGB.tif")
+        success = pull_Aqua_RGB_GIBS(lat_ul, lon_ul, lat_lr, lon_lr, job_info.rgb, CODE_DIR+"/intermediate_RGB.tif")
         success = prep_RGB(rgb_name, job_info.extent_box, float(len(lon_data_indices)), float(len(lat_data_indices)), dpi)
         success = layer_rgb_and_data(rgb_name, job_info.out_plot_name, layered_rgb_name)
     
