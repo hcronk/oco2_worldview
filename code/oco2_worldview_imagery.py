@@ -14,6 +14,7 @@ from shapely.geometry import Polygon, Point, LineString
 import matplotlib.pyplot as plt
 #import json
 import pickle
+from collections import namedtuple
 from ftplib import FTP
 from glob import glob
 import matplotlib.patches as mpatches
@@ -70,19 +71,9 @@ def read_job_file(job_file):
     with open(job_file, "rb") as jf:
         contents = pickle.load(jf)
     
-    lite_file = contents["lite_file"]
-    product = contents["product"]
-    var = contents["var"]
-    preprocessing = contents["preprocessing"]
-    data_field_name = contents["data_field_name"]
-    quality_info = contents["quality_info"]
-    extent_box = contents["extent_box"]
-    plot_name = contents["out_plot_name"]
-    var_range = contents["range"]
-    cmap = contents["cmap"]
-    rgb = contents["rgb"]
-    
-    return lite_file, product, var, preprocessing, data_field_name, quality_info, extent_box, plot_name, var_range, cmap, rgb
+    tuple_setup = namedtuple("job_info", sorted(contents))
+    job_info = tuple_setup(**contents)
+    return job_info
 
 def stitch_quadrants(quadrant_plot_name_dict, result_plot):
     """
@@ -453,12 +444,11 @@ def oco2_worldview_imagery(job_file, verbose=False, debug=False):
     if verbose:
         print("Processing " + job_file) 
     
-    lite_file, product, var, preprocessing, data_field_name, quality_info, extent_box, plot_name, variable_plot_lims, cmap, rgb = read_job_file(job_file) 
+    job_info = read_job_file(job_file)
 
-    lite_file_basename = os.path.basename(lite_file)
+    lite_file_basename = os.path.basename(job_info.lite_file)
     file_tokens = re.split("_", lite_file_basename)
 
-    product = file_tokens[1]
     yymmdd = file_tokens[2]
     version = file_tokens[3]
 
@@ -466,16 +456,16 @@ def oco2_worldview_imagery(job_file, verbose=False, debug=False):
 
     #regrid = True
 
-    if preprocessing:
-        if type(preprocessing) == str:
-            data = preprocess(var, lite_file, preprocessing)
+    if job_info.preprocessing:
+        if type(job_info.preprocessing) == str:
+            data = preprocess(job_info.var, job_info.lite_file, job_info.preprocessing)
         else:
-             data = preprocess(var, lite_file)
+             data = preprocess(job_info.var, job_info.lite_file)
     else:
-        data = get_oco2_data(data_field_name, lite_file)
+        data = get_oco2_data(job_info.data_field_name, job_info.lite_file)
 
-    var_lat = get_oco2_data(geo_dict[product]["lat"], lite_file)
-    var_lon = get_oco2_data(geo_dict[product]["lon"], lite_file)
+    var_lat = get_oco2_data(geo_dict[job_info.product]["lat"], job_info.lite_file)
+    var_lon = get_oco2_data(geo_dict[job_info.product]["lon"], job_info.lite_file)
     #Cut out the missing data and the data that crosses the date line
     vertex_miss_mask = np.where(np.logical_not(np.any(var_lat == -999999, axis=1), np.any(var_lon == -999999, axis=1)))
     vertex_zero_mask = np.where(np.logical_not(np.any(var_lat == 0.0, axis=1), np.any(var_lon == 0.0, axis=1)))
@@ -483,10 +473,10 @@ def oco2_worldview_imagery(job_file, verbose=False, debug=False):
 
     total_gridding_mask = reduce(np.intersect1d, (vertex_miss_mask, vertex_zero_mask, vertex_crossDL_mask))
 
-    if quality_info:
+    if job_info.quality_info:
         #"quality_info" : {"quality_field_name" : "xco2_quality_flag", "qc_val" :  0, "qc_operator" : operator.eq }}, 
-        quality = get_oco2_data(quality_info["quality_field_name"], lite_file)
-        quality_mask = np.where(quality_info["qc_operator"](quality, quality_info["qc_val"]))
+        quality = get_oco2_data(job_info.quality_info["quality_field_name"], job_info.lite_file)
+        quality_mask = np.where(job_info.quality_info["qc_operator"](quality, job_info.quality_info["qc_val"]))
         total_mask = reduce(np.intersect1d, (vertex_miss_mask, vertex_zero_mask, vertex_crossDL_mask, quality_mask))
         del quality
         del quality_mask
@@ -520,7 +510,7 @@ def oco2_worldview_imagery(job_file, verbose=False, debug=False):
     del x_action
     del y_action
     
-    lat_data_indices, lon_data_indices, lat_grid_indices, lon_grid_indices = extent_box_to_indices(extent_box)
+    lat_data_indices, lon_data_indices, lat_grid_indices, lon_grid_indices = extent_box_to_indices(job_info.extent_box)
 
     if verbose:
         print("Plotting")
@@ -528,7 +518,7 @@ def oco2_worldview_imagery(job_file, verbose=False, debug=False):
     del grid
     lat_bin_subset = lat_bins[lat_grid_indices]
     lon_bin_subset = lon_bins[lon_grid_indices]
-    success = patch_plot(grid_subset, lat_bin_subset, lon_bin_subset, extent_box, variable_plot_lims, cmap, plot_name, float(len(lon_data_indices)), float(len(lat_data_indices)), dpi)
+    success = patch_plot(grid_subset, lat_bin_subset, lon_bin_subset, job_info.extent_box, job_info.range, job_info.cmap, job_info.out_plot_name, float(len(lon_data_indices)), float(len(lat_data_indices)), dpi)
 
     del grid_subset
     del lat_bin_subset
@@ -537,24 +527,24 @@ def oco2_worldview_imagery(job_file, verbose=False, debug=False):
     if not success:
         return
 
-    if rgb:
+    if job_info.rgb:
         if verbose:
             print("RGB Dealings")
-        lat_ul = extent_box[3]
-        lon_ul = extent_box[0]
-        lat_lr = extent_box[2]
-        lon_lr = extent_box[1]
-        out_plot_dir = os.path.dirname(plot_name)
-        just_plot_name = os.path.basename(plot_name)
-        rgb_name = os.path.join(out_plot_dir, re.sub(var, "RGB", just_plot_name))
-        layered_rgb_name = os.path.join(out_plot_dir, re.sub(var, var +"_onRGB", just_plot_name))
+        lat_ul = job_info.extent_box[3]
+        lon_ul = job_info.extent_box[0]
+        lat_lr = job_info.extent_box[2]
+        lon_lr = job_info.extent_box[1]
+        out_plot_dir = os.path.dirname(job_info.out_plot_name)
+        just_plot_name = os.path.basename(job_info.out_plot_name)
+        rgb_name = os.path.join(out_plot_dir, re.sub(job_info.var, "RGB", just_plot_name))
+        layered_rgb_name = os.path.join(out_plot_dir, re.sub(job_info.var, job_info.var +"_onRGB", just_plot_name))
         #rgb_name = os.path.join(out_plot_dir, "RGB_"+q+"_" + global_plot_name_tags)
         #layered_rgb_name = os.path.join(out_plot_dir, var + "_onRGB_"+q+"_" + global_plot_name_tags)
 
-        success = update_GIBS_xml(date, rgb)
-        success = pull_Aqua_RGB_GIBS(lat_ul, lon_ul, lat_lr, lon_lr, rgb, code_dir+"/intermediate_RGB.tif")
-        success = prep_RGB(rgb_name, extent_box, float(len(lon_data_indices)), float(len(lat_data_indices)), dpi)
-        success = layer_rgb_and_data(rgb_name, plot_name, layered_rgb_name)
+        success = update_GIBS_xml(date, job_info.rgb)
+        success = pull_Aqua_RGB_GIBS(lat_ul, lon_ul, lat_lr, lon_lr, job_info.rgb, code_dir+"/intermediate_RGB.tif")
+        success = prep_RGB(rgb_name, job_info.extent_box, float(len(lon_data_indices)), float(len(lat_data_indices)), dpi)
+        success = layer_rgb_and_data(rgb_name, job_info.out_plot_name, layered_rgb_name)
     
     return True
                     
