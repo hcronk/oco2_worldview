@@ -46,14 +46,14 @@ DPI = 10000
 GIBS_RESOLUTION_DICT = {"2km" : 0.017578125, "1km" : 0.0087890625, "500m" : 0.00439453125, "250m" : 0.002197265625}
 
 #South to North by 1/2 km bins, starting at -90 and ending at 89.
-lat_bins = np.arange(-90, 90, GIBS_RESOLUTION_DICT[RESOLUTION], dtype=float)
+LAT_BINS = np.arange(-90, 90, GIBS_RESOLUTION_DICT[RESOLUTION], dtype=float)
 #West to East by 1km bins
-lon_bins = np.arange(-180, 180, GIBS_RESOLUTION_DICT[RESOLUTION], dtype=float)
+LON_BINS = np.arange(-180, 180, GIBS_RESOLUTION_DICT[RESOLUTION], dtype=float)
 
 #South to North, starting 1/2km North of the southern most bin line and ending 1/2 km North of the northern most bin line
-lat_centers = np.arange(lat_bins[0] + GIBS_RESOLUTION_DICT[RESOLUTION] / 2., lat_bins[-1] + GIBS_RESOLUTION_DICT[RESOLUTION], GIBS_RESOLUTION_DICT[RESOLUTION], dtype=float)
+LAT_CENTERS = np.arange(LAT_BINS[0] + GIBS_RESOLUTION_DICT[RESOLUTION] / 2., LAT_BINS[-1] + GIBS_RESOLUTION_DICT[RESOLUTION], GIBS_RESOLUTION_DICT[RESOLUTION], dtype=float)
 #West to East, starting 1/2km East of the western most bin line and ending 1/2 km east of the easternmost bin line
-lon_centers = np.arange(lon_bins[0] + GIBS_RESOLUTION_DICT[RESOLUTION] / 2., lon_bins[-1] + GIBS_RESOLUTION_DICT[RESOLUTION], GIBS_RESOLUTION_DICT[RESOLUTION], dtype=float)
+LON_CENTERS = np.arange(LON_BINS[0] + GIBS_RESOLUTION_DICT[RESOLUTION] / 2., LON_BINS[-1] + GIBS_RESOLUTION_DICT[RESOLUTION], GIBS_RESOLUTION_DICT[RESOLUTION], dtype=float)
 
 def read_job_file(job_file):
     """
@@ -315,8 +315,8 @@ def extent_box_to_indices(extent_box):
     lat_lr = extent_box[2]
     lon_lr = extent_box[1]
 
-    lon_data_indices = np.where(np.logical_and(lon_centers >= lon_ul, lon_centers <= lon_lr))[0]
-    lat_data_indices = np.where(np.logical_and(lat_centers >= lat_lr, lat_centers <= lat_ul))[0]
+    lon_data_indices = np.where(np.logical_and(LON_CENTERS >= lon_ul, LON_CENTERS <= lon_lr))[0]
+    lat_data_indices = np.where(np.logical_and(LAT_CENTERS >= lat_lr, LAT_CENTERS <= lat_ul))[0]
 
 
     if lat_data_indices[0] == 0:
@@ -324,7 +324,7 @@ def extent_box_to_indices(extent_box):
     else:
         low_lat_idx = min(lat_data_indices)
 
-    if lat_data_indices[-1] == len(lat_centers) - 1:
+    if lat_data_indices[-1] == len(LAT_CENTERS) - 1:
         high_lat_idx = lat_data_indices[-1]
     else:
         high_lat_idx = max(lat_data_indices) + 1      
@@ -337,7 +337,7 @@ def extent_box_to_indices(extent_box):
     else:
         low_lon_idx = min(lon_data_indices)
 
-    if lon_data_indices[-1] == len(lon_centers) - 1:
+    if lon_data_indices[-1] == len(LON_CENTERS) - 1:
         high_lon_idx = lon_data_indices[-1]
     else:
         high_lon_idx = max(lon_data_indices) + 1
@@ -347,13 +347,13 @@ def extent_box_to_indices(extent_box):
     return lat_data_indices, lon_data_indices, lat_grid_indices, lon_grid_indices        
 
 
-def regrid_oco2(data, vertex_latitude, vertex_longitude, grid_lat_centers, grid_lon_centers, debug=False):
+def regrid_oco2(data, vertex_latitude, vertex_longitude, debug=False):
     """
     Put OCO-2 data on a regular grid
     In operational path
     """
     
-    grid = np.empty([len(grid_lon_centers), len(grid_lat_centers)], dtype=np.object)
+    grid = np.empty([len(LON_CENTERS), len(LAT_CENTERS)], dtype=np.object)
     
     #Create lat/lon corner pairs from vertices
     #Each element of this array is a 4x2 array of lat/lon points of the parallelogram corners (Order: LL, UL, UR, LR)
@@ -371,16 +371,16 @@ def regrid_oco2(data, vertex_latitude, vertex_longitude, grid_lat_centers, grid_
         pg = [Polygon((x, y) for x, y in vertices)][0]
 
         #Get the indexes of the center grid boxes where the lat/lon of the center is between the vertex min/max for this polygon
-        lat_idx = np.where(np.logical_and(grid_lat_centers >= vlat_mins[n], grid_lat_centers <= vlat_maxes[n]))[0]
-        lon_idx = np.where(np.logical_and(grid_lon_centers >= vlon_mins[n], grid_lon_centers <= vlon_maxes[n]))[0]
+        lat_idx = np.where(np.logical_and(LAT_CENTERS >= vlat_mins[n], LAT_CENTERS <= vlat_maxes[n]))[0]
+        lon_idx = np.where(np.logical_and(LON_CENTERS >= vlon_mins[n], LON_CENTERS <= vlon_maxes[n]))[0]
 
         #If there are no grid boxes inside this polygon, move on to the next polygon
         if len(lat_idx) == 0 or len(lon_idx) == 0:
             continue
 
         #Get the center lat/lon bounds of the grid boxes inside this polygon
-        center_lat_subset = grid_lat_centers[lat_idx]
-        center_lon_subset = grid_lon_centers[lon_idx]
+        center_lat_subset = LAT_CENTERS[lat_idx]
+        center_lon_subset = LON_CENTERS[lon_idx]
 
         lat_m, lon_m = np.meshgrid(center_lat_subset, center_lon_subset)
         zip_it = zip(list(lat_m.flatten()), list(lon_m.flatten()))
@@ -390,8 +390,8 @@ def regrid_oco2(data, vertex_latitude, vertex_longitude, grid_lat_centers, grid_
         for ll in zip_it:
             pt = Point(ll[0], ll[1])
             if pt.within(pg):
-                x = np.where(ll[1] == lon_centers)[0][0]
-                y = np.where(ll[0] == lat_centers)[0][0]
+                x = np.where(ll[1] == LON_CENTERS)[0][0]
+                y = np.where(ll[0] == LAT_CENTERS)[0][0]
                 if grid[x,y] is None:
                     grid[x,y] = [data[n]]
                     #grid[x,y] = [n]
@@ -400,8 +400,8 @@ def regrid_oco2(data, vertex_latitude, vertex_longitude, grid_lat_centers, grid_
                     #grid[x,y].append(n)
             else:
                 if pg.exterior.distance(pt) <= 1e-3:
-                    x = np.where(ll[1] == lon_centers)[0][0]
-                    y = np.where(ll[0] == lat_centers)[0][0]
+                    x = np.where(ll[1] == LON_CENTERS)[0][0]
+                    y = np.where(ll[0] == LAT_CENTERS)[0][0]
                     if grid[x,y] is None:
                         grid[x,y] = [data[n]]
                         #grid[x,y] = [n]
@@ -488,7 +488,7 @@ def oco2_worldview_imagery(job_file, verbose=False, debug=False):
     data = data[total_mask]
 
     #Get the Lite File indices in each GIBS grid box
-    grid = regrid_oco2(data, var_lat_gridding, var_lon_gridding, lat_centers, lon_centers, debug=debug)
+    grid = regrid_oco2(data, var_lat_gridding, var_lon_gridding, debug=debug)
     
     del total_gridding_mask
     del total_mask
@@ -516,8 +516,8 @@ def oco2_worldview_imagery(job_file, verbose=False, debug=False):
         print("Plotting")
     grid_subset = grid[int(lon_data_indices[0]) : int(lon_data_indices[-1] + 1), int(lat_data_indices[0]) : int(lat_data_indices[-1] + 1)]
     del grid
-    lat_bin_subset = lat_bins[lat_grid_indices]
-    lon_bin_subset = lon_bins[lon_grid_indices]
+    lat_bin_subset = LAT_BINS[lat_grid_indices]
+    lon_bin_subset = LON_BINS[lon_grid_indices]
     success = patch_plot(grid_subset, lat_bin_subset, lon_bin_subset, job_info.extent_box, job_info.range, job_info.cmap, job_info.out_plot_name, float(len(lon_data_indices)), float(len(lat_data_indices)))
 
     del grid_subset
