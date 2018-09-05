@@ -43,17 +43,17 @@ RESOLUTION = "500m"
 DPI = 10000
 
 #These numbers came from the GIBS ICD
-gibs_resolution_dict = {"2km" : 0.017578125, "1km" : 0.0087890625, "500m" : 0.00439453125, "250m" : 0.002197265625}
+GIBS_RESOLUTION_DICT = {"2km" : 0.017578125, "1km" : 0.0087890625, "500m" : 0.00439453125, "250m" : 0.002197265625}
 
 #South to North by 1/2 km bins, starting at -90 and ending at 89.
-lat_bins = np.arange(-90, 90, gibs_resolution_dict[RESOLUTION], dtype=float)
+lat_bins = np.arange(-90, 90, GIBS_RESOLUTION_DICT[RESOLUTION], dtype=float)
 #West to East by 1km bins
-lon_bins = np.arange(-180, 180, gibs_resolution_dict[RESOLUTION], dtype=float)
+lon_bins = np.arange(-180, 180, GIBS_RESOLUTION_DICT[RESOLUTION], dtype=float)
 
 #South to North, starting 1/2km North of the southern most bin line and ending 1/2 km North of the northern most bin line
-lat_centers = np.arange(lat_bins[0] + gibs_resolution_dict[RESOLUTION] / 2., lat_bins[-1] + gibs_resolution_dict[RESOLUTION], gibs_resolution_dict[RESOLUTION], dtype=float)
+lat_centers = np.arange(lat_bins[0] + GIBS_RESOLUTION_DICT[RESOLUTION] / 2., lat_bins[-1] + GIBS_RESOLUTION_DICT[RESOLUTION], GIBS_RESOLUTION_DICT[RESOLUTION], dtype=float)
 #West to East, starting 1/2km East of the western most bin line and ending 1/2 km east of the easternmost bin line
-lon_centers = np.arange(lon_bins[0] + gibs_resolution_dict[RESOLUTION] / 2., lon_bins[-1] + gibs_resolution_dict[RESOLUTION], gibs_resolution_dict[RESOLUTION], dtype=float)
+lon_centers = np.arange(lon_bins[0] + GIBS_RESOLUTION_DICT[RESOLUTION] / 2., lon_bins[-1] + GIBS_RESOLUTION_DICT[RESOLUTION], GIBS_RESOLUTION_DICT[RESOLUTION], dtype=float)
 
 def read_job_file(job_file):
     """
