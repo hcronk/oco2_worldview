@@ -17,7 +17,7 @@ LITE_FILE_DIRS = {"LtCO2": "/data6/OCO2/product/Lite/B8/LtCO2",
 OUT_PLOT_DIR = "/home/hcronk/worldview/plots/jobbuilder_testing"
 LOCKFILE_DIR = "/home/hcronk/worldview/processing_status"
 TRY_THRESHOLD = 3 #(number of times to try to process before moving to issues for analysis)
-try_wait = 3600 #(number of seconds to wait before trying to reprocess a failed job)
+TRY_WAIT = 3600 #(number of seconds to wait before trying to reprocess a failed job)
 overwrite = False
 
 data_dict = { "LtCO2" : 
@@ -137,7 +137,7 @@ def check_processing_or_problem(job_file, verbose=False):
 	latest_try_dt = datetime.datetime.strptime(re.split("\.", latest_try)[0], "%Y-%m-%d %H:%M:%S")
 	today = datetime.datetime.now()
 	delta_t = (today - latest_try_dt).total_seconds()
-	if delta_t <= try_wait:
+	if delta_t <= TRY_WAIT:
 	    #Give it some time before trying to process again
             if verbose:
                 print(job_file + " is already processing")
