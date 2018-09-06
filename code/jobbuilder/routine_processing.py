@@ -14,7 +14,7 @@ from multiprocessing import Process
 #Global Variables
 LITE_FILE_DIRS = {"LtCO2": "/data6/OCO2/product/Lite/B8/LtCO2", 
                   "LtSIF": "/cloudsat/LtSIF"}
-out_plot_dir = "/home/hcronk/worldview/plots/jobbuilder_testing"
+OUT_PLOT_DIR = "/home/hcronk/worldview/plots/jobbuilder_testing"
 lockfile_dir = "/home/hcronk/worldview/processing_status"
 try_threshold = 3 #(number of times to try to process before moving to issues for analysis)
 try_wait = 3600 #(number of seconds to wait before trying to reprocess a failed job)
@@ -59,7 +59,7 @@ def find_unprocessed_file(lite_product, verbose=False):
             for t in tile_dict.keys():
                 if verbose:
                     print(t)
-                out_plot_name = get_image_filename(out_plot_dir, v, tile_dict[t]["extent_box"], plot_tags)
+                out_plot_name = get_image_filename(v, tile_dict[t]["extent_box"], plot_tags)
                 if not glob(out_plot_name) or overwrite:
                     #job_file = re.sub("png", "json", os.path.basename(out_plot_name))
                     job_file = re.sub("png", "pkl", os.path.basename(out_plot_name))
@@ -103,12 +103,12 @@ def build_config(oco2_file, lite_product, var, extent_box, out_plot_name, job_fi
         process.terminate()
     #run_job(job_file, verbose=verbose)    
     
-def get_image_filename(out_plot_dir, var, extent_box, plot_name_tags):
+def get_image_filename(var, extent_box, plot_name_tags):
     """
     Build the filename of the output image
     """
     
-    return os.path.join(out_plot_dir, var + "_Lat" + str(extent_box[2]) + "to" + str(extent_box[3]) + "_Lon" + str(extent_box[0]) + "to" + str(extent_box[1]) + "_" + plot_name_tags)
+    return os.path.join(OUT_PLOT_DIR, var + "_Lat" + str(extent_box[2]) + "to" + str(extent_box[3]) + "_Lon" + str(extent_box[0]) + "to" + str(extent_box[1]) + "_" + plot_name_tags)
 
 def check_processing_or_problem(job_file, verbose=False):
     """
@@ -184,9 +184,8 @@ def run_job(job_file, verbose=False):
 	if glob(issue_file):
 	    os.remove(issue_file)
         if rgb:
-            out_plot_dir = os.path.dirname(plot_name)
             just_plot_name = os.path.basename(plot_name)
-            rgb_name = os.path.join(out_plot_dir, re.sub(var, "RGB", just_plot_name))
+            rgb_name = os.path.join(OUT_PLOT_DIR, re.sub(var, "RGB", just_plot_name))
             os.remove(rgb_name)        
 
 def check_job_worked(plot_name, var, rgb=False):
@@ -194,7 +193,7 @@ def check_job_worked(plot_name, var, rgb=False):
     #Check the file exists
     if rgb:
         just_plot_name = os.path.basename(plot_name)
-        layered_rgb_name = os.path.join(out_plot_dir, re.sub(var, var +"_onRGB", just_plot_name))
+        layered_rgb_name = os.path.join(OUT_PLOT_DIR, re.sub(var, var +"_onRGB", just_plot_name))
         if glob(plot_name) and glob(layered_rgb_name):
             return True
         else:

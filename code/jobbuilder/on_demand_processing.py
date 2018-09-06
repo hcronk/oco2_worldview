@@ -158,7 +158,7 @@ if __name__ == "__main__":
             for var in var_list:
                 if verbose:
                     print("Checking " + var)
-                out_plot_name = get_image_filename(out_plot_dir, var, extent_box, plot_tags)
+                out_plot_name = get_image_filename(var, extent_box, plot_tags)
                 if debug or overwrite or not glob(out_plot_name):
                     job_file = re.sub("png", "pkl", os.path.basename(out_plot_name))
                     processing_or_problem = check_processing_or_problem(job_file, verbose=verbose)
@@ -180,7 +180,7 @@ if __name__ == "__main__":
                 for t in TILE_DICT.keys():
                     if verbose:
                         print("Checking " + t + " tile")
-                    out_plot_name = get_image_filename(out_plot_dir, var, TILE_DICT[t]["extent_box"], plot_tags)
+                    out_plot_name = get_image_filename(var, TILE_DICT[t]["extent_box"], plot_tags)
                     if stitch:
                         if rgb:
                             out_plot_dir = os.path.dirname(out_plot_name)
