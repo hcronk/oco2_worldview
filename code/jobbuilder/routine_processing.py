@@ -12,7 +12,7 @@ import pickle
 from multiprocessing import Process
 
 #Global Variables
-lite_file_dirs = {"LtCO2": "/data6/OCO2/product/Lite/B8/LtCO2", 
+LITE_FILE_DIRS = {"LtCO2": "/data6/OCO2/product/Lite/B8/LtCO2", 
                   "LtSIF": "/cloudsat/LtSIF"}
 out_plot_dir = "/home/hcronk/worldview/plots/jobbuilder_testing"
 lockfile_dir = "/home/hcronk/worldview/processing_status"
@@ -44,7 +44,7 @@ tile_dict = { "NE": {"extent_box" : [0, 180, 0, 90]
 
 
 def find_unprocessed_file(lite_product, verbose=False):
-    for f in glob(os.path.join(lite_file_dirs[lite_product], "*")):
+    for f in glob(os.path.join(LITE_FILE_DIRS[lite_product], "*")):
         if verbose:
             print(f)
         lite_file_basename = os.path.basename(f)
