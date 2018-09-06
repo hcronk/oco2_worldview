@@ -16,7 +16,7 @@ LITE_FILE_DIRS = {"LtCO2": "/data6/OCO2/product/Lite/B8/LtCO2",
                   "LtSIF": "/cloudsat/LtSIF"}
 OUT_PLOT_DIR = "/home/hcronk/worldview/plots/jobbuilder_testing"
 LOCKFILE_DIR = "/home/hcronk/worldview/processing_status"
-try_threshold = 3 #(number of times to try to process before moving to issues for analysis)
+TRY_THRESHOLD = 3 #(number of times to try to process before moving to issues for analysis)
 try_wait = 3600 #(number of seconds to wait before trying to reprocess a failed job)
 overwrite = False
 
@@ -143,7 +143,7 @@ def check_processing_or_problem(job_file, verbose=False):
                 print(job_file + " is already processing")
 	    return True
 	
-	if len(tries) > try_threshold:
+	if len(tries) > TRY_THRESHOLD:
 	    shutil.copy(lockfile, issue_file)
 	    if glob(issue_file) and os.stat(lockfile).st_size == os.stat(issue_file).st_size:
 		os.remove(lockfile)
