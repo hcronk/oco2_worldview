@@ -15,7 +15,7 @@ from multiprocessing import Process
 LITE_FILE_DIRS = {"LtCO2": "/data6/OCO2/product/Lite/B8/LtCO2", 
                   "LtSIF": "/cloudsat/LtSIF"}
 OUT_PLOT_DIR = "/home/hcronk/worldview/plots/jobbuilder_testing"
-lockfile_dir = "/home/hcronk/worldview/processing_status"
+LOCKFILE_DIR = "/home/hcronk/worldview/processing_status"
 try_threshold = 3 #(number of times to try to process before moving to issues for analysis)
 try_wait = 3600 #(number of seconds to wait before trying to reprocess a failed job)
 overwrite = False
@@ -121,8 +121,8 @@ def check_processing_or_problem(job_file, verbose=False):
     
     #Check for / create lockfile
     basename = re.sub("json", "proc", os.path.basename(job_file))
-    lockfile = os.path.join(lockfile_dir, "processing", basename)
-    issue_file = os.path.join(lockfile_dir, "problem", basename)
+    lockfile = os.path.join(LOCKFILE_DIR, "processing", basename)
+    issue_file = os.path.join(LOCKFILE_DIR, "problem", basename)
 
     if glob(issue_file):
 	if verbose:
