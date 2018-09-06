@@ -42,17 +42,18 @@ TILE_DICT = { "NE": {"extent_box" : [0, 180, 0, 90]
                     }
             }
 
+LITE_FILE_REGEX = "oco2_(?P<product>[A-Za-z0-9]{5})_(?P<yymmdd>[0-9]{6})_(?P<version>B[0-9r]{,5})_[0-9]{12}s.nc4"
+
 
 def find_unprocessed_file(lite_product, verbose=False):
     for f in glob(os.path.join(LITE_FILE_DIRS[lite_product], "*")):
         if verbose:
             print(f)
-        lite_file_basename = os.path.basename(f)
-        file_tokens = re.split("_", lite_file_basename)
-        yymmdd = file_tokens[2]
-        version = file_tokens[3]
         
-        plot_tags = yymmdd + "_" + version + ".png"
+        lite_file_substring_dict = re.match(LITE_FILE_REGEX, os.path.basename(f)).groupdict()
+        
+        plot_tags = lite_file_substring_dict["yymmdd"] + "_" + lite_file_substring_dict["version"] + ".png"
+
         for v in DATA_DICT[lite_product].keys():
             if verbose:
                 print(v)

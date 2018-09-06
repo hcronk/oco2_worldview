@@ -33,6 +33,8 @@ TILE_DICT = { "NE": {"extent_box" : [0, 180, 0, 90]
                     }
             }
 
+LITE_FILE_REGEX = "oco2_(?P<product>[A-Za-z0-9]{5})_(?P<yymmdd>[0-9]{6})_(?P<version>B[0-9r]{,5})_[0-9]{12}s.nc4"
+
 if __name__ == "__main__":
     
     code_dir = os.path.join(os.path.dirname(os.path.realpath(__file__)), os.path.pardir)
@@ -126,27 +128,29 @@ if __name__ == "__main__":
         if verbose:
             print("Checking " + lf)  
         
-        lite_file_basename = os.path.basename(lf)
-        file_tokens = re.split("_", lite_file_basename)
+        #lite_file_basename = os.path.basename(lf)
+        #file_tokens = re.split("_", lite_file_basename)
 
-        product = file_tokens[1]
-        yymmdd = file_tokens[2]
-        version = file_tokens[3]
+        #product = file_tokens[1]
+        #yymmdd = file_tokens[2]
+        #version = file_tokens[3]
+        
+        lite_file_substring_dict = re.match(LITE_FILE_REGEX, os.path.basename(lf)).groupdict()
 
-        date = "20" + yymmdd[:2] + "-" + yymmdd[2:4] + "-" + yymmdd[4:]
+        date = "20" + lite_file_substring_dict["yymmdd"][:2] + "-" + lite_file_substring_dict["yymmdd"][2:4] + "-" + lite_file_substring_dict["yymmdd"][4:]
 
-        plot_tags = yymmdd + "_" + version + ".png"
+        plot_tags = lite_file_substring_dict["yymmdd"] + "_" + lite_file_substring_dict["version"] + ".png"
         
         if user_defined_var_list:
             var_list = user_defined_var_list
         else:
-            var_list = DATA_DICT[product].keys()  
+            var_list = DATA_DICT[lite_file_substring_dict["product"]].keys()  
 
         loop_list = list(var_list)
         for var in loop_list:
-            if var not in DATA_DICT[product].keys():
+            if var not in DATA_DICT[lite_file_substring_dict["product"]].keys():
                 if verbose:
-                    print(var + " is not defined in the " + product + " data dictionary. Please add it or check spelling.")
+                    print(var + " is not defined in the " + lite_file_substring_dict["product"] + " data dictionary. Please add it or check spelling.")
                 var_list.remove(var)
         
         if not var_list:
@@ -165,7 +169,7 @@ if __name__ == "__main__":
                     if not processing_or_problem:
                         if verbose:
                             print("Creating config file for " + var)
-                        build_config(lf, product, var, extent_box, out_plot_name, job_file, rgb=rgb, debug=debug, verbose=verbose)
+                        build_config(lf, lite_file_substring_dict["product"], var, extent_box, out_plot_name, job_file, rgb=rgb, debug=debug, verbose=verbose)
                 else:
                     if verbose:
                         print(out_plot_name + " exists and will not be overwritten.")
@@ -195,7 +199,7 @@ if __name__ == "__main__":
                         if not processing_or_problem:
                             if verbose:
                                 print("Creating config file for " + var)
-                            build_config(lf, product, var, TILE_DICT[t]["extent_box"], out_plot_name, job_file, rgb=rgb, debug=debug, verbose=verbose)
+                            build_config(lf, lite_file_substring_dict["product"], var, TILE_DICT[t]["extent_box"], out_plot_name, job_file, rgb=rgb, debug=debug, verbose=verbose)
                     else:
                         if verbose:
                             print(out_plot_name + " exists and will not be overwritten.")
