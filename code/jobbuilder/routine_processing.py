@@ -32,7 +32,7 @@ DATA_DICT = { "LtCO2" :
                 }
             }
             
-tile_dict = { "NE": {"extent_box" : [0, 180, 0, 90]
+TILE_DICT = { "NE": {"extent_box" : [0, 180, 0, 90]
                     },
               "SE": {"extent_box" : [0, 180, -90, 0]
                     },
@@ -56,16 +56,16 @@ def find_unprocessed_file(lite_product, verbose=False):
         for v in DATA_DICT[lite_product].keys():
             if verbose:
                 print(v)
-            for t in tile_dict.keys():
+            for t in TILE_DICT.keys():
                 if verbose:
                     print(t)
-                out_plot_name = get_image_filename(v, tile_dict[t]["extent_box"], plot_tags)
+                out_plot_name = get_image_filename(v, TILE_DICT[t]["extent_box"], plot_tags)
                 if not glob(out_plot_name) or OVERWRITE:
                     #job_file = re.sub("png", "json", os.path.basename(out_plot_name))
                     job_file = re.sub("png", "pkl", os.path.basename(out_plot_name))
                     processing_or_problem = check_processing_or_problem(job_file)
                     if not processing_or_problem:
-                        build_config(f, lite_product, v, tile_dict[t]["extent_box"], out_plot_name, job_file)
+                        build_config(f, lite_product, v, TILE_DICT[t]["extent_box"], out_plot_name, job_file)
             
 
 def build_config(oco2_file, lite_product, var, extent_box, out_plot_name, job_file, rgb=False, debug=False, verbose=False):
