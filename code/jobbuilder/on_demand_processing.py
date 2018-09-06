@@ -11,7 +11,7 @@ sys.path.append(code_dir)
 from oco2_worldview_imagery import stitch_quadrants
 
 #Global Variables
-data_dict = { "LtCO2" : 
+DATA_DICT = { "LtCO2" : 
                 { "xco2" : {"data_field_name" : "xco2", "preprocessing" : False, "range": [380, 430], "cmap" : "jet", "quality_info" : {"quality_field_name" : "xco2_quality_flag", "qc_val" :  0, "qc_operator" : operator.eq }}, 
                   "xco2_relative" : {"data_field_name" : None, "preprocessing" : "ftp://aftp.cmdl.noaa.gov/products/trends/co2/co2_trend_gl.txt", "range": [-6, 6], "cmap" : "RdYlBu_r", "quality_info" : {"quality_field_name" : "xco2_quality_flag", "qc_val" :  0, "qc_operator" : operator.eq }}, 
                   "tcwv" : {"data_field_name" : "Retrieval/tcwv", "preprocessing" : False, "range": [0, 75], "cmap" : "viridis", "quality_info" : {}}, 
@@ -23,7 +23,7 @@ data_dict = { "LtCO2" :
                 }
             }
             
-tile_dict = { "NE": {"extent_box" : [0, 180, 0, 90]
+TILE_DICT = { "NE": {"extent_box" : [0, 180, 0, 90]
                     },
               "SE": {"extent_box" : [0, 180, -90, 0]
                     },
@@ -32,8 +32,6 @@ tile_dict = { "NE": {"extent_box" : [0, 180, 0, 90]
               "NW": {"extent_box" : [-180, 0, 0, 90]
                     }
             }
-
-extent_box = []
 
 if __name__ == "__main__":
     
@@ -106,10 +104,12 @@ if __name__ == "__main__":
         lat_ul = custom_geo_box[1]
         extent_box = [lon_ul, lon_lr, lat_lr, lat_ul]
     else:
+        extent_box = []
         if stitch:
             print("Overlaying the full geolocation quadrants exceeds the PIL pixel limit.")
             print("The quadrants will be plotted to 45 degrees N/S/E/W only for testing the stitching interface.")
-            tile_dict = { "NE": {"extent_box" : [0, 45, 0, 45]
+            #Update global variable
+            TILE_DICT = { "NE": {"extent_box" : [0, 45, 0, 45]
                                 },
                           "SE": {"extent_box" : [0, 45, -45, 0]
                                 },
@@ -140,11 +140,11 @@ if __name__ == "__main__":
         if user_defined_var_list:
             var_list = user_defined_var_list
         else:
-            var_list = data_dict[product].keys()  
+            var_list = DATA_DICT[product].keys()  
 
         loop_list = list(var_list)
         for var in loop_list:
-            if var not in data_dict[product].keys():
+            if var not in DATA_DICT[product].keys():
                 if verbose:
                     print(var + " is not defined in the " + product + " data dictionary. Please add it or check spelling.")
                 var_list.remove(var)
@@ -159,28 +159,28 @@ if __name__ == "__main__":
                 if verbose:
                     print("Checking " + var)
                 out_plot_name = get_image_filename(out_plot_dir, var, extent_box, plot_tags)
-                if not overwrite and glob(out_plot_name):
-                    if verbose:
-                        print(out_plot_name + " exists and will not be overwritten.")
-                        print("To overwrite, change the value of 'overwrite' to True by setting the @w command line option")
-                    continue
-                else:
+                if debug or overwrite or not glob(out_plot_name):
                     job_file = re.sub("png", "pkl", os.path.basename(out_plot_name))
                     processing_or_problem = check_processing_or_problem(job_file, verbose=verbose)
                     if not processing_or_problem:
                         if verbose:
                             print("Creating config file for " + var)
                         build_config(lf, product, var, extent_box, out_plot_name, job_file, rgb=rgb, debug=debug, verbose=verbose)
+                else:
+                    if verbose:
+                        print(out_plot_name + " exists and will not be overwritten.")
+                        print("To overwrite, change the value of 'overwrite' to True by setting the @w command line option")
+                    continue
         else:
             for var in var_list:
                 if verbose:
                     print("Checking " + var)
                 if stitch:
                     plots_to_stitch = {}
-                for t in tile_dict.keys():
+                for t in TILE_DICT.keys():
                     if verbose:
                         print("Checking " + t + " tile")
-                    out_plot_name = get_image_filename(out_plot_dir, var, tile_dict[t]["extent_box"], plot_tags)
+                    out_plot_name = get_image_filename(out_plot_dir, var, TILE_DICT[t]["extent_box"], plot_tags)
                     if stitch:
                         if rgb:
                             out_plot_dir = os.path.dirname(out_plot_name)
@@ -189,18 +189,18 @@ if __name__ == "__main__":
                             plots_to_stitch[t] = layered_rgb_name
                         else:
                             plots_to_stitch[t] = out_plot_name
-                    if not overwrite and glob(out_plot_name):
-                        if verbose:
-                            print(out_plot_name + " exists and will not be overwritten.")
-                            print("To overwrite, change the value of 'overwrite' to True by setting the @w command line option")
-                        continue
-                    else:
+                    if debug or overwrite or not glob(out_plot_name):
                         job_file = re.sub("png", "pkl", os.path.basename(out_plot_name))
                         processing_or_problem = check_processing_or_problem(job_file, verbose=verbose)
                         if not processing_or_problem:
                             if verbose:
                                 print("Creating config file for " + var)
-                            build_config(lf, product, var, tile_dict[t]["extent_box"], out_plot_name, job_file, rgb=rgb, debug=debug, verbose=verbose)
+                            build_config(lf, product, var, TILE_DICT[t]["extent_box"], out_plot_name, job_file, rgb=rgb, debug=debug, verbose=verbose)
+                    else:
+                        if verbose:
+                            print(out_plot_name + " exists and will not be overwritten.")
+                            print("To overwrite, change the value of 'overwrite' to True by setting the @w command line option")
+                        continue
                 if stitch:
                     tokens = re.split("_", plots_to_stitch["NE"])
                     absorb = [tokens.remove(token) for token in tokens if re.search("Lon", token)]
