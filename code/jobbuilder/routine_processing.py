@@ -20,7 +20,7 @@ TRY_THRESHOLD = 3 #(number of times to try to process before moving to issues fo
 TRY_WAIT = 3600 #(number of seconds to wait before trying to reprocess a failed job)
 OVERWRITE = False
 
-data_dict = { "LtCO2" : 
+DATA_DICT = { "LtCO2" : 
                 { "xco2" : {"data_field_name" : "xco2", "preprocessing" : False, "range": [380, 430], "cmap" : "jet", "quality_info" : {"quality_field_name" : "xco2_quality_flag", "qc_val" :  0, "qc_operator" : operator.eq }}, 
                   "xco2_relative" : {"data_field_name" : None, "preprocessing" : "ftp://aftp.cmdl.noaa.gov/products/trends/co2/co2_trend_gl.txt", "range": [-6, 6], "cmap" : "RdYlBu_r", "quality_info" : {"quality_field_name" : "xco2_quality_flag", "qc_val" :  0, "qc_operator" : operator.eq }}, 
                   "tcwv" : {"data_field_name" : "Retrieval/tcwv", "preprocessing" : False, "range": [0, 75], "cmap" : "viridis", "quality_info" : {}}, 
@@ -53,7 +53,7 @@ def find_unprocessed_file(lite_product, verbose=False):
         version = file_tokens[3]
         
         plot_tags = yymmdd + "_" + version + ".png"
-        for v in data_dict[lite_product].keys():
+        for v in DATA_DICT[lite_product].keys():
             if verbose:
                 print(v)
             for t in tile_dict.keys():
@@ -72,7 +72,7 @@ def build_config(oco2_file, lite_product, var, extent_box, out_plot_name, job_fi
     
     global lockfile
     
-    config_dict = data_dict[lite_product][var]
+    config_dict = DATA_DICT[lite_product][var]
     
     config_dict["lite_file"] = oco2_file
     config_dict["product"] = lite_product
@@ -207,6 +207,6 @@ def check_job_worked(plot_name, var, rgb=False):
     
 if __name__ == "__main__":
 
-    for p in data_dict.keys():
+    for p in DATA_DICT.keys():
         find_unprocessed_file(p)
     
