@@ -41,6 +41,7 @@ GEO_DICT = { "LtCO2" : {
 
 RESOLUTION = "500m"
 DPI = 10000
+OCO2_MISSING = -999999
 
 #These numbers came from the GIBS ICD
 GIBS_RESOLUTION_DICT = {"2km" : 0.017578125, "1km" : 0.0087890625, "500m" : 0.00439453125, "250m" : 0.002197265625}
@@ -467,7 +468,7 @@ def oco2_worldview_imagery(job_file, verbose=False, debug=False):
     var_lat = get_oco2_data(GEO_DICT[job_info.product]["lat"], job_info.lite_file)
     var_lon = get_oco2_data(GEO_DICT[job_info.product]["lon"], job_info.lite_file)
     #Cut out the missing data and the data that crosses the date line
-    vertex_miss_mask = np.where(np.logical_not(np.any(var_lat == -999999, axis=1), np.any(var_lon == -999999, axis=1)))
+    vertex_miss_mask = np.where(np.logical_not(np.any(var_lat == OCO2_MISSING, axis=1), np.any(var_lon == OCO2_MISSING, axis=1)))
     vertex_zero_mask = np.where(np.logical_not(np.any(var_lat == 0.0, axis=1), np.any(var_lon == 0.0, axis=1)))
     vertex_crossDL_mask = np.where(np.logical_not(np.any(var_lon <= -179.9, axis=1), np.any(var_lon >= 179.9, axis=1)))
 
