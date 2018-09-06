@@ -70,8 +70,6 @@ def find_unprocessed_file(lite_product, verbose=False):
 
 def build_config(oco2_file, lite_product, var, extent_box, out_plot_name, job_file, rgb=False, debug=False, verbose=False):
     
-    global lockfile
-    
     config_dict = DATA_DICT[lite_product][var]
     
     config_dict["lite_file"] = oco2_file
@@ -89,7 +87,7 @@ def build_config(oco2_file, lite_product, var, extent_box, out_plot_name, job_fi
     
     if debug:
         print(job_file + " created for subsequent debugging")
-	os.remove(lockfile)
+	os.remove(LOCKFILE)
 	sys.exit()
 
     #sys.exit()
@@ -116,12 +114,12 @@ def check_processing_or_problem(job_file, verbose=False):
     problem == the job has been run and faild more times than the try threshold defined globally
     """
     
-    global lockfile
+    global LOCKFILE
     global issue_file
     
     #Check for / create lockfile
     basename = re.sub("json", "proc", os.path.basename(job_file))
-    lockfile = os.path.join(LOCKFILE_DIR, "processing", basename)
+    LOCKFILE = os.path.join(LOCKFILE_DIR, "processing", basename)
     issue_file = os.path.join(LOCKFILE_DIR, "problem", basename)
 
     if glob(issue_file):
@@ -129,8 +127,8 @@ def check_processing_or_problem(job_file, verbose=False):
             print("There is a problem with the job " + job_file)
         return True
 
-    if glob(lockfile):
-        with open(lockfile, "r") as lf:
+    if glob(LOCKFILE):
+        with open(LOCKFILE, "r") as lf:
 	    tries = lf.readlines()
 	
 	latest_try = tries[-1].rstrip("\n")
@@ -144,26 +142,25 @@ def check_processing_or_problem(job_file, verbose=False):
 	    return True
 	
 	if len(tries) > TRY_THRESHOLD:
-	    shutil.copy(lockfile, issue_file)
-	    if glob(issue_file) and os.stat(lockfile).st_size == os.stat(issue_file).st_size:
-		os.remove(lockfile)
+	    shutil.copy(LOCKFILE, issue_file)
+	    if glob(issue_file) and os.stat(LOCKFILE).st_size == os.stat(issue_file).st_size:
+		os.remove(LOCKFILE)
 	    if verbose:
                 print("There is a problem with the job " + job_file)
             return True
 	else:
-	    with open(lockfile, "a") as lf:
+	    with open(LOCKFILE, "a") as lf:
 		lf.write(str(datetime.datetime.now()) + "\n")
 	    return False
     else:
 	#Create lockfile
-	with open(lockfile, "w") as lf:
+	with open(LOCKFILE, "w") as lf:
 	    lf.write(str(datetime.datetime.now()) + "\n")
     
         return False
 
 def run_job(job_file, verbose=False):
     
-    global lockfile
     global issue_file
 
     success = oco2_worldview_imagery(job_file, verbose=verbose)
@@ -180,7 +177,7 @@ def run_job(job_file, verbose=False):
     
     if success and job_worked:
         os.remove(job_file)
-	os.remove(lockfile)
+	os.remove(LOCKFILE)
 	if glob(issue_file):
 	    os.remove(issue_file)
         if rgb:
