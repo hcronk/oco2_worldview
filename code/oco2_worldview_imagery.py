@@ -161,7 +161,7 @@ def prep_RGB(rgb_name, extent, xpix, ypix):
     
     return True
 
-def patch_plot(data, grid_lat, grid_lon, extent, data_limits, cmap, out_plot_name, xpix, ypix):
+def patch_plot(data, grid_lat, grid_lon, extent, data_limits, cmap, out_plot_name, xpix, ypix, verbose=False):
     """
     Plot data polygons on a lat/lon grid
     In operational path
@@ -193,6 +193,9 @@ def patch_plot(data, grid_lat, grid_lon, extent, data_limits, cmap, out_plot_nam
     p.set_clim(data_limits[0], data_limits[1])
     ax.add_collection(p)
 
+    if verbose:
+        print("Saving plot to " + out_plot_name)
+        
     fig.savefig(out_plot_name, bbox_inches='tight', pad_inches=0, dpi=DPI)
     
     del xg
@@ -528,7 +531,7 @@ def oco2_worldview_imagery(job_file, verbose=False, debug=False):
     del grid
     lat_bin_subset = LAT_BINS[lat_grid_indices]
     lon_bin_subset = LON_BINS[lon_grid_indices]
-    success = patch_plot(grid_subset, lat_bin_subset, lon_bin_subset, job_info.extent_box, job_info.range, job_info.cmap, job_info.out_plot_name, float(len(lon_data_indices)), float(len(lat_data_indices)))
+    success = patch_plot(grid_subset, lat_bin_subset, lon_bin_subset, job_info.extent_box, job_info.range, job_info.cmap, job_info.out_plot_name, float(len(lon_data_indices)), float(len(lat_data_indices)), verbose=verbose)
 
     del grid_subset
     del lat_bin_subset
