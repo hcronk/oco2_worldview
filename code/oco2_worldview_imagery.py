@@ -39,6 +39,9 @@ GEO_DICT = { "LtCO2" : {
                 }
             }          
 
+LITE_FILE_REGEX = "oco2_(?P<product>[A-Za-z0-9]{5})_(?P<yy>[0-9]{2})(?P<mm>[0-9]{2})(?P<dd>[0-9]{2})_(?P<version>B[0-9r]{,5})_[0-9]{12}s.nc4"
+FTP_REGEX = "ftp://(?P<ftp_host>([^/]*))(?P<ftp_cwd>/.*)/(?P<ftp_file>([^/]*)$)"
+
 RESOLUTION = "500m"
 DPI = 10000
 OCO2_MISSING = -999999
@@ -238,13 +241,13 @@ def get_oco2_data(var, oco2_file):
     f.close()
     return data
 
-def ftp_pull(path, filename):
+def ftp_pull(ftp_path):
     """Pulls data via FTP
     In operational path for pulling Reference XCO2 dataset from NOAA ESRL
     """
+    global FTP_SUBSTRING_DICT
     
-    path_tokens = re.split("/", path)
-    ftp_name = path_tokens[2]
+    FTP_SUBSTRING_DICT = re.match(FTP_REGEX, ftp_path).groupdict()
     
     count = 0
     tries = 5
@@ -252,7 +255,7 @@ def ftp_pull(path, filename):
     while count < tries:
 	try:
 	    #print("Connection attempt number " + str(count+1) + " for " + product)
-	    cnx = FTP(ftp_name)
+	    cnx = FTP(FTP_SUBSTRING_DICT["ftp_host"])
 	    break
 	except:
 	    print("Connection failed, trying again.")
@@ -260,37 +263,39 @@ def ftp_pull(path, filename):
 
     cnx.login()
     
-    cwd = re.split(ftp_name, path)[-1]
-    cnx.cwd(cwd)
+    #cwd = re.split(ftp_name, path)[-1]
+    cnx.cwd(FTP_SUBSTRING_DICT["ftp_cwd"])
     
-    with open(filename, "wb") as f:
-        cnx.retrbinary("RETR " + filename, f.write)
+    with open(FTP_SUBSTRING_DICT["ftp_file"], "wb") as f:
+        cnx.retrbinary("RETR " + FTP_SUBSTRING_DICT["ftp_file"], f.write)
     
-    if glob(filename) and os.path.getsize(filename) == cnx.size(filename):
+    if glob(FTP_SUBSTRING_DICT["ftp_file"]) and os.path.getsize(FTP_SUBSTRING_DICT["ftp_file"]) == cnx.size(FTP_SUBSTRING_DICT["ftp_file"]):
         cnx.close()
         return True
     else:
         cnx.close()
         return False
 
-def preprocess(var, oco2_file, external_data_file=None):
+def preprocess(var, lite_file, external_data_file=None):
     """
     Do any necessary processing to get data for the given variable
     In operational path
     """
     
     if var == "xco2_relative":
-        ftp_file = os.path.basename(external_data_file)
-        ftp_path= os.path.dirname(external_data_file)
-        success = ftp_pull(ftp_path, ftp_file)
+        #ftp_file = os.path.basename(external_data_file)
+        #ftp_path= os.path.dirname(external_data_file)
+        #success = ftp_pull(ftp_path, ftp_file)
+        success = ftp_pull(external_data_file)
         if success:
-            df = pd.read_csv(ftp_file, comment="#", na_values=-99.99, header=None, \
+            df = pd.read_csv(FTP_SUBSTRING_DICT["ftp_file"], comment="#", na_values=-99.99, header=None, \
                             names=['year', 'month', 'day', 'trend'], delim_whitespace=True)
-            yyyy = int("20" + re.split("_", os.path.basename(oco2_file))[2][0:2])
-            mm = int(re.split("_", os.path.basename(oco2_file))[2][2:4])
-            dd = int(re.split("_", os.path.basename(oco2_file))[2][4:6])
-            ref_xco2 = float(df["trend"][df.index[df["year"] == yyyy] & df.index[df["month"] == mm] & df.index[df["day"] == dd]])
-            oco2_xco2 = get_oco2_data("xco2", oco2_file)
+#            yyyy = int("20" + re.split("_", os.path.basename(oco2_file))[2][0:2])
+#            mm = int(re.split("_", os.path.basename(oco2_file))[2][2:4])
+#            dd = int(re.split("_", os.path.basename(oco2_file))[2][4:6])
+            
+            ref_xco2 = float(df["trend"][df.index[df["year"] == int("20" + LITE_FILE_SUBSTRING_DICT["yy"])] & df.index[df["month"] == int(LITE_FILE_SUBSTRING_DICT["mm"])] & df.index[df["day"] == int(LITE_FILE_SUBSTRING_DICT["dd"])]])
+            oco2_xco2 = get_oco2_data("xco2", lite_file)
             data = oco2_xco2 - ref_xco2
             del oco2_xco2
             del df
@@ -298,8 +303,8 @@ def preprocess(var, oco2_file, external_data_file=None):
             print("Unable to retrieve " + external_data_file)
             sys.exit()  
     elif var == "sif_blended":
-        sif757 = get_oco2_data("SIF_757nm", oco2_file)
-        sif771 = get_oco2_data("SIF_771nm", oco2_file)
+        sif757 = get_oco2_data("SIF_757nm", lite_file)
+        sif771 = get_oco2_data("SIF_771nm", lite_file)
         data = 0.5 * (sif757 + 1.5 * sif771)
         del sif757
         del sif771
@@ -442,18 +447,22 @@ def regrid_oco2(data, vertex_latitude, vertex_longitude, debug=False):
 
 def oco2_worldview_imagery(job_file, verbose=False, debug=False):
     
+    global LITE_FILE_SUBSTRING_DICT
+    
     if verbose:
         print("Processing " + job_file) 
     
     job_info = read_job_file(job_file)
 
-    lite_file_basename = os.path.basename(job_info.lite_file)
-    file_tokens = re.split("_", lite_file_basename)
+#    lite_file_basename = os.path.basename(job_info.lite_file)
+#    file_tokens = re.split("_", lite_file_basename)
+#
+#    yymmdd = file_tokens[2]
+#    version = file_tokens[3]
+    
+    LITE_FILE_SUBSTRING_DICT = re.match(LITE_FILE_REGEX, os.path.basename(job_info.lite_file)).groupdict()
 
-    yymmdd = file_tokens[2]
-    version = file_tokens[3]
-
-    date = "20" + yymmdd[:2] + "-" + yymmdd[2:4] + "-" + yymmdd[4:]
+    date = "20" + LITE_FILE_SUBSTRING_DICT["yy"] + "-" + LITE_FILE_SUBSTRING_DICT["mm"] + "-" + LITE_FILE_SUBSTRING_DICT["dd"]
 
     #regrid = True
 
