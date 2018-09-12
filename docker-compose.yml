@@ -1,0 +1,13 @@
+version: "2"
+
+services:
+    oco2_worldview:
+        build: .
+        image: oco2_worldview_imagery
+        container_name: oco2_worldview_imagery
+        volumes:
+        - ./code/:/code/
+        - /mnt/oconas9/subset/LtSIF/:/data/
+        - ./processing_status/:/home/hcronk/worldview/processing_status/
+        tty: true
+        network_mode: bridge
