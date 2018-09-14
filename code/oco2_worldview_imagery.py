@@ -11,8 +11,6 @@ import re
 import h5py
 import pandas as pd
 from shapely.geometry import Polygon, Point, LineString
-import matplotlib.pyplot as plt
-#import json
 import pickle
 from collections import namedtuple
 from ftplib import FTP
@@ -20,6 +18,8 @@ from glob import glob
 import matplotlib.patches as mpatches
 import xml.etree.ElementTree as ET
 import matplotlib as mpl
+mpl.use('agg')
+import matplotlib.pyplot as plt
 from osgeo import gdal, osr
 from PIL import Image
 import cartopy
