@@ -5,4 +5,3 @@ RUN conda install -y -c conda-forge cartopy
 RUN conda install -y -c conda-forge gdal
 RUN conda install -y -c conda-forge ncurses
 RUN conda install -y -c conda-forge hdf5
-RUN conda install -y -c conda-forge future
