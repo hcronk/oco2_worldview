@@ -88,8 +88,8 @@ def build_config(oco2_file, lite_product, var, extent_box, out_plot_name, job_fi
     
     if debug:
         print(job_file + " created for subsequent debugging")
-	os.remove(LOCKFILE)
-	sys.exit()
+        os.remove(LOCKFILE)
+        sys.exit()
 
     #sys.exit()
     #start process here, give arguments, after runs and returns, daemon=true to make sure children die if parent does _process = Process(number of cores), return true/false
@@ -124,39 +124,39 @@ def check_processing_or_problem(job_file, verbose=False):
     ISSUE_FILE = os.path.join(LOCKFILE_DIR, "problem", basename)
 
     if glob(ISSUE_FILE):
-	if verbose:
+        if verbose:
             print("There is a problem with the job " + job_file)
         return True
 
     if glob(LOCKFILE):
         with open(LOCKFILE, "r") as lf:
-	    tries = lf.readlines()
-	
-	latest_try = tries[-1].rstrip("\n")
-	latest_try_dt = datetime.datetime.strptime(re.split("\.", latest_try)[0], "%Y-%m-%d %H:%M:%S")
-	today = datetime.datetime.now()
-	delta_t = (today - latest_try_dt).total_seconds()
-	if delta_t <= TRY_WAIT:
-	    #Give it some time before trying to process again
+            tries = lf.readlines()
+        
+        latest_try = tries[-1].rstrip("\n")
+        latest_try_dt = datetime.datetime.strptime(re.split("\.", latest_try)[0], "%Y-%m-%d %H:%M:%S")
+        today = datetime.datetime.now()
+        delta_t = (today - latest_try_dt).total_seconds()
+        if delta_t <= TRY_WAIT:
+            #Give it some time before trying to process again
             if verbose:
                 print(job_file + " is already processing")
-	    return True
-	
-	if len(tries) > TRY_THRESHOLD:
-	    shutil.copy(LOCKFILE, ISSUE_FILE)
-	    if glob(ISSUE_FILE) and os.stat(LOCKFILE).st_size == os.stat(ISSUE_FILE).st_size:
-		os.remove(LOCKFILE)
-	    if verbose:
+            return True
+        
+        if len(tries) > TRY_THRESHOLD:
+            shutil.copy(LOCKFILE, ISSUE_FILE)
+            if glob(ISSUE_FILE) and os.stat(LOCKFILE).st_size == os.stat(ISSUE_FILE).st_size:
+                os.remove(LOCKFILE)
+            if verbose:
                 print("There is a problem with the job " + job_file)
             return True
-	else:
-	    with open(LOCKFILE, "a") as lf:
-		lf.write(str(datetime.datetime.now()) + "\n")
-	    return False
+        else:
+            with open(LOCKFILE, "a") as lf:
+                lf.write(str(datetime.datetime.now()) + "\n")
+            return False
     else:
-	#Create lockfile
-	with open(LOCKFILE, "w") as lf:
-	    lf.write(str(datetime.datetime.now()) + "\n")
+        #Create lockfile
+        with open(LOCKFILE, "w") as lf:
+            lf.write(str(datetime.datetime.now()) + "\n")
     
         return False
 
@@ -176,9 +176,9 @@ def run_job(job_file, verbose=False):
     
     if success and job_worked:
         os.remove(job_file)
-	os.remove(LOCKFILE)
-	if glob(ISSUE_FILE):
-	    os.remove(ISSUE_FILE)
+        os.remove(LOCKFILE)
+        if glob(ISSUE_FILE):
+            os.remove(ISSUE_FILE)
         if rgb:
             just_plot_name = os.path.basename(plot_name)
             rgb_name = os.path.join(OUT_PLOT_DIR, re.sub(var, "RGB", just_plot_name))

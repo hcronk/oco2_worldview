@@ -255,13 +255,13 @@ def ftp_pull(ftp_path):
     tries = 5
     
     while count < tries:
-	try:
-	    #print("Connection attempt number " + str(count+1) + " for " + product)
-	    cnx = FTP(FTP_SUBSTRING_DICT["ftp_host"])
-	    break
-	except:
-	    print("Connection failed, trying again.")
-	count += 1
+        try:
+            #print("Connection attempt number " + str(count+1) + " for " + product)
+            cnx = FTP(FTP_SUBSTRING_DICT["ftp_host"])
+            break
+        except:
+            print("Connection failed, trying again.")
+        count += 1
 
     cnx.login()
     
