@@ -2,9 +2,11 @@ version: "2"
 
 services:
     oco2_worldview:
-        build: .
-        image: oco2_worldview_imagery
-        container_name: oco2_worldview_imagery
+        build:
+            context: .
+            dockerfile: Dockerfile.v2p7
+        image: oco2_worldview_imagery_v2p7
+        container_name: oco2_worldview_imagery_v2p7
         volumes:
         - ./code/:/code/
         - /mnt/oconas9/subset/LtSIF/:/data/
