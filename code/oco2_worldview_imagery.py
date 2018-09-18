@@ -18,13 +18,12 @@ from glob import glob
 import matplotlib.patches as mpatches
 import xml.etree.ElementTree as ET
 import matplotlib as mpl
-mpl.use('agg')
-import matplotlib.pyplot as plt
 from osgeo import gdal, osr
 from PIL import Image
 import cartopy
 import cartopy.feature as cfeature
 ccrs = cartopy.crs
+#NOTE: matplotlib.pyplot import is handled in main code to support interactively selecting the backend based on usage
 
 #Global Variables
 CODE_DIR = os.path.dirname(os.path.realpath(__file__))
@@ -357,6 +356,7 @@ def extent_box_to_indices(extent_box):
 
 
 def regrid_oco2(data, vertex_latitude, vertex_longitude, debug=False):
+    
     """
     Put OCO-2 data on a regular grid
     In operational path
@@ -573,5 +573,15 @@ if __name__ == "__main__":
     verbose = args.verbose
     debug = args.debug
     
+    if debug:
+        if os.environ.get("DISPLAY") == None:
+            print("No display found. Cannot produce interactive plots for debugging")
+            sys.exit()
+        else:
+            mpl.use("TKAgg")
+    else:
+        mpl.use("agg")
+    
+    import matplotlib.pyplot as plt
     
     success = oco2_worldview_imagery(job_file, verbose=verbose, debug=debug)
