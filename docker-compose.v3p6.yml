@@ -1,0 +1,16 @@
+version: "2"
+
+services:
+    oco2_worldview:
+        build:
+            context: .
+            dockerfile: Dockerfile.v3p6
+        image: oco2_worldview_imagery_v3p6
+        container_name: oco2_worldview_imagery_v3p6
+        volumes:
+        - ./code/:/code/
+        - /mnt/oconas9/subset/LtSIF/:/data/
+        - ./processing_status/processing/:/home/hcronk/worldview/processing_status/processing/
+        - ./processing_status/problem/:/home/hcronk/worldview/processing_status/problem/
+        tty: true
+        network_mode: bridge
