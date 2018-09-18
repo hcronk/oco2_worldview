@@ -10,6 +10,7 @@ services:
         volumes:
         - ./code/:/code/
         - /mnt/oconas9/subset/LtSIF/:/data/
-        - ./processing_status/:/home/hcronk/worldview/processing_status/
+        - ./processing_status/processing/:/home/hcronk/worldview/processing_status/processing/
+        - ./processing_status/problem/:/home/hcronk/worldview/processing_status/problem/
         tty: true
         network_mode: bridge
