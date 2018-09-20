@@ -498,6 +498,32 @@ def regrid_oco2(data, vertex_latitude, vertex_longitude, debug=False):
     
     return grid
 
+def valid_polygon_indices_eq(lat_vertices, lon_vertices, problem_value):
+    """
+    Find the rows (sounding polygons) where none of the vertices
+    are equal to the problematic value.
+    """ 
+    
+    #Check if any lat/lon rows (the 4 vertices of the sounding polygon) contain the value_to_mask
+    no_problematic_values_in_row = np.logical_not(np.any(lat_vertices == problem_value, axis=1), np.any(lon_vertices == problem_value, axis=1))
+    indices_where_all_valid = np.where(no_problematic_values_in_row)
+    
+    return indices_where_all_valid
+    
+    
+def valid_polygon_indices_within(lat_vertices, lon_vertices, low_lim, high_lim):
+    """
+    Find the rows (sounding polygons) where all of vertices
+    are within the low and high value limits.
+    """ 
+    
+    #Check if any lat/lon rows (the 4 vertices of the sounding polygon) go beyond the low and high limits
+    no_problematic_values_in_row = np.logical_not(np.any(lat_vertices <= low_lim, axis=1), np.any(lon_vertices >= high_lim, axis=1))
+    indices_where_all_valid = np.where(no_problematic_values_in_row)
+    
+    return indices_where_all_valid
+    
+
 def oco2_worldview_imagery(job_file, verbose=False, debug=False):
     
     global LITE_FILE_SUBSTRING_DICT
@@ -554,11 +580,23 @@ def oco2_worldview_imagery(job_file, verbose=False, debug=False):
 
     var_lat = get_oco2_data(GEO_DICT[job_info.product]["lat"], job_info.lite_file)
     var_lon = get_oco2_data(GEO_DICT[job_info.product]["lon"], job_info.lite_file)
+    
     #Cut out the missing data and the data that crosses the date line
-    vertex_miss_mask = np.where(np.logical_not(np.any(var_lat == OCO2_MISSING, axis=1), np.any(var_lon == OCO2_MISSING, axis=1)))
-    vertex_zero_mask = np.where(np.logical_not(np.any(var_lat == 0.0, axis=1), np.any(var_lon == 0.0, axis=1)))
-    vertex_crossDL_mask = np.where(np.logical_not(np.any(var_lon <= -179.9, axis=1), np.any(var_lon >= 179.9, axis=1)))
-
+    
+    #OCO-2 stores the lat and lon of vertices of soundings in an two [along-track X 4] arrays 
+    #and for regridding, the geolocation of all vertices must exist. 
+    #Therefore, if either lat or lon of one or more vertices are missing, that row should be masked for operations.
+    #There was also a bug in some versions of the OCO-2 data that erroneously set the geolocation to 0.0
+    #in places where it does not make sense, so those rows are masked too
+    vertex_miss_mask = valid_polygon_indices_eq(var_lat, var_lon, OCO2_MISSING)
+    vertex_zero_mask = valid_polygon_indices_eq(var_lat, var_lon, 0.0)
+    
+    #Worldview segregates data by day at the dateline, 
+    #so if the geolocation of any sounding vertices crosses the date line, 
+    #that sounding it should not be included for the given day
+    vertex_crossDL_mask = valid_polygon_indices_within(var_lat, var_lon, -179.9, 179.9)
+    
+    #Combine the row indices where all vertices are useable
     total_gridding_mask = reduce(np.intersect1d, (vertex_miss_mask, vertex_zero_mask, vertex_crossDL_mask))
 
     if job_info.quality_info:
