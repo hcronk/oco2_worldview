@@ -49,7 +49,7 @@ if __name__ == "__main__":
     parser.add_argument("@a", "@@vars", help="Variables to plot", nargs = '+', default=[])
     parser.add_argument("@w", "@@overwrite", help="Overwrite existing plots", action="store_true")
     parser.add_argument("@d", "@@debug", help="Just create job config file for debugging", action="store_true")
-    parser.add_argument("@t", "@@stitch", help="Stitch together four quadrant plots", action="store_true")
+    parser.add_argument("@s", "@@stitch", help="Stitch together four quadrant plots", action="store_true")
     args = parser.parse_args()
     
     verbose = args.verbose
