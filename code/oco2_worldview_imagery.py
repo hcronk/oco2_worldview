@@ -23,7 +23,7 @@ from PIL import Image
 import cartopy
 import cartopy.feature as cfeature
 ccrs = cartopy.crs
-#NOTE: matplotlib.pyplot import is handled in main code to support interactively selecting the backend based on usage
+#NOTE: matplotlib.pyplot import is handled import_pyplot_appropriately function to support interactively selecting the backend based on usage
 
 #Global Variables
 CODE_DIR = os.path.dirname(os.path.realpath(__file__))
@@ -207,7 +207,7 @@ def patch_plot(data, grid_lat_south, grid_lat_north, grid_lon_west, grid_lon_eas
     #subset_lat_vertex = np.vstack([grid_lat[y], grid_lat[y], grid_lat[y + 1], grid_lat[y + 1]] for y in yg)
     #subset_lon_vertex = np.vstack([grid_lon[x], grid_lon[x + 1], grid_lon[x + 1], grid_lon[x]] for x in xg)
     subset_lat_vertex = np.vstack([grid_lat_south[y], grid_lat_south[y], grid_lat_north[y], grid_lat_north[y]] for y in yg)
-    subset_lon_vertex = np.vstack([grid_lon_west[x], grid_lon_east[x], grid_lon_west[1], grid_lon_east[x]] for x in xg)
+    subset_lon_vertex = np.vstack([grid_lon_west[x], grid_lon_east[x], grid_lon_west[x], grid_lon_east[x]] for x in xg)
     
     zip_it = np.dstack([subset_lon_vertex, subset_lat_vertex])
 
