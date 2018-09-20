@@ -721,10 +721,10 @@ if __name__ == "__main__":
         
     global plt
     
-    parser = argparse.ArgumentParser(description="OCO-2 Worldview imagery generation job", prefix_chars='-')
-    parser.add_argument("-c", "--config_file", help="Path to the job configuration file", required=True)
-    parser.add_argument("-v", "--verbose", help="Prints some basic information during code execution", action="store_true")
-    parser.add_argument("-d", "--debug", help="Plot polygon vertices and gridpoints to visualize/quality check", action="store_true")
+    parser = argparse.ArgumentParser(description="OCO-2 Worldview imagery generation job", prefix_chars='@')
+    parser.add_argument("@c", "@@config_file", help="Path to the job configuration file", required=True)
+    parser.add_argument("@v", "@@verbose", help="Prints some basic information during code execution", action="store_true")
+    parser.add_argument("@d", "@@debug", help="Plot polygon vertices and gridpoints to visualize/quality check", action="store_true")
     args = parser.parse_args()
 
     job_file = args.config_file
