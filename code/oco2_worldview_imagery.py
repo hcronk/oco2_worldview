@@ -48,15 +48,39 @@ OCO2_MISSING = -999999
 #These numbers came from the GIBS ICD
 GIBS_RESOLUTION_DICT = {"2km" : 0.017578125, "1km" : 0.0087890625, "500m" : 0.00439453125, "250m" : 0.002197265625}
 
-#South to North by 1/2 km bins, starting at -90 and ending at 89.
-LAT_BINS = np.arange(-90, 90, GIBS_RESOLUTION_DICT[RESOLUTION], dtype=float)
-#West to East by 1km bins
-LON_BINS = np.arange(-180, 180, GIBS_RESOLUTION_DICT[RESOLUTION], dtype=float)
+#South to North by 1/2 km
+#LAT_BINS = np.arange(-90, 90, GIBS_RESOLUTION_DICT[RESOLUTION], dtype=float)
+#print LAT_BINS.shape
+#print LAT_BINS
+LAT_GRID_SOUTH = np.arange(-90, 90 + GIBS_RESOLUTION_DICT[RESOLUTION], GIBS_RESOLUTION_DICT[RESOLUTION], dtype=float)[:-1]
+#print LAT_GRID_SOUTH.shape
+#print LAT_GRID_SOUTH
+LAT_GRID_NORTH = np.arange(-90, 90 + GIBS_RESOLUTION_DICT[RESOLUTION], GIBS_RESOLUTION_DICT[RESOLUTION], dtype=float)[1:]
+#print LAT_GRID_NORTH.shape
+#print LAT_GRID_NORTH
+#print
+
+#West to East by 1/2km 
+#LON_BINS = np.arange(-180, 180, GIBS_RESOLUTION_DICT[RESOLUTION], dtype=float)
+#print LON_BINS.shape
+#print LON_BINS
+LON_GRID_WEST = np.arange(-180, 180 + GIBS_RESOLUTION_DICT[RESOLUTION], GIBS_RESOLUTION_DICT[RESOLUTION], dtype=float)[:-1]
+#print LON_GRID_WEST.shape
+#print LON_GRID_WEST
+LON_GRID_EAST = np.arange(-180, 180 + GIBS_RESOLUTION_DICT[RESOLUTION], GIBS_RESOLUTION_DICT[RESOLUTION], dtype=float)[1:]
+#print LON_GRID_EAST.shape
+#print LON_GRID_EAST
 
 #South to North, starting 1/2km North of the southern most bin line and ending 1/2 km North of the northern most bin line
-LAT_CENTERS = np.arange(LAT_BINS[0] + GIBS_RESOLUTION_DICT[RESOLUTION] / 2., LAT_BINS[-1] + GIBS_RESOLUTION_DICT[RESOLUTION], GIBS_RESOLUTION_DICT[RESOLUTION], dtype=float)
+#LAT_CENTERS = np.arange(LAT_BINS[0] + GIBS_RESOLUTION_DICT[RESOLUTION] / 2., LAT_BINS[-1] + GIBS_RESOLUTION_DICT[RESOLUTION], GIBS_RESOLUTION_DICT[RESOLUTION], dtype=float)
+LAT_CENTERS = np.arange(LAT_GRID_SOUTH[0] + GIBS_RESOLUTION_DICT[RESOLUTION] / 2., LAT_GRID_NORTH[-1], GIBS_RESOLUTION_DICT[RESOLUTION], dtype=float)
 #West to East, starting 1/2km East of the western most bin line and ending 1/2 km east of the easternmost bin line
-LON_CENTERS = np.arange(LON_BINS[0] + GIBS_RESOLUTION_DICT[RESOLUTION] / 2., LON_BINS[-1] + GIBS_RESOLUTION_DICT[RESOLUTION], GIBS_RESOLUTION_DICT[RESOLUTION], dtype=float)
+#LON_CENTERS = np.arange(LON_BINS[0] + GIBS_RESOLUTION_DICT[RESOLUTION] / 2., LON_BINS[-1] + GIBS_RESOLUTION_DICT[RESOLUTION], GIBS_RESOLUTION_DICT[RESOLUTION], dtype=float)
+LON_CENTERS = np.arange(LON_GRID_WEST[0] + GIBS_RESOLUTION_DICT[RESOLUTION] / 2., LON_GRID_EAST[-1], GIBS_RESOLUTION_DICT[RESOLUTION], dtype=float)
+
+#print LAT_CENTERS
+#print LON_CENTERS
+#sys.exit()
 
 def read_job_file(job_file):
     """
@@ -160,7 +184,7 @@ def prep_RGB(rgb_name, extent, xpix, ypix):
     
     return True
 
-def patch_plot(data, grid_lat, grid_lon, extent, data_limits, cmap, out_plot_name, xpix, ypix, verbose=False):
+def patch_plot(data, grid_lat_south, grid_lat_north, grid_lon_west, grid_lon_east, extent, data_limits, cmap, out_plot_name, xpix, ypix, verbose=False):
     """
     Plot data polygons on a lat/lon grid
     In operational path
@@ -327,32 +351,58 @@ def extent_box_to_indices(extent_box):
     lat_data_indices = np.where(np.logical_and(LAT_CENTERS >= lat_lr, LAT_CENTERS <= lat_ul))[0]
 
 
-    if lat_data_indices[0] == 0:
-        low_lat_idx = 0
-    else:
-        low_lat_idx = min(lat_data_indices)
-
-    if lat_data_indices[-1] == len(LAT_CENTERS) - 1:
-        high_lat_idx = lat_data_indices[-1]
-    else:
-        high_lat_idx = max(lat_data_indices) + 1      
-
-    lat_grid_indices = np.arange(low_lat_idx, high_lat_idx + 1, dtype=int)
-
-
-    if lon_data_indices[0] == 0:
-        low_lon_idx = 0
-    else:
-        low_lon_idx = min(lon_data_indices)
-
-    if lon_data_indices[-1] == len(LON_CENTERS) - 1:
-        high_lon_idx = lon_data_indices[-1]
-    else:
-        high_lon_idx = max(lon_data_indices) + 1
-
-    lon_grid_indices = np.arange(low_lon_idx, high_lon_idx + 1, dtype=int)
+#    if lat_data_indices[0] == 0:
+#        low_lat_idx = 0
+#    else:
+#        low_lat_idx = min(lat_data_indices)
+#
+#    if lat_data_indices[-1] == len(LAT_CENTERS) - 1:
+#        high_lat_idx = lat_data_indices[-1]
+#    else:
+#        high_lat_idx = max(lat_data_indices) + 1      
+#
+#    lat_grid_indices = np.arange(low_lat_idx, high_lat_idx + 1, dtype=int)
+#
+#
+#    if lon_data_indices[0] == 0:
+#        low_lon_idx = 0
+#    else:
+#        low_lon_idx = min(lon_data_indices)
+#
+#    if lon_data_indices[-1] == len(LON_CENTERS) - 1:
+#        high_lon_idx = lon_data_indices[-1]
+#    else:
+#        high_lon_idx = max(lon_data_indices) + 1
+#
+#    lon_grid_indices = np.arange(low_lon_idx, high_lon_idx + 1, dtype=int)
+#    
+##    print
+##    print"Subsets"
+##    print "Longitude (bins/centers)"
+##    print LON_BINS[lon_grid_indices]
+##    print LON_CENTERS[lon_data_indices]
+##    #print LON_CENTERS[lon_data_indices[0] - 1]
+##    #print LON_CENTERS[lon_data_indices[-1] + 1]
+##    print
+##    print "Latitude (bins/centers)"
+##    print LAT_BINS[lat_grid_indices]
+##    print LAT_CENTERS[lat_data_indices]
+##    #print LAT_CENTERS[lat_data_indices[0] - 1]
+##    #print LAT_CENTERS[lat_data_indices[-1] + 1]
+##    
+##    print
+##    print lat_data_indices
+##    print LAT_CENTERS.shape
+##    print lon_data_indices
+##    print LON_CENTERS.shape
+##    print
+##    print lat_grid_indices
+##    print LAT_BINS.shape
+##    print lon_grid_indices
+##    print LON_BINS.shape
+##    #sys.exit()
     
-    return lat_data_indices, lon_data_indices, lat_grid_indices, lon_grid_indices        
+    return lat_data_indices, lon_data_indices#, lat_grid_indices, lon_grid_indices        
 
 
 def regrid_oco2(data, vertex_latitude, vertex_longitude, debug=False):
@@ -467,7 +517,32 @@ def oco2_worldview_imagery(job_file, verbose=False, debug=False):
 
     date = "20" + LITE_FILE_SUBSTRING_DICT["yy"] + "-" + LITE_FILE_SUBSTRING_DICT["mm"] + "-" + LITE_FILE_SUBSTRING_DICT["dd"]
 
-    #regrid = True
+#    print "Extent box [lon_min, lon_max, lat_min, lat_max]"
+#    print job_info.extent_box
+#    lat_data_indices, lon_data_indices = extent_box_to_indices(job_info.extent_box)
+#    print
+#    print "Longitude"
+#    print "Indices"
+#    print lon_data_indices
+#    print "West Side"
+#    print LON_GRID_WEST[lon_data_indices]
+#    print "Center"
+#    print LON_CENTERS[lon_data_indices]
+#    print "East Side"
+#    print LON_GRID_EAST[lon_data_indices]
+#    print
+#    print "Latitude"
+#    print "Indices"
+#    print lat_data_indices
+#    print "South Side"
+#    print LAT_GRID_SOUTH[lat_data_indices]
+#    print "Center"
+#    print LAT_CENTERS[lat_data_indices]
+#    print "North Side"
+#    print LAT_GRID_NORTH[lat_data_indices]
+#    sys.exit()
+#    print 
+#    print 
 
     if job_info.preprocessing:
         if type(job_info.preprocessing) == str:
@@ -523,19 +598,60 @@ def oco2_worldview_imagery(job_file, verbose=False, debug=False):
     del x_action
     del y_action
     
-    lat_data_indices, lon_data_indices, lat_grid_indices, lon_grid_indices = extent_box_to_indices(job_info.extent_box)
+    #lat_data_indices, lon_data_indices, lat_grid_indices, lon_grid_indices = extent_box_to_indices(job_info.extent_box)
+    lat_data_indices, lon_data_indices = extent_box_to_indices(job_info.extent_box)
+    print lat_data_indices
+    print lon_data_indices
+    print LAT_CENTERS[lat_data_indices]
+    print LON_CENTERS[on_data_indices]
+    print 
+    print
 
     if verbose:
         print("Plotting")
-    grid_subset = grid[int(lon_data_indices[0]) : int(lon_data_indices[-1] + 1), int(lat_data_indices[0]) : int(lat_data_indices[-1] + 1)]
+    #grid_subset = grid[int(lon_data_indices[0]) : int(lon_data_indices[-1] + 1), int(lat_data_indices[0]) : int(lat_data_indices[-1] + 1)]
+    #grid_subset = grid[lon_data_indices, lat_data_indices]
+    data_subset = grid[int(lon_data_indices[0]) : int(lon_data_indices[-1]), int(lat_data_indices[0]) : int(lat_data_indices[-1])]
     del grid
-    lat_bin_subset = LAT_BINS[lat_grid_indices]
-    lon_bin_subset = LON_BINS[lon_grid_indices]
-    success = patch_plot(grid_subset, lat_bin_subset, lon_bin_subset, job_info.extent_box, job_info.range, job_info.cmap, job_info.out_plot_name, float(len(lon_data_indices)), float(len(lat_data_indices)), verbose=verbose)
+    #lat_bin_subset = LAT_BINS[lat_grid_indices]
+    #lon_bin_subset = LON_BINS[lon_grid_indices]
+    grid_south_subset = LAT_GRID_SOUTH[lat_data_indices]
+    grid_north_subset = LAT_GRID_NORTH[lat_data_indices]
+    grid_west_subset = LON_GRID_WEST[lon_data_indices]
+    grid_east_subset = LON_GRID_EAST[lon_data_indices]
+   
+    #success = patch_plot(grid_subset, lat_bin_subset, lon_bin_subset, job_info.extent_box, job_info.range, job_info.cmap, job_info.out_plot_name, float(len(lon_data_indices)), float(len(lat_data_indices)), verbose=verbose)
 
-    del grid_subset
-    del lat_bin_subset
-    del lon_bin_subset
+    success = patch_plot(data_subset, grid_south_subset, grid_north_subset, grid_west_subset, grid_east_subset, job_info.extent_box, job_info.range, job_info.cmap, job_info.out_plot_name, float(len(lon_data_indices)), float(len(lat_data_indices)), verbose=verbose)
+
+#    print
+#    print job_info.extent_box
+#    lat_data_indices, lon_data_indices = extent_box_to_indices(job_info.extent_box)
+#    print lon_data_indices
+#    print lat_data_indices
+#    print
+#    grid = np.empty([len(LON_CENTERS), len(LAT_CENTERS)])
+#    grid_subset = grid[int(lon_data_indices[0]) : int(lon_data_indices[-1] + 1), int(lat_data_indices[0]) : int(lat_data_indices[-1] + 1)]
+#
+#    #grid_lat = LAT_BINS[lat_grid_indices]
+#    #grid_lon = LON_BINS[lon_grid_indices]
+#    subset_lat_vertex = np.vstack([LAT_GRID_SOUTH[y], LAT_GRID_SOUTH[y], LAT_GRID_NORTH[y], LAT_GRID_NORTH[y]] for y in np.arange(0, grid_subset.shape[1]))
+#    subset_lon_vertex = np.vstack([LON_GRID_WEST[x], LON_GRID_EAST[x], LON_GRID_WEST[1], LON_GRID_EAST[x]] for x in np.arange(0, grid_subset.shape[0]))
+#    print "Lon vertices"
+#    print subset_lon_vertex
+#    print "Lat vertices"
+#    print subset_lat_vertex
+#    sys.exit()
+    
+#    del grid_subset
+#    del lat_bin_subset
+#    del lon_bin_subset
+
+    del data_subset
+    del grid_south_subset
+    del grid_north_subset
+    del grid_west_subset
+    del grid_east_subset
 
     if not success:
         return
