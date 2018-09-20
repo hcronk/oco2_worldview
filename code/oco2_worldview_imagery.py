@@ -201,8 +201,10 @@ def patch_plot(data, grid_lat_south, grid_lat_north, grid_lon_west, grid_lon_eas
     
     valid_grid = data[xg,yg].astype(float)
 
-    subset_lat_vertex = np.vstack([grid_lat[y], grid_lat[y], grid_lat[y + 1], grid_lat[y + 1]] for y in yg)
-    subset_lon_vertex = np.vstack([grid_lon[x], grid_lon[x + 1], grid_lon[x + 1], grid_lon[x]] for x in xg)
+    #subset_lat_vertex = np.vstack([grid_lat[y], grid_lat[y], grid_lat[y + 1], grid_lat[y + 1]] for y in yg)
+    #subset_lon_vertex = np.vstack([grid_lon[x], grid_lon[x + 1], grid_lon[x + 1], grid_lon[x]] for x in xg)
+    subset_lat_vertex = np.vstack([grid_lat_south[y], grid_lat_south[y], grid_lat_north[y], grid_lat_north[y]] for y in yg)
+    subset_lon_vertex = np.vstack([grid_lon_west[x], grid_lon_east[x], grid_lon_west[1], grid_lon_east[x]] for x in xg)
     
     zip_it = np.dstack([subset_lon_vertex, subset_lat_vertex])
 
@@ -641,7 +643,7 @@ def oco2_worldview_imagery(job_file, verbose=False, debug=False):
     print lat_data_indices
     print lon_data_indices
     print LAT_CENTERS[lat_data_indices]
-    print LON_CENTERS[on_data_indices]
+    print LON_CENTERS[lon_data_indices]
     print 
     print
 
@@ -717,6 +719,8 @@ def oco2_worldview_imagery(job_file, verbose=False, debug=False):
                     
 if __name__ == "__main__":
         
+    global plt
+    
     parser = argparse.ArgumentParser(description="OCO-2 Worldview imagery generation job", prefix_chars='-')
     parser.add_argument("-c", "--config_file", help="Path to the job configuration file", required=True)
     parser.add_argument("-v", "--verbose", help="Prints some basic information during code execution", action="store_true")
