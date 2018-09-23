@@ -200,6 +200,8 @@ def patch_plot(data, grid_lat_south, grid_lat_north, grid_lon_west, grid_lon_eas
 
     xg, yg = np.nonzero(data)
     if not xg.size or not yg.size:
+        if verbose:
+            print("No data!")
         return False
     
     valid_grid = data[xg,yg].astype(float)
@@ -207,7 +209,7 @@ def patch_plot(data, grid_lat_south, grid_lat_north, grid_lon_west, grid_lon_eas
     #subset_lat_vertex = np.vstack([grid_lat[y], grid_lat[y], grid_lat[y + 1], grid_lat[y + 1]] for y in yg)
     #subset_lon_vertex = np.vstack([grid_lon[x], grid_lon[x + 1], grid_lon[x + 1], grid_lon[x]] for x in xg)
     subset_lat_vertex = np.vstack([grid_lat_south[y], grid_lat_south[y], grid_lat_north[y], grid_lat_north[y]] for y in yg)
-    subset_lon_vertex = np.vstack([grid_lon_west[x], grid_lon_east[x], grid_lon_west[x], grid_lon_east[x]] for x in xg)
+    subset_lon_vertex = np.vstack([grid_lon_west[x], grid_lon_east[x], grid_lon_east[x], grid_lon_west[x]] for x in xg)
     
     zip_it = np.dstack([subset_lon_vertex, subset_lat_vertex])
 
@@ -358,7 +360,7 @@ def extent_box_to_indices(extent_box):
     return lat_data_indices, lon_data_indices#, lat_grid_indices, lon_grid_indices        
 
 
-def regrid_oco2(data, vertex_latitude, vertex_longitude, debug=False):
+def regrid_oco2(data, vertex_latitude, vertex_longitude, lat_centers_subset, lon_centers_subset, debug=False):
     
     """
     Put OCO-2 data on a regular grid
@@ -368,7 +370,8 @@ def regrid_oco2(data, vertex_latitude, vertex_longitude, debug=False):
     if not "matplotlib.pyplot" in sys.modules:
         success = import_pyplot_appropriately(debug)
     
-    grid = np.empty([len(LON_CENTERS), len(LAT_CENTERS)], dtype=np.object)
+    #grid = np.empty([len(LON_CENTERS), len(LAT_CENTERS)], dtype=np.object)
+    grid = np.empty([len(lon_centers_subset), len(lat_centers_subset)], dtype=np.object)
     
     #Create lat/lon corner pairs from vertices
     #Each element of this array is a 4x2 array of lat/lon points of the parallelogram corners (Order: LL, UL, UR, LR)
@@ -384,16 +387,20 @@ def regrid_oco2(data, vertex_latitude, vertex_longitude, debug=False):
         pg = [Polygon((x, y) for x, y in vertices)][0]
 
         #Get the indexes of the center grid boxes where the lat/lon of the center is between the vertex min/max for this polygon
-        lat_idx = np.where(np.logical_and(LAT_CENTERS >= vlat_mins[n], LAT_CENTERS <= vlat_maxes[n]))[0]
-        lon_idx = np.where(np.logical_and(LON_CENTERS >= vlon_mins[n], LON_CENTERS <= vlon_maxes[n]))[0]
+        #lat_idx = np.where(np.logical_and(LAT_CENTERS >= vlat_mins[n], LAT_CENTERS <= vlat_maxes[n]))[0]
+        #lon_idx = np.where(np.logical_and(LON_CENTERS >= vlon_mins[n], LON_CENTERS <= vlon_maxes[n]))[0]
+        lat_idx = np.where(np.logical_and(lat_centers_subset >= vlat_mins[n], lat_centers_subset <= vlat_maxes[n]))[0]
+        lon_idx = np.where(np.logical_and(lon_centers_subset >= vlon_mins[n], lon_centers_subset <= vlon_maxes[n]))[0]
 
         #If there are no grid boxes inside this polygon, move on to the next polygon
         if len(lat_idx) == 0 or len(lon_idx) == 0:
             continue
 
         #Get the center lat/lon bounds of the grid boxes inside this polygon
-        center_lat_subset = LAT_CENTERS[lat_idx]
-        center_lon_subset = LON_CENTERS[lon_idx]
+#        center_lat_subset = LAT_CENTERS[lat_idx]
+#        center_lon_subset = LON_CENTERS[lon_idx]
+        center_lat_subset = lat_centers_subset[lat_idx]
+        center_lon_subset = lon_centers_subset[lon_idx]
 
         lat_m, lon_m = np.meshgrid(center_lat_subset, center_lon_subset)
         zip_it = zip(list(lat_m.flatten()), list(lon_m.flatten()))
@@ -403,8 +410,10 @@ def regrid_oco2(data, vertex_latitude, vertex_longitude, debug=False):
         for ll in zip_it:
             pt = Point(ll[0], ll[1])
             if pt.within(pg):
-                x = np.where(ll[1] == LON_CENTERS)[0][0]
-                y = np.where(ll[0] == LAT_CENTERS)[0][0]
+                #x = np.where(ll[1] == LON_CENTERS)[0][0]
+                #y = np.where(ll[0] == LAT_CENTERS)[0][0]
+                x = np.where(ll[1] == lon_centers_subset)[0][0]
+                y = np.where(ll[0] == lat_centers_subset)[0][0]
                 if grid[x,y] is None:
                     grid[x,y] = [data[n]]
                     #grid[x,y] = [n]
@@ -413,8 +422,10 @@ def regrid_oco2(data, vertex_latitude, vertex_longitude, debug=False):
                     #grid[x,y].append(n)
             else:
                 if pg.exterior.distance(pt) <= 1e-3:
-                    x = np.where(ll[1] == LON_CENTERS)[0][0]
-                    y = np.where(ll[0] == LAT_CENTERS)[0][0]
+                    #x = np.where(ll[1] == LON_CENTERS)[0][0]
+                    #y = np.where(ll[0] == LAT_CENTERS)[0][0]
+                    x = np.where(ll[1] == lon_centers_subset)[0][0]
+                    y = np.where(ll[0] == lat_centers_subset)[0][0]
                     if grid[x,y] is None:
                         grid[x,y] = [data[n]]
                         #grid[x,y] = [n]
@@ -504,18 +515,23 @@ def oco2_worldview_imagery(job_file, verbose=False, debug=False):
     
     #Cut out the missing data and the data that crosses the date line
     
-    #OCO-2 stores the lat and lon of vertices of soundings in an two [along-track X 4] arrays 
-    #and for regridding, the geolocation of all vertices must exist. 
-    #Therefore, if either lat or lon of one or more vertices are missing, that row should be masked for operations.
-    #There was also a bug in some versions of the OCO-2 data that erroneously set the geolocation to 0.0
-    #in places where it does not make sense, so those rows are masked too
-    vertex_miss_mask = valid_polygon_indices_eq(var_lat, var_lon, OCO2_MISSING)
-    vertex_zero_mask = valid_polygon_indices_eq(var_lat, var_lon, 0.0)
-    
-    #Worldview segregates data by day at the dateline, 
-    #so if the geolocation of any sounding vertices crosses the date line, 
-    #that sounding it should not be included for the given day
-    vertex_crossDL_mask = valid_polygon_indices_within(var_lat, var_lon, -179.9, 179.9)
+#    #OCO-2 stores the lat and lon of vertices of soundings in an two [along-track X 4] arrays 
+#    #and for regridding, the geolocation of all vertices must exist. 
+#    #Therefore, if either lat or lon of one or more vertices are missing, that row should be masked for operations.
+#    #There was also a bug in some versions of the OCO-2 data that erroneously set the geolocation to 0.0
+#    #in places where it does not make sense, so those rows are masked too
+#    vertex_miss_mask = valid_polygon_indices_eq(var_lat, var_lon, OCO2_MISSING)
+#    vertex_zero_mask = valid_polygon_indices_eq(var_lat, var_lon, 0.0)
+#    
+#    #Worldview segregates data by day at the dateline, 
+#    #so if the geolocation of any sounding vertices crosses the date line, 
+#    #that sounding it should not be included for the given day
+#    vertex_crossDL_mask = valid_polygon_indices_within(var_lat, var_lon, -179.9, 179.9)
+
+    vertex_miss_mask = np.where(np.logical_not(np.any(var_lat == -999999, axis=1), np.any(var_lon == -999999, axis=1)))
+    vertex_zero_mask = np.where(np.logical_not(np.any(var_lat == 0.0, axis=1), np.any(var_lon == 0.0, axis=1)))
+    vertex_crossDL_mask = np.where(np.logical_not(np.any(var_lon <= -179.9, axis=1), np.any(var_lon >= 179.9, axis=1)))
+
     
     #Combine the row indices where all vertices are useable
     total_gridding_mask = reduce(np.intersect1d, (vertex_miss_mask, vertex_zero_mask, vertex_crossDL_mask))
@@ -534,8 +550,11 @@ def oco2_worldview_imagery(job_file, verbose=False, debug=False):
     var_lon_gridding = np.squeeze(var_lon[total_mask, :])
     data = data[total_mask]
 
+    #lat_data_indices, lon_data_indices, lat_grid_indices, lon_grid_indices = extent_box_to_indices(job_info.extent_box)
+    lat_data_indices, lon_data_indices = extent_box_to_indices(job_info.extent_box)
+    
     #Get the Lite File indices in each GIBS grid box
-    grid = regrid_oco2(data, var_lat_gridding, var_lon_gridding, debug=debug)
+    grid = regrid_oco2(data, var_lat_gridding, var_lon_gridding, LAT_CENTERS[lat_data_indices], LON_CENTERS[lon_data_indices], debug=debug)
     
     del total_gridding_mask
     del total_mask
@@ -556,16 +575,13 @@ def oco2_worldview_imagery(job_file, verbose=False, debug=False):
 
     del x_action
     del y_action
-    
-    #lat_data_indices, lon_data_indices, lat_grid_indices, lon_grid_indices = extent_box_to_indices(job_info.extent_box)
-    lat_data_indices, lon_data_indices = extent_box_to_indices(job_info.extent_box)
 
     if verbose:
         print("Plotting")
     #grid_subset = grid[int(lon_data_indices[0]) : int(lon_data_indices[-1] + 1), int(lat_data_indices[0]) : int(lat_data_indices[-1] + 1)]
     #grid_subset = grid[lon_data_indices, lat_data_indices]
-    data_subset = grid[int(lon_data_indices[0]) : int(lon_data_indices[-1]), int(lat_data_indices[0]) : int(lat_data_indices[-1])]
-    del grid
+    #data_subset = grid[int(lon_data_indices[0]) : int(lon_data_indices[-1]), int(lat_data_indices[0]) : int(lat_data_indices[-1])]
+    #del grid
     #lat_bin_subset = LAT_BINS[lat_grid_indices]
     #lon_bin_subset = LON_BINS[lon_grid_indices]
     grid_south_subset = LAT_GRID_SOUTH[lat_data_indices]
@@ -575,9 +591,10 @@ def oco2_worldview_imagery(job_file, verbose=False, debug=False):
    
     #success = patch_plot(grid_subset, lat_bin_subset, lon_bin_subset, job_info.extent_box, job_info.range, job_info.cmap, job_info.out_plot_name, float(len(lon_data_indices)), float(len(lat_data_indices)), verbose=verbose)
 
-    success = patch_plot(data_subset, grid_south_subset, grid_north_subset, grid_west_subset, grid_east_subset, job_info.extent_box, job_info.range, job_info.cmap, job_info.out_plot_name, float(len(lon_data_indices)), float(len(lat_data_indices)), verbose=verbose)
-
-    del data_subset
+    #success = patch_plot(data_subset, grid_south_subset, grid_north_subset, grid_west_subset, grid_east_subset, job_info.extent_box, job_info.range, job_info.cmap, job_info.out_plot_name, float(len(lon_data_indices)), float(len(lat_data_indices)), verbose=verbose)
+    success = patch_plot(grid, grid_south_subset, grid_north_subset, grid_west_subset, grid_east_subset, job_info.extent_box, job_info.range, job_info.cmap, job_info.out_plot_name, float(len(lon_data_indices)), float(len(lat_data_indices)), verbose=verbose)
+    #del data_subset
+    del grid
     del grid_south_subset
     del grid_north_subset
     del grid_west_subset
