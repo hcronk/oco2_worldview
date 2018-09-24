@@ -528,7 +528,7 @@ def oco2_worldview_imagery(job_file, verbose=False, debug=False):
     #Get the Lite File indices in each GIBS grid box
     grid = regrid_oco2(data, var_lat_gridding, var_lon_gridding, LAT_CENTERS[lat_data_indices], LON_CENTERS[lon_data_indices], debug=debug)
     
-    del total_gridding_mask
+    #del total_gridding_mask
     del total_mask
     del var_lat_gridding
     del var_lon_gridding
