@@ -534,7 +534,7 @@ def oco2_worldview_imagery(job_file, verbose=False, debug=False):
 
     
     #Combine the row indices where all vertices are useable
-    total_gridding_mask = reduce(np.intersect1d, (vertex_miss_mask, vertex_zero_mask, vertex_crossDL_mask))
+    #total_gridding_mask = reduce(np.intersect1d, (vertex_miss_mask, vertex_zero_mask, vertex_crossDL_mask))
 
     if job_info.quality_info:
         #"quality_info" : {"quality_field_name" : "xco2_quality_flag", "qc_val" :  0, "qc_operator" : operator.eq }}, 
@@ -544,7 +544,8 @@ def oco2_worldview_imagery(job_file, verbose=False, debug=False):
         del quality
         del quality_mask
     else:
-        total_mask = total_gridding_mask
+        #total_mask = total_gridding_mask
+        total_mask = reduce(np.intersect1d, (vertex_miss_mask, vertex_zero_mask, vertex_crossDL_mask))
 
     var_lat_gridding = np.squeeze(var_lat[total_mask, :])
     var_lon_gridding = np.squeeze(var_lon[total_mask, :])
