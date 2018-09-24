@@ -109,6 +109,13 @@ def get_image_filename(var, extent_box, plot_name_tags):
     
     return os.path.join(OUT_PLOT_DIR, var + "_Lat" + str(extent_box[2]) + "to" + str(extent_box[3]) + "_Lon" + str(extent_box[0]) + "to" + str(extent_box[1]) + "_" + plot_name_tags)
 
+def get_intermediate_tif_filename(extent_box, date):
+    """
+    Build the filename of the output image
+    """
+    
+    return os.path.join(OUT_PLOT_DIR, "intermediate_RGB_Lat" + str(extent_box[2]) + "to" + str(extent_box[3]) + "_Lon" + str(extent_box[0]) + "to" + str(extent_box[1]) + "_" + date + ".tif")
+
 def check_processing_or_problem(job_file, verbose=False):
     """
     Check if the job is already processing or if there is a problem with it.
@@ -182,7 +189,8 @@ def run_job(job_file, verbose=False):
         if rgb:
             just_plot_name = os.path.basename(plot_name)
             rgb_name = os.path.join(OUT_PLOT_DIR, re.sub(var, "RGB", just_plot_name))
-            os.remove(rgb_name)        
+            os.remove(rgb_name)
+            os.remove(rgb[1])   
 
 def check_job_worked(plot_name, var, rgb=False):
  
