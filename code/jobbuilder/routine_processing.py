@@ -202,7 +202,8 @@ def run_job(job_file, verbose=False):
     #Remove intermediate files no matter what
     if rgb:
         just_plot_name = os.path.basename(plot_name)
-        rgb_name = os.path.join(OUT_PLOT_DIR, re.sub(var, "RGB", just_plot_name))
+        just_plot_dir = os.path.dirname(plot_name)
+        rgb_name = os.path.join(just_plot_dir, re.sub(var, "RGB", just_plot_name))
         silent_remove(rgb_name)
         silent_remove(rgb["xml"])
         silent_remove(rgb["intermediate_tif"])   
