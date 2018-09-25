@@ -1,7 +1,7 @@
 import os
 import sys
-code_dir = os.path.join(os.path.dirname(os.path.realpath(__file__)), os.path.pardir)
-sys.path.append(code_dir)
+CODE_DIR = os.path.join(os.path.dirname(os.path.realpath(__file__)), os.path.pardir)
+sys.path.append(CODE_DIR)
 from oco2_worldview_imagery import oco2_worldview_imagery
 from glob import glob
 import operator
@@ -60,7 +60,7 @@ def find_unprocessed_file(lite_product, verbose=False):
             for t in TILE_DICT.keys():
                 if verbose:
                     print(t)
-                out_plot_name = get_image_filename(v, TILE_DICT[t]["extent_box"], plot_tags)
+                out_plot_name = get_image_filename(OUT_PLOT_DIR, v, TILE_DICT[t]["extent_box"], plot_tags)
                 if not glob(out_plot_name) or OVERWRITE:
                     #job_file = re.sub("png", "json", os.path.basename(out_plot_name))
                     job_file = re.sub("png", "pkl", os.path.basename(out_plot_name))
@@ -102,19 +102,26 @@ def build_config(oco2_file, lite_product, var, extent_box, out_plot_name, job_fi
         process.terminate()
     #run_job(job_file, verbose=verbose)    
     
-def get_image_filename(var, extent_box, plot_name_tags):
+def get_image_filename(image_dir, var, extent_box, plot_name_tags):
     """
     Build the filename of the output image
     """
     
-    return os.path.join(OUT_PLOT_DIR, var + "_Lat" + str(extent_box[2]) + "to" + str(extent_box[3]) + "_Lon" + str(extent_box[0]) + "to" + str(extent_box[1]) + "_" + plot_name_tags)
+    return os.path.join(image_dir, var + "_Lat" + str(extent_box[2]) + "to" + str(extent_box[3]) + "_Lon" + str(extent_box[0]) + "to" + str(extent_box[1]) + "_" + plot_name_tags)
 
-def get_intermediate_tif_filename(extent_box, date):
+def get_GIBS_xml_filename(date):
     """
     Build the filename of the output image
     """
     
-    return os.path.join(OUT_PLOT_DIR, "intermediate_RGB_Lat" + str(extent_box[2]) + "to" + str(extent_box[3]) + "_Lon" + str(extent_box[0]) + "to" + str(extent_box[1]) + "_" + date + ".tif")
+    return os.path.join(CODE_DIR, "GIBS_Aqua_MODIS_truecolor_" + date + ".xml")
+
+def get_intermediate_tif_filename(tif_dir, extent_box, date):
+    """
+    Build the filename of the output image
+    """
+    
+    return os.path.join(tif_dir, "intermediate_RGB_Lat" + str(extent_box[2]) + "to" + str(extent_box[3]) + "_Lon" + str(extent_box[0]) + "to" + str(extent_box[1]) + "_" + date + ".tif")
 
 def check_processing_or_problem(job_file, verbose=False):
     """
@@ -190,15 +197,16 @@ def run_job(job_file, verbose=False):
             just_plot_name = os.path.basename(plot_name)
             rgb_name = os.path.join(OUT_PLOT_DIR, re.sub(var, "RGB", just_plot_name))
             os.remove(rgb_name)
-            os.remove(rgb[1])   
+            os.remove(rgb["xml"])
+            os.remove(rgb["intermediate_tif"])   
 
 def check_job_worked(plot_name, var, rgb=False):
  
     #Check the file exists
     if rgb:
-        just_plot_name = os.path.basename(plot_name)
-        layered_rgb_name = os.path.join(OUT_PLOT_DIR, re.sub(var, var +"_onRGB", just_plot_name))
-        if glob(plot_name) and glob(layered_rgb_name):
+        #just_plot_name = os.path.basename(plot_name)
+        #layered_rgb_name = os.path.join(OUT_PLOT_DIR, re.sub(var, var +"_onRGB", just_plot_name))
+        if glob(plot_name) and glob(rgb["layered_rgb_name"]):
             return True
         else:
             return False

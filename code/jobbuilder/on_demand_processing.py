@@ -5,7 +5,8 @@ from glob import glob
 import operator
 import re
 import numpy as np
-from routine_processing import get_image_filename, check_processing_or_problem, build_config, get_intermediate_tif_filename
+import shutil
+from routine_processing import get_image_filename, check_processing_or_problem, build_config, get_intermediate_tif_filename, get_GIBS_xml_filename
 code_dir = os.path.join(os.path.dirname(os.path.realpath(__file__)), os.path.pardir)
 sys.path.append(code_dir)
 from oco2_worldview_imagery import stitch_quadrants
@@ -120,11 +121,10 @@ if __name__ == "__main__":
                           "NW": {"extent_box" : [-45, 0, 0, 45]
                                 }
                         }
-
+    
+    rgb_dict = {}
     if rgb:
-        rgb = [os.path.join(code_dir, "GIBS_Aqua_MODIS_truecolor.xml")]
-    else:
-        rgb_list = False
+        GIBS_xml_template = os.path.join(code_dir, "GIBS_Aqua_MODIS_truecolor.xml")
 
     for lf in files:
         if verbose:
@@ -164,18 +164,21 @@ if __name__ == "__main__":
             for var in var_list:
                 if verbose:
                     print("Checking " + var)
-                out_plot_name = get_image_filename(var, extent_box, plot_tags)
+                out_plot_name = get_image_filename(out_plot_dirvar, extent_box, plot_tags)
                 layered_rgb_name = os.path.join(out_plot_dir, re.sub(var, var +"_onRGB", os.path.basename(out_plot_name)))
                 if rgb:
-                    intermediate_tif = [get_intermediate_tif_filename(extent_box, date)]
-                    rgb_list = rgb + intermediate_tif
-                if debug or overwrite or not glob(out_plot_name) or (rgb and not glob(layered_rgb_name)):
+                    rgb_dict["xml"] = get_GIBS_xml_filename(date)
+                    rgb_dict["intermediate_tif"] = get_intermediate_tif_filename(out_plot_dir, extent_box, date)
+                    rgb_dict["layered_rgb_name"] = layered_rgb_name
+                if debug or overwrite or not glob(out_plot_name) or (rgb and not glob(rgb_dict["layered_rgb_name"])):
                     job_file = re.sub("png", "pkl", os.path.basename(out_plot_name))
                     processing_or_problem = check_processing_or_problem(job_file, verbose=verbose)
                     if not processing_or_problem:
                         if verbose:
                             print("Creating config file for " + var)
-                        build_config(lf, lite_file_substring_dict["product"], var, extent_box, out_plot_name, job_file, rgb=rgb_list, debug=debug, verbose=verbose)
+                        if rgb:
+                            shutil.copy(GIBS_xml_template, rgb_dict["xml"])
+                        build_config(lf, lite_file_substring_dict["product"], var, extent_box, out_plot_name, job_file, rgb=rgb_dict, debug=debug, verbose=verbose)
                 else:
                     if verbose:
                         print(out_plot_name + " exists and will not be overwritten.")
@@ -190,22 +193,25 @@ if __name__ == "__main__":
                 for t in TILE_DICT.keys():
                     if verbose:
                         print("Checking " + t + " tile")
-                    out_plot_name = get_image_filename(var, TILE_DICT[t]["extent_box"], plot_tags)
+                    out_plot_name = get_image_filename(out_plot_dir, var, TILE_DICT[t]["extent_box"], plot_tags)
                     layered_rgb_name = os.path.join(out_plot_dir, re.sub(var, var +"_onRGB", os.path.basename(out_plot_name)))
                     if stitch:
                         if rgb:
-                            intermediate_tif = [get_intermediate_tif_filename(TILE_DICT[t]["extent_box"], date)]
-                            rgb_list = rgb + intermediate_tif
+                            rgb_dict["xml"] = get_GIBS_xml_filename(date)
+                            rgb_dict["intermediate_tif"] = get_intermediate_tif_filename(out_plot_dir, TILE_DICT[t]["extent_box"], date)
+                            rgb_dict["layered_rgb_name"] = layered_rgb_name
                             plots_to_stitch[t] = layered_rgb_name
                         else:
                             plots_to_stitch[t] = out_plot_name
-                    if debug or overwrite or not glob(out_plot_name) or (rgb and not glob(layered_rgb_name)):
+                    if debug or overwrite or not glob(out_plot_name) or (rgb and not glob(rgb_dict["layered_rgb_name"])):
                         job_file = re.sub("png", "pkl", os.path.basename(out_plot_name))
                         processing_or_problem = check_processing_or_problem(job_file, verbose=verbose)
                         if not processing_or_problem:
                             if verbose:
                                 print("Creating config file for " + var)
-                            build_config(lf, lite_file_substring_dict["product"], var, TILE_DICT[t]["extent_box"], out_plot_name, job_file, rgb=rgb_list, debug=debug, verbose=verbose)
+                            if rgb:
+                                shutil.copy(GIBS_xml_template, rgb_dict["xml"])
+                            build_config(lf, lite_file_substring_dict["product"], var, TILE_DICT[t]["extent_box"], out_plot_name, job_file, rgb=rgb_dict, debug=debug, verbose=verbose)
                     else:
                         if verbose:
                             print(out_plot_name + " exists and will not be overwritten.")

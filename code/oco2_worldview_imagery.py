@@ -573,6 +573,8 @@ def oco2_worldview_imagery(job_file, verbose=False, debug=False):
     del grid_east_subset
 
     if not success:
+        if verbose:
+            print("Problem plotting!")
         return
 
     if job_info.rgb:
@@ -585,14 +587,14 @@ def oco2_worldview_imagery(job_file, verbose=False, debug=False):
         out_plot_dir = os.path.dirname(job_info.out_plot_name)
         just_plot_name = os.path.basename(job_info.out_plot_name)
         rgb_name = os.path.join(out_plot_dir, re.sub(job_info.var, "RGB", just_plot_name))
-        layered_rgb_name = os.path.join(out_plot_dir, re.sub(job_info.var, job_info.var +"_onRGB", just_plot_name))
+        #layered_rgb_name = os.path.join(out_plot_dir, re.sub(job_info.var, job_info.var +"_onRGB", just_plot_name))
         #rgb_name = os.path.join(out_plot_dir, "RGB_"+q+"_" + global_plot_name_tags)
         #layered_rgb_name = os.path.join(out_plot_dir, var + "_onRGB_"+q+"_" + global_plot_name_tags)
-
-        success = update_GIBS_xml(date, job_info.rgb[0])
-        success = pull_Aqua_RGB_GIBS(lat_ul, lon_ul, lat_lr, lon_lr, job_info.rgb[0], os.path.join(CODE_DIR, job_info.rgb[1]))
-        success = prep_RGB(rgb_name, os.path.join(CODE_DIR, job_info.rgb[1]), job_info.extent_box, float(len(lon_data_indices)), float(len(lat_data_indices)))
-        success = layer_rgb_and_data(rgb_name, job_info.out_plot_name, layered_rgb_name)
+        
+        success = update_GIBS_xml(date, job_info.rgb["xml"])
+        success = pull_Aqua_RGB_GIBS(lat_ul, lon_ul, lat_lr, lon_lr, job_info.rgb["xml"], job_info.rgb["intermediate_tif"])
+        success = prep_RGB(rgb_name, job_info.rgb["intermediate_tif"], job_info.extent_box, float(len(lon_data_indices)), float(len(lat_data_indices)))
+        success = layer_rgb_and_data(rgb_name, job_info.out_plot_name, job_info.rgb["layered_rgb_name"])
     
     return True
                     
