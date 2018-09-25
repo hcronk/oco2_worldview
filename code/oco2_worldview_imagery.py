@@ -263,16 +263,16 @@ def layer_rgb_and_data(rgb_name, data_plot_name, layered_plot_name):
     
     return True
 
-def get_oco2_data(var, oco2_file):
+def get_hdf5_data(var, hdf5_file):
     """
-    Extract given variable data from the OCO-2 lite file (.h5 format)
+    Extract given variable data from an HDF-5 file
     In operational path
     """
-    f = h5py.File(oco2_file, "r")
+    f = h5py.File(hdf5_file, "r")
     try: 
         data = f[var][:]
     except:
-        print("Problem retrieving " + var + " from " + oco2_file)
+        print("Problem retrieving " + var + " from " + hdf5_file)
         f.close()
         return
     f.close()
