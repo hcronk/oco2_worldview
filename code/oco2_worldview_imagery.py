@@ -167,7 +167,7 @@ def pull_Aqua_RGB_GIBS(lat_ul, lon_ul, lat_lr, lon_lr, xml_file, tif_file, xsize
     
     return True
 
-def prep_RGB(rgb_name, tif_name, extent, xpix, ypix):
+def prep_RGB(rgb_name, tif_file, extent, xpix, ypix):
     """
     Prepares the RGB geotiff for layering with the data and writes it to a png
     For research mode, not operations
@@ -178,7 +178,7 @@ def prep_RGB(rgb_name, tif_name, extent, xpix, ypix):
     
     fig = plt.figure(figsize=(xpix / DPI, ypix / DPI), dpi=DPI)
 
-    img = plt.imread(tif_name)
+    img = plt.imread(tif_file)
 
     ax = plt.axes(projection=ccrs.PlateCarree())
     ax.set_extent(extent, crs=ccrs.PlateCarree())
