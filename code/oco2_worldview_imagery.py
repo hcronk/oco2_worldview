@@ -62,7 +62,13 @@ LAT_CENTERS = np.arange(LAT_GRID_SOUTH[0] + GIBS_RESOLUTION_DICT[RESOLUTION] / 2
 LON_CENTERS = np.arange(LON_GRID_WEST[0] + GIBS_RESOLUTION_DICT[RESOLUTION] / 2., LON_GRID_EAST[-1], GIBS_RESOLUTION_DICT[RESOLUTION], dtype=float)
 
 def import_pyplot_appropriately(debug=False):
-    
+    """
+    In matplotlib 2.x, the matplotlib.pyplot import chokes in certain scenarios if the 
+    backend is not selected appropriately, so this function sets it to TKAgg if 
+    an interactive plotting session is required for debugging, provided that 
+    the code is running in an environment that supports Xwindows,
+    and sets it to non-interactive agg otherwise.
+    """    
     global plt
     
     if debug:
@@ -206,8 +212,6 @@ def patch_plot(data, grid_lat_south, grid_lat_north, grid_lon_west, grid_lon_eas
     
     valid_grid = data[xg,yg].astype(float)
 
-    #subset_lat_vertex = np.vstack([grid_lat[y], grid_lat[y], grid_lat[y + 1], grid_lat[y + 1]] for y in yg)
-    #subset_lon_vertex = np.vstack([grid_lon[x], grid_lon[x + 1], grid_lon[x + 1], grid_lon[x]] for x in xg)
     subset_lat_vertex = np.vstack([grid_lat_south[y], grid_lat_south[y], grid_lat_north[y], grid_lat_north[y]] for y in yg)
     subset_lon_vertex = np.vstack([grid_lon_west[x], grid_lon_east[x], grid_lon_east[x], grid_lon_west[x]] for x in xg)
     
@@ -274,8 +278,9 @@ def get_oco2_data(var, oco2_file):
     f.close()
     return data
 
-def ftp_pull(ftp_path):
-    """Pulls data via FTP
+def ftp_pull(ftp_path, verbose=False):
+    """
+    Pulls data via FTP
     In operational path for pulling Reference XCO2 dataset from NOAA ESRL
     """
     global FTP_SUBSTRING_DICT
@@ -287,7 +292,8 @@ def ftp_pull(ftp_path):
     
     while count < tries:
         try:
-            #print("Connection attempt number " + str(count+1) + " for " + product)
+            if verbose:
+                print("Connection attempt number " + str(count+1) + " for " + product)
             cnx = FTP(FTP_SUBSTRING_DICT["ftp_host"])
             break
         except:
@@ -296,7 +302,6 @@ def ftp_pull(ftp_path):
 
     cnx.login()
     
-    #cwd = re.split(ftp_name, path)[-1]
     cnx.cwd(FTP_SUBSTRING_DICT["ftp_cwd"])
     
     with open(FTP_SUBSTRING_DICT["ftp_file"], "wb") as f:
@@ -309,23 +314,17 @@ def ftp_pull(ftp_path):
         cnx.close()
         return False
 
-def preprocess(var, lite_file, external_data_file=None):
+def preprocess(var, lite_file, external_data_file=None, verbose=False):
     """
     Do any necessary processing to get data for the given variable
     In operational path
     """
     
     if var == "xco2_relative":
-        #ftp_file = os.path.basename(external_data_file)
-        #ftp_path= os.path.dirname(external_data_file)
-        #success = ftp_pull(ftp_path, ftp_file)
-        success = ftp_pull(external_data_file)
+        success = ftp_pull(external_data_file, verbose=verbose)
         if success:
             df = pd.read_csv(FTP_SUBSTRING_DICT["ftp_file"], comment="#", na_values=-99.99, header=None, \
                             names=['year', 'month', 'day', 'trend'], delim_whitespace=True)
-#            yyyy = int("20" + re.split("_", os.path.basename(oco2_file))[2][0:2])
-#            mm = int(re.split("_", os.path.basename(oco2_file))[2][2:4])
-#            dd = int(re.split("_", os.path.basename(oco2_file))[2][4:6])
             
             ref_xco2 = float(df["trend"][df.index[df["year"] == int("20" + LITE_FILE_SUBSTRING_DICT["yy"])] & df.index[df["month"] == int(LITE_FILE_SUBSTRING_DICT["mm"])] & df.index[df["day"] == int(LITE_FILE_SUBSTRING_DICT["dd"])]])
             oco2_xco2 = get_oco2_data("xco2", lite_file)
@@ -357,7 +356,7 @@ def extent_box_to_indices(extent_box):
     lon_data_indices = np.where(np.logical_and(LON_CENTERS >= lon_ul, LON_CENTERS <= lon_lr))[0]
     lat_data_indices = np.where(np.logical_and(LAT_CENTERS >= lat_lr, LAT_CENTERS <= lat_ul))[0]
     
-    return lat_data_indices, lon_data_indices#, lat_grid_indices, lon_grid_indices        
+    return lat_data_indices, lon_data_indices       
 
 
 def regrid_oco2(data, vertex_latitude, vertex_longitude, lat_centers_subset, lon_centers_subset, debug=False):
@@ -370,7 +369,6 @@ def regrid_oco2(data, vertex_latitude, vertex_longitude, lat_centers_subset, lon
     if not "matplotlib.pyplot" in sys.modules:
         success = import_pyplot_appropriately(debug)
     
-    #grid = np.empty([len(LON_CENTERS), len(LAT_CENTERS)], dtype=np.object)
     grid = np.empty([len(lon_centers_subset), len(lat_centers_subset)], dtype=np.object)
     
     #Create lat/lon corner pairs from vertices
@@ -387,8 +385,6 @@ def regrid_oco2(data, vertex_latitude, vertex_longitude, lat_centers_subset, lon
         pg = [Polygon((x, y) for x, y in vertices)][0]
 
         #Get the indexes of the center grid boxes where the lat/lon of the center is between the vertex min/max for this polygon
-        #lat_idx = np.where(np.logical_and(LAT_CENTERS >= vlat_mins[n], LAT_CENTERS <= vlat_maxes[n]))[0]
-        #lon_idx = np.where(np.logical_and(LON_CENTERS >= vlon_mins[n], LON_CENTERS <= vlon_maxes[n]))[0]
         lat_idx = np.where(np.logical_and(lat_centers_subset >= vlat_mins[n], lat_centers_subset <= vlat_maxes[n]))[0]
         lon_idx = np.where(np.logical_and(lon_centers_subset >= vlon_mins[n], lon_centers_subset <= vlon_maxes[n]))[0]
 
@@ -396,9 +392,6 @@ def regrid_oco2(data, vertex_latitude, vertex_longitude, lat_centers_subset, lon
         if len(lat_idx) == 0 or len(lon_idx) == 0:
             continue
 
-        #Get the center lat/lon bounds of the grid boxes inside this polygon
-#        center_lat_subset = LAT_CENTERS[lat_idx]
-#        center_lon_subset = LON_CENTERS[lon_idx]
         center_lat_subset = lat_centers_subset[lat_idx]
         center_lon_subset = lon_centers_subset[lon_idx]
 
@@ -410,28 +403,20 @@ def regrid_oco2(data, vertex_latitude, vertex_longitude, lat_centers_subset, lon
         for ll in zip_it:
             pt = Point(ll[0], ll[1])
             if pt.within(pg):
-                #x = np.where(ll[1] == LON_CENTERS)[0][0]
-                #y = np.where(ll[0] == LAT_CENTERS)[0][0]
                 x = np.where(ll[1] == lon_centers_subset)[0][0]
                 y = np.where(ll[0] == lat_centers_subset)[0][0]
                 if grid[x,y] is None:
                     grid[x,y] = [data[n]]
-                    #grid[x,y] = [n]
                 else:
                     grid[x,y].append(data[n])
-                    #grid[x,y].append(n)
             else:
                 if pg.exterior.distance(pt) <= 1e-3:
-                    #x = np.where(ll[1] == LON_CENTERS)[0][0]
-                    #y = np.where(ll[0] == LAT_CENTERS)[0][0]
                     x = np.where(ll[1] == lon_centers_subset)[0][0]
                     y = np.where(ll[0] == lat_centers_subset)[0][0]
                     if grid[x,y] is None:
                         grid[x,y] = [data[n]]
-                        #grid[x,y] = [n]
                     else:
                         grid[x,y].append(data[n])
-                        #grid[x,y].append(n)
                         
         if debug:
             #Plot polygon vertices and gridpoints to visualize/quality check
@@ -447,7 +432,6 @@ def regrid_oco2(data, vertex_latitude, vertex_longitude, lat_centers_subset, lon
                         dot_colors.append("black")
             fig = plt.figure(figsize=(10,8))
             ax = fig.add_subplot(111)
-            #plt.scatter(vertices[:,1], vertices[:,0], c="red", edgecolor='none')
             plt.plot(np.append(vertices[:,1],vertices[0,1]), np.append(vertices[:,0], vertices[0,0]), "-o", c="red")
             for xy in zip(vertices[:,1], vertices[:,0]):
                 ax.annotate('(%s, %s)' % xy, xy=xy, textcoords='data', fontsize=8.5)
@@ -478,9 +462,9 @@ def oco2_worldview_imagery(job_file, verbose=False, debug=False):
 
     if job_info.preprocessing:
         if type(job_info.preprocessing) == str:
-            data = preprocess(job_info.var, job_info.lite_file, job_info.preprocessing)
+            data = preprocess(job_info.var, job_info.lite_file, job_info.preprocessing, verbose=verbose)
         else:
-             data = preprocess(job_info.var, job_info.lite_file)
+             data = preprocess(job_info.var, job_info.lite_file, verbose=verbose)
     else:
         data = get_oco2_data(job_info.data_field_name, job_info.lite_file)
 
@@ -494,7 +478,6 @@ def oco2_worldview_imagery(job_file, verbose=False, debug=False):
     #Therefore, if either lat or lon of one or more vertices are missing, that row should be masked for operations.
     #There was also a bug in some versions of the OCO-2 data that erroneously set the geolocation to 0.0
     #in places where it does not make sense, so those rows are masked too
-
     vertex_miss_mask = np.where(np.logical_not(np.any(var_lat == -999999, axis=1), np.any(var_lon == -999999, axis=1)))
     vertex_zero_mask = np.where(np.logical_not(np.any(var_lat == 0.0, axis=1), np.any(var_lon == 0.0, axis=1)))
 
@@ -502,10 +485,6 @@ def oco2_worldview_imagery(job_file, verbose=False, debug=False):
     #so if the geolocation of any sounding vertices crosses the date line, 
     #that sounding it should not be included for the given day
     vertex_crossDL_mask = np.where(np.logical_not(np.any(var_lon <= -179.9, axis=1), np.any(var_lon >= 179.9, axis=1)))
-
-    
-    #Combine the row indices where all vertices are useable
-    #total_gridding_mask = reduce(np.intersect1d, (vertex_miss_mask, vertex_zero_mask, vertex_crossDL_mask))
 
     if job_info.quality_info:
         #"quality_info" : {"quality_field_name" : "xco2_quality_flag", "qc_val" :  0, "qc_operator" : operator.eq }}, 
@@ -515,20 +494,17 @@ def oco2_worldview_imagery(job_file, verbose=False, debug=False):
         del quality
         del quality_mask
     else:
-        #total_mask = total_gridding_mask
         total_mask = reduce(np.intersect1d, (vertex_miss_mask, vertex_zero_mask, vertex_crossDL_mask))
 
     var_lat_gridding = np.squeeze(var_lat[total_mask, :])
     var_lon_gridding = np.squeeze(var_lon[total_mask, :])
     data = data[total_mask]
 
-    #lat_data_indices, lon_data_indices, lat_grid_indices, lon_grid_indices = extent_box_to_indices(job_info.extent_box)
     lat_data_indices, lon_data_indices = extent_box_to_indices(job_info.extent_box)
     
-    #Get the Lite File indices in each GIBS grid box
+    #Get the Lite File data located in each GIBS grid box
     grid = regrid_oco2(data, var_lat_gridding, var_lon_gridding, LAT_CENTERS[lat_data_indices], LON_CENTERS[lon_data_indices], debug=debug)
     
-    #del total_gridding_mask
     del total_mask
     del var_lat_gridding
     del var_lon_gridding
@@ -550,22 +526,14 @@ def oco2_worldview_imagery(job_file, verbose=False, debug=False):
 
     if verbose:
         print("Plotting")
-    #grid_subset = grid[int(lon_data_indices[0]) : int(lon_data_indices[-1] + 1), int(lat_data_indices[0]) : int(lat_data_indices[-1] + 1)]
-    #grid_subset = grid[lon_data_indices, lat_data_indices]
-    #data_subset = grid[int(lon_data_indices[0]) : int(lon_data_indices[-1]), int(lat_data_indices[0]) : int(lat_data_indices[-1])]
-    #del grid
-    #lat_bin_subset = LAT_BINS[lat_grid_indices]
-    #lon_bin_subset = LON_BINS[lon_grid_indices]
+    
     grid_south_subset = LAT_GRID_SOUTH[lat_data_indices]
     grid_north_subset = LAT_GRID_NORTH[lat_data_indices]
     grid_west_subset = LON_GRID_WEST[lon_data_indices]
     grid_east_subset = LON_GRID_EAST[lon_data_indices]
    
-    #success = patch_plot(grid_subset, lat_bin_subset, lon_bin_subset, job_info.extent_box, job_info.range, job_info.cmap, job_info.out_plot_name, float(len(lon_data_indices)), float(len(lat_data_indices)), verbose=verbose)
-
-    #success = patch_plot(data_subset, grid_south_subset, grid_north_subset, grid_west_subset, grid_east_subset, job_info.extent_box, job_info.range, job_info.cmap, job_info.out_plot_name, float(len(lon_data_indices)), float(len(lat_data_indices)), verbose=verbose)
     success = patch_plot(grid, grid_south_subset, grid_north_subset, grid_west_subset, grid_east_subset, job_info.extent_box, job_info.range, job_info.cmap, job_info.out_plot_name, float(len(lon_data_indices)), float(len(lat_data_indices)), verbose=verbose)
-    #del data_subset
+    
     del grid
     del grid_south_subset
     del grid_north_subset
@@ -587,9 +555,6 @@ def oco2_worldview_imagery(job_file, verbose=False, debug=False):
         out_plot_dir = os.path.dirname(job_info.out_plot_name)
         just_plot_name = os.path.basename(job_info.out_plot_name)
         rgb_name = os.path.join(out_plot_dir, re.sub(job_info.var, "RGB", just_plot_name))
-        #layered_rgb_name = os.path.join(out_plot_dir, re.sub(job_info.var, job_info.var +"_onRGB", just_plot_name))
-        #rgb_name = os.path.join(out_plot_dir, "RGB_"+q+"_" + global_plot_name_tags)
-        #layered_rgb_name = os.path.join(out_plot_dir, var + "_onRGB_"+q+"_" + global_plot_name_tags)
         
         success = update_GIBS_xml(date, job_info.rgb["xml"])
         success = pull_Aqua_RGB_GIBS(lat_ul, lon_ul, lat_lr, lon_lr, job_info.rgb["xml"], job_info.rgb["intermediate_tif"])
