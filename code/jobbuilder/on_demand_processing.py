@@ -130,13 +130,6 @@ if __name__ == "__main__":
         if verbose:
             print("Checking " + lf)  
         
-        #lite_file_basename = os.path.basename(lf)
-        #file_tokens = re.split("_", lite_file_basename)
-
-        #product = file_tokens[1]
-        #yymmdd = file_tokens[2]
-        #version = file_tokens[3]
-        
         lite_file_substring_dict = re.match(LITE_FILE_REGEX, os.path.basename(lf)).groupdict()
 
         date = "20" + lite_file_substring_dict["yymmdd"][:2] + "-" + lite_file_substring_dict["yymmdd"][2:4] + "-" + lite_file_substring_dict["yymmdd"][4:]
