@@ -80,9 +80,6 @@ def build_config(oco2_file, lite_product, var, extent_box, out_plot_name, job_fi
     config_dict["out_plot_name"] = out_plot_name
     config_dict["rgb"] = rgb
     
-#    with open(job_file, "w") as config_file:
-#        json.dump(config_dict, config_file, indent=4, sort_keys=True)
-    
     with open(job_file, "wb") as config_file:
         pickle.dump(config_dict, config_file)
     
@@ -91,16 +88,15 @@ def build_config(oco2_file, lite_product, var, extent_box, out_plot_name, job_fi
         os.remove(LOCKFILE)
         sys.exit()
 
-    #sys.exit()
-    #start process here, give arguments, after runs and returns, daemon=true to make sure children die if parent does _process = Process(number of cores), return true/false
-    #not multithreading
+    #Run as a multiprocessing Process even though just one process runs now to allow for multiprocessing
+    #and also to ensure memory is released between jobs and to make sure jobs are killed if the parent process
+    #is killed
     process = Process(target=run_job, args=(job_file, verbose))
     process.daemon = True
     process.start()
     process.join()
     if process.is_alive():
-        process.terminate()
-    #run_job(job_file, verbose=verbose)    
+        process.terminate()   
     
 def get_image_filename(image_dir, var, extent_box, plot_name_tags):
     """
@@ -175,7 +171,12 @@ def check_processing_or_problem(job_file, verbose=False):
         return False
 
 def run_job(job_file, verbose=False):
-
+    """
+    Create imagery using specifications in job file
+    and if the imagery is produced, get rid of the lockfile
+    and all intermediate files.
+    """
+    
     success = oco2_worldview_imagery(job_file, verbose=verbose)
     
     if success:
@@ -193,19 +194,23 @@ def run_job(job_file, verbose=False):
         os.remove(LOCKFILE)
         if glob(ISSUE_FILE):
             os.remove(ISSUE_FILE)
-        if rgb:
-            just_plot_name = os.path.basename(plot_name)
-            rgb_name = os.path.join(OUT_PLOT_DIR, re.sub(var, "RGB", just_plot_name))
-            os.remove(rgb_name)
-            os.remove(rgb["xml"])
-            os.remove(rgb["intermediate_tif"])   
+    else:
+        #if the job was unsuccessful, get rid of the output plot if it exists in any form
+        silent_remove(plot_name)
+    
+    #Remove intermediate files no matter what
+    if rgb:
+        just_plot_name = os.path.basename(plot_name)
+        rgb_name = os.path.join(OUT_PLOT_DIR, re.sub(var, "RGB", just_plot_name))
+        silent_remove(rgb_name)
+        silent_remove(rgb["xml"])
+        silent_remove(rgb["intermediate_tif"])   
 
 def check_job_worked(plot_name, var, rgb=False):
- 
-    #Check the file exists
+    """
+    Check if the expected output files exist
+    """ 
     if rgb:
-        #just_plot_name = os.path.basename(plot_name)
-        #layered_rgb_name = os.path.join(OUT_PLOT_DIR, re.sub(var, var +"_onRGB", just_plot_name))
         if glob(plot_name) and glob(rgb["layered_rgb_name"]):
             return True
         else:
@@ -216,6 +221,16 @@ def check_job_worked(plot_name, var, rgb=False):
         else:
             return False
 
+def silent_remove(filename):
+    """
+    Remove a file if it exists, and keep quiet if it doesn't
+    But if there's some other problem with the operation, yell
+    """
+    try:
+        os.remove(filename)
+    except OSError as e:
+        if e.errno != errno.ENOENT: 
+            raise
     
 if __name__ == "__main__":
 
