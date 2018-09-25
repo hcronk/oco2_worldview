@@ -293,7 +293,7 @@ def ftp_pull(ftp_path, verbose=False):
     while count < tries:
         try:
             if verbose:
-                print("Connection attempt number " + str(count+1) + " for " + product)
+                print("FTP Connection attempt number " + str(count+1))
             cnx = FTP(FTP_SUBSTRING_DICT["ftp_host"])
             break
         except:
