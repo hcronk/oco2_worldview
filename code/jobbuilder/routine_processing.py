@@ -47,6 +47,10 @@ LITE_FILE_REGEX = "oco2_(?P<product>[A-Za-z0-9]{5})_(?P<yymmdd>[0-9]{6})_(?P<ver
 
 
 def find_unprocessed_file(lite_product, verbose=False):
+    """
+    Crawl Lite File directories and check if all expected output imagery exists and
+    initiate a job for any missing imagery
+    """
     for f in glob(os.path.join(LITE_FILE_DIRS[lite_product], "*")):
         if verbose:
             print(f)
@@ -71,6 +75,10 @@ def find_unprocessed_file(lite_product, verbose=False):
             
 
 def build_config(oco2_file, lite_product, var, extent_box, out_plot_name, job_file, rgb=False, debug=False, verbose=False):
+    """
+    Create a pickle (.pkl) formatted job configuration file with 
+    the necessary parameters to create OCO-2 Worldview imagery
+    """
     
     config_dict = DATA_DICT[lite_product][var]
     
@@ -108,14 +116,14 @@ def get_image_filename(image_dir, var, extent_box, plot_name_tags):
 
 def get_GIBS_xml_filename(date):
     """
-    Build the filename of the output image
+    Build the filename of the GIBS XML configuration file
     """
     
     return os.path.join(CODE_DIR, "GIBS_Aqua_MODIS_truecolor_" + date + ".xml")
 
 def get_intermediate_tif_filename(tif_dir, extent_box, date):
     """
-    Build the filename of the output image
+    Build the filename of the intermediate TIFF imagery filename
     """
     
     return os.path.join(tif_dir, "intermediate_RGB_Lat" + str(extent_box[2]) + "to" + str(extent_box[3]) + "_Lon" + str(extent_box[0]) + "to" + str(extent_box[1]) + "_" + date + ".tif")
@@ -123,7 +131,7 @@ def get_intermediate_tif_filename(tif_dir, extent_box, date):
 def check_processing_or_problem(job_file, verbose=False):
     """
     Check if the job is already processing or if there is a problem with it.
-    problem == the job has been run and faild more times than the try threshold defined globally
+    problem == the job has been run and failed more times than the try threshold defined globally
     """
     
     global LOCKFILE
