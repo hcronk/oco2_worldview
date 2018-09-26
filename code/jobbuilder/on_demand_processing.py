@@ -157,7 +157,7 @@ if __name__ == "__main__":
             for var in var_list:
                 if verbose:
                     print("Checking " + var)
-                out_plot_name = get_image_filename(out_plot_dirvar, extent_box, plot_tags)
+                out_plot_name = get_image_filename(out_plot_dir, var, extent_box, plot_tags)
                 layered_rgb_name = os.path.join(out_plot_dir, re.sub(var, var +"_onRGB", os.path.basename(out_plot_name)))
                 if rgb:
                     rgb_dict["xml"] = get_GIBS_xml_filename(date)
