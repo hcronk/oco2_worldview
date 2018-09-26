@@ -15,7 +15,7 @@ from multiprocessing import Process
 #Global Variables
 LITE_FILE_DIRS = {"LtCO2": "/data6/OCO2/product/Lite/B8/LtCO2", 
                   "LtSIF": "/cloudsat/LtSIF"}
-OUT_PLOT_DIR = "/home/hcronk/worldview/plots/jobbuilder_testing"
+OUT_PLOT_DIR = "/home/hcronk/worldview/plots/operational"
 LOCKFILE_DIR = "/home/hcronk/worldview/processing_status"
 TRY_THRESHOLD = 3 #(number of times to try to process before moving to issues for analysis)
 TRY_WAIT = 3600 #(number of seconds to wait before trying to reprocess a failed job)
@@ -244,6 +244,9 @@ def silent_remove(filename):
     
 if __name__ == "__main__":
 
+    if not os.path.exists(OUT_PLOT_DIR):
+        os.makedirs(OUT_PLOT_DIR)
+    
     for p in DATA_DICT.keys():
         find_unprocessed_file(p)
     
