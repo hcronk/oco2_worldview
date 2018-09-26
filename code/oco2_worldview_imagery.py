@@ -327,7 +327,7 @@ def preprocess(var, lite_file, external_data_file=None, verbose=False):
                             names=['year', 'month', 'day', 'trend'], delim_whitespace=True)
             
             ref_xco2 = float(df["trend"][df.index[df["year"] == int("20" + LITE_FILE_SUBSTRING_DICT["yy"])] & df.index[df["month"] == int(LITE_FILE_SUBSTRING_DICT["mm"])] & df.index[df["day"] == int(LITE_FILE_SUBSTRING_DICT["dd"])]])
-            oco2_xco2 = get_oco2_data("xco2", lite_file)
+            oco2_xco2 = get_hdf5_data("xco2", lite_file)
             data = oco2_xco2 - ref_xco2
             del oco2_xco2
             del df
@@ -335,8 +335,8 @@ def preprocess(var, lite_file, external_data_file=None, verbose=False):
             print("Unable to retrieve " + external_data_file)
             sys.exit()  
     elif var == "sif_blended":
-        sif757 = get_oco2_data("SIF_757nm", lite_file)
-        sif771 = get_oco2_data("SIF_771nm", lite_file)
+        sif757 = get_hdf5_data("SIF_757nm", lite_file)
+        sif771 = get_hdf5_data("SIF_771nm", lite_file)
         data = 0.5 * (sif757 + 1.5 * sif771)
         del sif757
         del sif771
@@ -466,10 +466,10 @@ def oco2_worldview_imagery(job_file, verbose=False, debug=False):
         else:
              data = preprocess(job_info.var, job_info.lite_file, verbose=verbose)
     else:
-        data = get_oco2_data(job_info.data_field_name, job_info.lite_file)
+        data = get_hdf5_data(job_info.data_field_name, job_info.lite_file)
 
-    var_lat = get_oco2_data(GEO_DICT[job_info.product]["lat"], job_info.lite_file)
-    var_lon = get_oco2_data(GEO_DICT[job_info.product]["lon"], job_info.lite_file)
+    var_lat = get_hdf5_data(GEO_DICT[job_info.product]["lat"], job_info.lite_file)
+    var_lon = get_hdf5_data(GEO_DICT[job_info.product]["lon"], job_info.lite_file)
     
     #Cut out the missing data and the data that crosses the date line
     
@@ -488,7 +488,7 @@ def oco2_worldview_imagery(job_file, verbose=False, debug=False):
 
     if job_info.quality_info:
         #"quality_info" : {"quality_field_name" : "xco2_quality_flag", "qc_val" :  0, "qc_operator" : operator.eq }}, 
-        quality = get_oco2_data(job_info.quality_info["quality_field_name"], job_info.lite_file)
+        quality = get_hdf5_data(job_info.quality_info["quality_field_name"], job_info.lite_file)
         quality_mask = np.where(job_info.quality_info["qc_operator"](quality, job_info.quality_info["qc_val"]))
         total_mask = reduce(np.intersect1d, (vertex_miss_mask, vertex_zero_mask, vertex_crossDL_mask, quality_mask))
         del quality
