@@ -199,12 +199,18 @@ def run_job(job_file, verbose=False):
         job_worked = check_job_worked(plot_name, var, rgb)
     
     if success and job_worked:
+        if verbose:
+            print("Success!")
         os.remove(job_file)
         os.remove(LOCKFILE)
         if glob(ISSUE_FILE):
             os.remove(ISSUE_FILE)
     else:
         #if the job was unsuccessful, get rid of the output plot if it exists in any form
+        #but leave the job file for debugging
+        if verbose:
+            print("There was a problem with the job")
+            print("The job file has been left for debugging: " + job_file)            
         silent_remove(plot_name)
     
     #Remove intermediate files no matter what
@@ -221,12 +227,13 @@ def check_job_worked(plot_name, var, rgb=False):
     Check if the expected output files exist
     """ 
     if rgb:
-        if glob(plot_name) and glob(rgb["layered_rgb_name"]):
+        if (glob(plot_name) and os.path.getsize(plot_name) > 0 and 
+            glob(rgb["layered_rgb_name"]) and os.path.getsize(rgb["layered_rgb_name"]) > 0):
             return True
         else:
             return False
     else:
-        if glob(plot_name):
+        if glob(plot_name) and os.path.getsize(plot_name) > 0 :
             return True
         else:
             return False
