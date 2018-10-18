@@ -359,7 +359,7 @@ def extent_box_to_indices(extent_box):
     return lat_data_indices, lon_data_indices       
 
 
-def regrid_oco2(data, vertex_latitude, vertex_longitude, lat_centers_subset, lon_centers_subset, debug=False):
+def regrid_oco2(data, vertex_latitude, vertex_longitude, lat_centers_subset, lon_centers_subset, verbose=False, debug=False):
     
     """
     Put OCO-2 data on a regular grid
@@ -396,6 +396,7 @@ def regrid_oco2(data, vertex_latitude, vertex_longitude, lat_centers_subset, lon
         center_lon_subset = lon_centers_subset[lon_idx]
 
         lat_m, lon_m = np.meshgrid(center_lat_subset, center_lon_subset)
+            
         zip_it = zip(list(lat_m.flatten()), list(lon_m.flatten()))
 
         #For each grid center between the lat/lon bounds, create a shapely point and check if it's inside the shapely polygon
@@ -441,6 +442,12 @@ def regrid_oco2(data, vertex_latitude, vertex_longitude, lat_centers_subset, lon
             plt.show()
 
     del poly
+    
+    if not np.any(grid):
+        if verbose:
+            print("There are no data points that fall within the given geolocation box")
+        return False
+    
     del lat_m
     del lon_m
     del zip_it
@@ -503,7 +510,10 @@ def oco2_worldview_imagery(job_file, verbose=False, debug=False):
     lat_data_indices, lon_data_indices = extent_box_to_indices(job_info.extent_box)
     
     #Get the Lite File data located in each GIBS grid box
-    grid = regrid_oco2(data, var_lat_gridding, var_lon_gridding, LAT_CENTERS[lat_data_indices], LON_CENTERS[lon_data_indices], debug=debug)
+    grid = regrid_oco2(data, var_lat_gridding, var_lon_gridding, LAT_CENTERS[lat_data_indices], LON_CENTERS[lon_data_indices], verbose=verbose, debug=debug)
+    
+    if not grid:
+        return False
     
     del total_mask
     del var_lat_gridding
