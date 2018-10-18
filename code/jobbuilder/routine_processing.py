@@ -13,7 +13,7 @@ import errno
 from multiprocessing import Process
 
 #Global Variables
-LITE_FILE_DIRS = {"LtCO2": "/data6/OCO2/product/Lite/B8/LtCO2", 
+LITE_FILE_DIRS = {"LtCO2": "/data6/OCO2/product/Lite/B9/LtCO2", 
                   "LtSIF": "/cloudsat/LtSIF"}
 OUT_PLOT_DIR = "/home/hcronk/worldview/plots/operational"
 LOCKFILE_DIR = "/home/hcronk/worldview/processing_status"
