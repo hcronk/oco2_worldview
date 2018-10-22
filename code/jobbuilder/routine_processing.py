@@ -188,14 +188,14 @@ def run_job(job_file, verbose=False):
     
     success = oco2_worldview_imagery(job_file, verbose=verbose)
     
-    if success:
-        with open(job_file, "rb") as jf:
-            contents = pickle.load(jf)
+    with open(job_file, "rb") as jf:
+        contents = pickle.load(jf)
     
-        plot_name = contents["out_plot_name"]
-        rgb = contents["rgb"]
-        var = contents["var"]
-        
+    plot_name = contents["out_plot_name"]
+    rgb = contents["rgb"]
+    var = contents["var"]
+    
+    if success:        
         job_worked = check_job_worked(plot_name, var, rgb)
     
     if success and job_worked:

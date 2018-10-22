@@ -188,11 +188,12 @@ if __name__ == "__main__":
                         print("Checking " + t + " tile")
                     out_plot_name = get_image_filename(out_plot_dir, var, TILE_DICT[t]["extent_box"], plot_tags)
                     layered_rgb_name = os.path.join(out_plot_dir, re.sub(var, var +"_onRGB", os.path.basename(out_plot_name)))
+                    if rgb:
+                        rgb_dict["xml"] = get_GIBS_xml_filename(date)
+                        rgb_dict["intermediate_tif"] = get_intermediate_tif_filename(out_plot_dir, TILE_DICT[t]["extent_box"], date)
+                        rgb_dict["layered_rgb_name"] = layered_rgb_name
                     if stitch:
-                        if rgb:
-                            rgb_dict["xml"] = get_GIBS_xml_filename(date)
-                            rgb_dict["intermediate_tif"] = get_intermediate_tif_filename(out_plot_dir, TILE_DICT[t]["extent_box"], date)
-                            rgb_dict["layered_rgb_name"] = layered_rgb_name
+                        if rgb: 
                             plots_to_stitch[t] = layered_rgb_name
                         else:
                             plots_to_stitch[t] = out_plot_name
