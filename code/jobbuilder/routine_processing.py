@@ -13,10 +13,10 @@ import errno
 from multiprocessing import Process
 
 #Global Variables
-LITE_FILE_DIRS = {"LtCO2": "/data6/OCO2/product/Lite/B8/LtCO2", 
-                  "LtSIF": "/cloudsat/LtSIF"}
-OUT_PLOT_DIR = "/home/hcronk/worldview/plots/operational"
-LOCKFILE_DIR = "/home/hcronk/worldview/processing_status"
+LITE_FILE_DIRS = {"LtCO2": "data/oco2/scf/product/Lite/B9003r/r02", 
+                  "LtSIF": "/data/oco2/scf/product/Lite/B8100r/r02"}
+OUT_PLOT_DIR = "/home/hcronk/oco2_worldview/test_plots"
+LOCKFILE_DIR = "/home/hcronk/oco2_worldview/processing_status"
 TRY_THRESHOLD = 3 #(number of times to try to process before moving to issues for analysis)
 TRY_WAIT = 3600 #(number of seconds to wait before trying to reprocess a failed job)
 OVERWRITE = False
