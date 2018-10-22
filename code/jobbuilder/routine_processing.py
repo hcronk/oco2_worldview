@@ -51,27 +51,31 @@ def find_unprocessed_file(lite_product, verbose=False):
     Crawl Lite File directories and check if all expected output imagery exists and
     initiate a job for any missing imagery
     """
-    for f in glob(os.path.join(LITE_FILE_DIRS[lite_product], "*")):
-        if verbose:
-            print(f)
-        
-        lite_file_substring_dict = re.match(LITE_FILE_REGEX, os.path.basename(f)).groupdict()
-        
-        plot_tags = lite_file_substring_dict["yymmdd"] + "_" + lite_file_substring_dict["version"] + ".png"
-
-        for v in DATA_DICT[lite_product].keys():
+    for root, subdirs, files in os.walk(LITE_FILE_DIRS[lite_product]):
+        subdirs[:] = [d for d in subdirs if not d[0] == "."]
+        files = [f for f in files if not f[0] == "."]
+        for just_filename in files:
+            f = os.path.join(root, just_filename)
             if verbose:
-                print(v)
-            for t in TILE_DICT.keys():
+                print(f)
+            sys.exit()
+            lite_file_substring_dict = re.match(LITE_FILE_REGEX, just_filename).groupdict()
+        
+            plot_tags = lite_file_substring_dict["yymmdd"] + "_" + lite_file_substring_dict["version"] + ".png"
+
+            for v in DATA_DICT[lite_product].keys():
                 if verbose:
-                    print(t)
-                out_plot_name = get_image_filename(OUT_PLOT_DIR, v, TILE_DICT[t]["extent_box"], plot_tags)
-                if not glob(out_plot_name) or OVERWRITE:
-                    #job_file = re.sub("png", "json", os.path.basename(out_plot_name))
-                    job_file = re.sub("png", "pkl", os.path.basename(out_plot_name))
-                    processing_or_problem = check_processing_or_problem(job_file)
-                    if not processing_or_problem:
-                        build_config(f, lite_product, v, TILE_DICT[t]["extent_box"], out_plot_name, job_file)
+                    print(v)
+                for t in TILE_DICT.keys():
+                    if verbose:
+                        print(t)
+                    out_plot_name = get_image_filename(OUT_PLOT_DIR, v, TILE_DICT[t]["extent_box"], plot_tags)
+                    if not glob(out_plot_name) or OVERWRITE:
+                        #job_file = re.sub("png", "json", os.path.basename(out_plot_name))
+                        job_file = re.sub("png", "pkl", os.path.basename(out_plot_name))
+                        processing_or_problem = check_processing_or_problem(job_file)
+                        if not processing_or_problem:
+                            build_config(f, lite_product, v, TILE_DICT[t]["extent_box"], out_plot_name, job_file)
             
 
 def build_config(oco2_file, lite_product, var, extent_box, out_plot_name, job_file, rgb=False, debug=False, verbose=False):
