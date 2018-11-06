@@ -30,11 +30,15 @@ CODE_DIR = os.path.dirname(os.path.realpath(__file__))
 
 GEO_DICT = { "LtCO2" : {
                 "lat" : "vertex_latitude",
-                "lon" : "vertex_longitude"
+                "lon" : "vertex_longitude",
+                "sid" : "Sounding/sounding_id
+                "source" : "Sounding/source_files"
                 },
              "LtSIF" : {
                 "lat" : "footprint_vertex_latitude",
-                "lon" : "footprint_vertex_longitude"
+                "lon" : "footprint_vertex_longitude",
+                "sid" : "sounding_id"
+                "source" : "orbit_number"
                 }
             }          
 
@@ -243,6 +247,52 @@ def patch_plot(data, grid_lat_south, grid_lat_north, grid_lon_west, grid_lon_eas
     del p
     
     return True
+
+def write_image_metadata():
+    pass
+
+def get_oco2_timestamps(filename):
+
+    sounding_id = get_hdf5
+
+    start = (sounding_id[0])[0]
+    count=1
+    while True:
+        if start <= 0:
+            start = (sounding_id[count])[0]
+            count+=1
+        else:
+            break
+
+    end = (sounding_id[-1])[-1]
+    count=2
+    while True:
+        if end <= 0:
+            end = (sounding_id[-count])[-1]
+            count+=1
+        else:
+            break
+
+    start_yyyy = int(str(start)[0:4])
+    start_mm = int(str(start)[4:6])
+    start_dd = int(str(start)[6:8])
+    start_hh = int(str(start)[8:10])
+    start_mn = int(str(start)[10:12])
+    start_ss = int(str(start)[12:14])
+
+    start_ts = datetime.datetime(start_yyyy, start_mm, start_dd, start_hh, start_mn, start_ss)
+
+    end_yyyy = int(str(end)[0:4])
+    end_mm = int(str(end)[4:6])
+    end_dd = int(str(end)[6:8])
+    end_hh = int(str(end)[8:10])
+    end_mn = int(str(end)[10:12])
+    end_ss = int(str(end)[12:14])
+
+    end_ts = datetime.datetime(end_yyyy, end_mm, end_dd, end_hh, end_mn, end_ss)
+
+    #print(start_ts, end_ts)
+    return start_ts, end_ts
 
 def layer_rgb_and_data(rgb_name, data_plot_name, layered_plot_name):
     """
@@ -551,6 +601,9 @@ def oco2_worldview_imagery(job_file, verbose=False, debug=False):
         if verbose:
             print("Problem plotting!")
         return
+    else:
+        granule_source_data = get_hdf5_data(GEO_DICT[job_info.product]["source"], job_info.lite_file)
+        success = write_image_metadata(granule_source_data, job_info.out_plot_name)
 
     if job_info.rgb:
         if verbose:
