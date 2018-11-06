@@ -6,6 +6,7 @@ from functools import reduce
 import argparse
 import os
 import operator
+import datetime
 import sys
 import re
 import h5py
@@ -31,18 +32,19 @@ CODE_DIR = os.path.dirname(os.path.realpath(__file__))
 GEO_DICT = { "LtCO2" : {
                 "lat" : "vertex_latitude",
                 "lon" : "vertex_longitude",
-                "sid" : "Sounding/sounding_id
-                "source" : "Sounding/source_files"
+                "sid" : "sounding_id",
+                "source" : "source_files"
                 },
              "LtSIF" : {
                 "lat" : "footprint_vertex_latitude",
                 "lon" : "footprint_vertex_longitude",
-                "sid" : "sounding_id"
+                "sid" : "sounding_id",
                 "source" : "orbit_number"
                 }
             }          
 
 LITE_FILE_REGEX = "oco2_(?P<product>[A-Za-z0-9]{5})_(?P<yy>[0-9]{2})(?P<mm>[0-9]{2})(?P<dd>[0-9]{2})_(?P<version>B[0-9r]{,5})_[0-9]{12}s.nc4"
+METADATA_REGEX = "(?P<var>[a-z0-9](.*))_(?P<latspan>[Lato\.](.*))_(?P<lonspan>[Lton\.](.*))_(?P<yymmdd>[0-9]{6})_(?P<version>B[0-9r]{,5}).xml"
 FTP_REGEX = "ftp://(?P<ftp_host>([^/]*))(?P<ftp_cwd>/.*)/(?P<ftp_file>([^/]*)$)"
 
 RESOLUTION = "500m"
@@ -248,27 +250,43 @@ def patch_plot(data, grid_lat_south, grid_lat_north, grid_lon_west, grid_lon_eas
     
     return True
 
-def write_image_metadata():
-    pass
+def write_image_metadata(source_files, start_ts, end_ts, image_name):
+    
+    metadata_filename = re.sub("png", "xml", image_name)
+    timestamp_format = "%Y-%m-%dT%H:%M:%S.%fZ"
+    
+    metadata_filename_dict = re.match(METADATA_REGEX, os.path.basename(metadata_filename)).groupdict()
+    
+    root = ET.Element("ImageryMetadata")
+    
+    ET.SubElement(root, "ProviderProductID").text = metadata_filename_dict["var"] + "." + metadata_filename_dict["version"]
+    ET.SubElement(root, "ProductionDateTime").text = datetime.datetime.utcnow().strftime(timestamp_format)
+    ET.SubElement(root, "DataStartDateTime").text = start_ts.strftime(timestamp_format)
+    ET.SubElement(root, "DataEndDateTime").text = end_ts.strftime(timestamp_format)
+    ET.SubElement(root, "DataDateTime").text = start_ts.strftime(timestamp_format)
+    ET.SubElement(root, "PartialID").text = "Tiled"
+    
+    tree = ET.ElementTree(root)
+    tree.write(metadata_filename)
+    
+    return True
 
-def get_oco2_timestamps(filename):
+def get_lite_oco2_timestamps(sounding_id):
 
-    sounding_id = get_hdf5
-
-    start = (sounding_id[0])[0]
+    start = (sounding_id[0])
     count=1
     while True:
         if start <= 0:
-            start = (sounding_id[count])[0]
+            start = (sounding_id[count])
             count+=1
         else:
             break
 
-    end = (sounding_id[-1])[-1]
+    end = (sounding_id[-1])
     count=2
     while True:
         if end <= 0:
-            end = (sounding_id[-count])[-1]
+            end = (sounding_id[-count])
             count+=1
         else:
             break
@@ -603,7 +621,9 @@ def oco2_worldview_imagery(job_file, verbose=False, debug=False):
         return
     else:
         granule_source_data = get_hdf5_data(GEO_DICT[job_info.product]["source"], job_info.lite_file)
-        success = write_image_metadata(granule_source_data, job_info.out_plot_name)
+        granule_sounding_id = get_hdf5_data(GEO_DICT[job_info.product]["sid"], job_info.lite_file)
+        granule_start, granule_end = get_lite_oco2_timestamps(granule_sounding_id)
+        success = write_image_metadata(granule_source_data, granule_start, granule_end, job_info.out_plot_name)
 
     if job_info.rgb:
         if verbose:
