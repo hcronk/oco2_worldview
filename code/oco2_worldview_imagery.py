@@ -17,7 +17,7 @@ from collections import namedtuple
 from ftplib import FTP
 from glob import glob
 import matplotlib.patches as mpatches
-import xml.etree.ElementTree as ET
+from jinja2 import Template
 import matplotlib as mpl
 from osgeo import gdal, osr
 from PIL import Image
@@ -44,8 +44,15 @@ GEO_DICT = { "LtCO2" : {
             }          
 
 LITE_FILE_REGEX = "oco2_(?P<product>[A-Za-z0-9]{5})_(?P<yy>[0-9]{2})(?P<mm>[0-9]{2})(?P<dd>[0-9]{2})_(?P<version>B[0-9r]{,5})_[0-9]{12}s.nc4"
-METADATA_REGEX = "(?P<var>[a-z0-9](.*))_(?P<latspan>[Lato\.](.*))_(?P<lonspan>[Lton\.](.*))_(?P<yymmdd>[0-9]{6})_(?P<version>B[0-9r]{,5}).xml"
 FTP_REGEX = "ftp://(?P<ftp_host>([^/]*))(?P<ftp_cwd>/.*)/(?P<ftp_file>([^/]*)$)"
+
+METADATA_REGEX = "(?P<var>[a-z0-9](.*))_(?P<latspan>[Lato\.-](.*))_(?P<lonspan>[Lton\.-](.*))_(?P<yymmdd>[0-9]{6})_(?P<version>B[0-9r]{,5}).met"
+ODL_METADATA_TEMPLATE = os.path.join(CODE_DIR, "template.met")
+METADATA_TIMESTAMP_FORMAT = "%Y-%m-%dT%H:%M:%S.%fZ"
+METADATA_DATE_FORMAT = "%Y-%m-%d"
+METADATA_TIME_TRUNCATED_FORMAT = "%H:%M:%SZ"
+METADATA_TIME_FORMAT = "%H:%M:%S.%fZ"
+METADATA_DAY_FORMAT = "%Y%j"
 
 RESOLUTION = "500m"
 DPI = 10000
@@ -250,24 +257,25 @@ def patch_plot(data, grid_lat_south, grid_lat_north, grid_lon_west, grid_lon_eas
     
     return True
 
-def write_image_metadata(source_files, start_ts, end_ts, image_name):
-    
-    metadata_filename = re.sub("png", "xml", image_name)
-    timestamp_format = "%Y-%m-%dT%H:%M:%S.%fZ"
-    
+def write_image_odl_metadata(start_ts, end_ts, image_name):
+
+    metadata_filename = re.sub("png", "met", image_name)
     metadata_filename_dict = re.match(METADATA_REGEX, os.path.basename(metadata_filename)).groupdict()
     
-    root = ET.Element("ImageryMetadata")
+    with open(ODL_METADATA_TEMPLATE, "r") as tf:
+        template = Template(tf.read())
     
-    ET.SubElement(root, "ProviderProductID").text = metadata_filename_dict["var"] + "." + metadata_filename_dict["version"]
-    ET.SubElement(root, "ProductionDateTime").text = datetime.datetime.utcnow().strftime(timestamp_format)
-    ET.SubElement(root, "DataStartDateTime").text = start_ts.strftime(timestamp_format)
-    ET.SubElement(root, "DataEndDateTime").text = end_ts.strftime(timestamp_format)
-    ET.SubElement(root, "DataDateTime").text = start_ts.strftime(timestamp_format)
-    ET.SubElement(root, "PartialID").text = "Tiled"
-    
-    tree = ET.ElementTree(root)
-    tree.write(metadata_filename)
+    render = template.render(image_id=os.path.splitext(os.path.basename(metadata_filename))[0],
+                             production_datetime=datetime.datetime.utcnow().strftime(METADATA_TIMESTAMP_FORMAT),
+                             latspan_lonspan=metadata_filename_dict["latspan"] + "_" + metadata_filename_dict["lonspan"],
+                             yyyyddd=start_ts.date().strftime(METADATA_DAY_FORMAT),
+                             data_start_timestamp_truncated=start_ts.replace(microsecond=0).strftime(METADATA_TIME_TRUNCATED_FORMAT),
+                             data_start_timestamp=start_ts.strftime(METADATA_TIME_FORMAT),
+                             data_end_date=end_ts.date().strftime(METADATA_DATE_FORMAT),
+                             data_start_date=start_ts.date().strftime(METADATA_DATE_FORMAT),
+                             data_end_timestamp=start_ts.strftime(METADATA_TIME_FORMAT))
+    with open(metadata_filename, "w") as mf:
+        mf.write(render)
     
     return True
 
@@ -623,7 +631,7 @@ def oco2_worldview_imagery(job_file, verbose=False, debug=False):
         granule_source_data = get_hdf5_data(GEO_DICT[job_info.product]["source"], job_info.lite_file)
         granule_sounding_id = get_hdf5_data(GEO_DICT[job_info.product]["sid"], job_info.lite_file)
         granule_start, granule_end = get_lite_oco2_timestamps(granule_sounding_id)
-        success = write_image_metadata(granule_source_data, granule_start, granule_end, job_info.out_plot_name)
+        success = write_image_odl_metadata(granule_start, granule_end, job_info.out_plot_name)
 
     if job_info.rgb:
         if verbose:
