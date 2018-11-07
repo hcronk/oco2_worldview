@@ -273,7 +273,7 @@ def write_image_odl_metadata(start_ts, end_ts, image_name):
                              data_start_timestamp=start_ts.strftime(METADATA_TIME_FORMAT),
                              data_end_date=end_ts.date().strftime(METADATA_DATE_FORMAT),
                              data_start_date=start_ts.date().strftime(METADATA_DATE_FORMAT),
-                             data_end_timestamp=start_ts.strftime(METADATA_TIME_FORMAT))
+                             data_end_timestamp=end_ts.strftime(METADATA_TIME_FORMAT))
     with open(metadata_filename, "w") as mf:
         mf.write(render)
     
