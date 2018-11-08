@@ -33,13 +33,11 @@ GEO_DICT = { "LtCO2" : {
                 "lat" : "vertex_latitude",
                 "lon" : "vertex_longitude",
                 "sid" : "sounding_id",
-                "source" : "source_files"
                 },
              "LtSIF" : {
                 "lat" : "footprint_vertex_latitude",
                 "lon" : "footprint_vertex_longitude",
                 "sid" : "sounding_id",
-                "source" : "orbit_number"
                 }
             }          
 
@@ -257,8 +255,13 @@ def patch_plot(data, grid_lat_south, grid_lat_north, grid_lon_west, grid_lon_eas
     
     return True
 
-def write_image_odl_metadata(start_ts, end_ts, image_name):
+def write_image_odl_metadata(start_ts, end_ts, image_name, extent_box, lite_filename):
 
+    lat_ul = extent_box[3]
+    lon_ul = extent_box[0]
+    lat_lr = extent_box[2]
+    lon_lr = extent_box[1]
+    
     metadata_filename = re.sub("png", "met", image_name)
     metadata_filename_dict = re.match(METADATA_REGEX, os.path.basename(metadata_filename)).groupdict()
     
@@ -267,13 +270,19 @@ def write_image_odl_metadata(start_ts, end_ts, image_name):
     
     render = template.render(image_id=os.path.splitext(os.path.basename(metadata_filename))[0],
                              production_datetime=datetime.datetime.utcnow().strftime(METADATA_TIMESTAMP_FORMAT),
-                             latspan_lonspan=metadata_filename_dict["latspan"] + "_" + metadata_filename_dict["lonspan"],
+                             lite_file=os.path.basename(lite_filename), 
+			     latspan_lonspan=metadata_filename_dict["latspan"] + "_" + metadata_filename_dict["lonspan"],
                              yyyyddd=start_ts.date().strftime(METADATA_DAY_FORMAT),
                              data_start_timestamp_truncated=start_ts.replace(microsecond=0).strftime(METADATA_TIME_TRUNCATED_FORMAT),
                              data_start_timestamp=start_ts.strftime(METADATA_TIME_FORMAT),
                              data_end_date=end_ts.date().strftime(METADATA_DATE_FORMAT),
                              data_start_date=start_ts.date().strftime(METADATA_DATE_FORMAT),
-                             data_end_timestamp=end_ts.strftime(METADATA_TIME_FORMAT))
+                             data_end_timestamp=end_ts.strftime(METADATA_TIME_FORMAT),
+			     latmin=extent_box[2],
+			     lonmin=extent_box[0],
+			     latmax=extent_box[3],
+			     lonmax=extent_box[1])
+			     
     with open(metadata_filename, "w") as mf:
         mf.write(render)
     
@@ -628,10 +637,9 @@ def oco2_worldview_imagery(job_file, verbose=False, debug=False):
             print("Problem plotting!")
         return
     else:
-        granule_source_data = get_hdf5_data(GEO_DICT[job_info.product]["source"], job_info.lite_file)
         granule_sounding_id = get_hdf5_data(GEO_DICT[job_info.product]["sid"], job_info.lite_file)
         granule_start, granule_end = get_lite_oco2_timestamps(granule_sounding_id)
-        success = write_image_odl_metadata(granule_start, granule_end, job_info.out_plot_name)
+        success = write_image_odl_metadata(granule_start, granule_end, job_info.out_plot_name, job_info.extent_box, job_info.lite_file)
 
     if job_info.rgb:
         if verbose:
