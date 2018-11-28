@@ -13,7 +13,7 @@ import errno
 from multiprocessing import Process
 
 #Global Variables
-LITE_FILE_DIRS = {"LtCO2": "data/oco2/scf/product/Lite/B9003r/r02", 
+LITE_FILE_DIRS = {"LtCO2": "/data/oco2/scf/product/Lite/B9003r/r02", 
                   "LtSIF": "/data/oco2/scf/product/Lite/B8100r/r02"}
 OUT_PLOT_DIR = "/home/hcronk/oco2_worldview/test_plots"
 LOCKFILE_DIR = "/home/hcronk/oco2_worldview/processing_status"
@@ -22,14 +22,14 @@ TRY_WAIT = 3600 #(number of seconds to wait before trying to reprocess a failed 
 OVERWRITE = False
 
 DATA_DICT = { "LtCO2" : 
-                { "xco2" : {"data_field_name" : "xco2", "preprocessing" : False, "range": [380, 430], "cmap" : "jet", "quality_info" : {"quality_field_name" : "xco2_quality_flag", "qc_val" :  0, "qc_operator" : operator.eq }}, 
-                  "xco2_relative" : {"data_field_name" : None, "preprocessing" : "ftp://aftp.cmdl.noaa.gov/products/trends/co2/co2_trend_gl.txt", "range": [-6, 6], "cmap" : "RdYlBu_r", "quality_info" : {"quality_field_name" : "xco2_quality_flag", "qc_val" :  0, "qc_operator" : operator.eq }}, 
-                  "tcwv" : {"data_field_name" : "Retrieval/tcwv", "preprocessing" : False, "range": [0, 75], "cmap" : "viridis", "quality_info" : {}}, 
+                { "xco2" : {"data_field_name" : "xco2", "preprocessing" : False, "range": [380, 430], "cmap" : "viridis", "quality_info" : {"quality_field_name" : "xco2_quality_flag", "qc_val" :  0, "qc_operator" : operator.eq }}, 
+                  "xco2_relative" : {"data_field_name" : None, "preprocessing" : "ftp://aftp.cmdl.noaa.gov/products/trends/co2/co2_trend_gl.txt", "range": [-6, 6], "cmap" : "RdBu_r", "quality_info" : {"quality_field_name" : "xco2_quality_flag", "qc_val" :  0, "qc_operator" : operator.eq }}, 
+                  "tcwv" : {"data_field_name" : "Retrieval/tcwv", "preprocessing" : False, "range": [0, 75], "cmap" : "Blues", "quality_info" : {}}, 
                 },
              "LtSIF" : 
-                { "sif757" : {"data_field_name" : "SIF_757nm", "preprocessing" : False, "range": [0, 2], "cmap" : "jet", "quality_info" : {}}, 
-                  "sif771" : {"data_field_name" : "SIF_771nm", "preprocessing" : False, "range": [0, 2], "cmap" : "jet", "quality_info" : {}}, 
-                  "sif_blended" : {"data_field_name" : None, "preprocessing" : True, "range": [0, 2], "cmap" : "jet", "quality_info" : {}}
+                { "sif757" : {"data_field_name" : "SIF_757nm", "preprocessing" : False, "range": [0, 2], "cmap" : "YlGn", "quality_info" : {}}, 
+                  "sif771" : {"data_field_name" : "SIF_771nm", "preprocessing" : False, "range": [0, 2], "cmap" : "YlGn", "quality_info" : {}}, 
+                  "sif_blended" : {"data_field_name" : None, "preprocessing" : True, "range": [0, 2], "cmap" : "YlGn", "quality_info" : {}}
                 }
             }
             
@@ -230,6 +230,9 @@ def check_job_worked(plot_name, var, rgb=False):
     """
     Check if the expected output files exist
     """ 
+    metadata_name = re.sub("png", "met", plot_name)
+    worldfile_name = re.sub("png", "pgw", plot_name)
+    
     if rgb:
         if (glob(plot_name) and os.path.getsize(plot_name) > 0 and 
             glob(rgb["layered_rgb_name"]) and os.path.getsize(rgb["layered_rgb_name"]) > 0):
@@ -237,7 +240,9 @@ def check_job_worked(plot_name, var, rgb=False):
         else:
             return False
     else:
-        if glob(plot_name) and os.path.getsize(plot_name) > 0 :
+        if (glob(plot_name) and os.path.getsize(plot_name) > 0 and
+	glob(metadata_name) and os.path.getsize(metadata_name) > 0 and 
+	glob(worldfile_name) and os.path.getsize(worldfile_name) > 0):
             return True
         else:
             return False
