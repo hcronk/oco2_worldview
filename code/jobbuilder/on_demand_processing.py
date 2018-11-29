@@ -6,6 +6,7 @@ import operator
 import re
 import numpy as np
 import shutil
+import sqlite3
 from routine_processing import get_image_filename, check_processing_or_problem, build_config, get_intermediate_tif_filename, get_GIBS_xml_filename
 code_dir = os.path.join(os.path.dirname(os.path.realpath(__file__)), os.path.pardir)
 sys.path.append(code_dir)
@@ -36,6 +37,8 @@ TILE_DICT = { "NE": {"extent_box" : [0, 180, 0, 90]
 
 LITE_FILE_REGEX = "oco2_(?P<product>[A-Za-z0-9]{5})_(?P<yymmdd>[0-9]{6})_(?P<version>B[0-9r]{,5})_[0-9]{12}s.nc4"
 
+CONN = sqlite3.connect(os.path.join(code_dir, "oco2_worldview_imagery.db"))
+
 if __name__ == "__main__":
     
     code_dir = os.path.join(os.path.dirname(os.path.realpath(__file__)), os.path.pardir)
@@ -63,6 +66,8 @@ if __name__ == "__main__":
     overwrite = args.overwrite
     debug = args.debug
     stitch = args.stitch
+            
+    cur = CONN.cursor()
     
     if user_defined_var_list:
         user_defined_var_list = [x.strip("[,]") for x in user_defined_var_list]      
@@ -158,12 +163,14 @@ if __name__ == "__main__":
                 if verbose:
                     print("Checking " + var)
                 out_plot_name = get_image_filename(out_plot_dir, var, extent_box, plot_tags)
+                db_entry = cur.execute("SELECT * FROM created_imagery WHERE filename=?", (os.path.basename(out_plot_name),)).fetchall()
+                #print(db_entry)
                 layered_rgb_name = os.path.join(out_plot_dir, re.sub(var, var +"_onRGB", os.path.basename(out_plot_name)))
                 if rgb:
                     rgb_dict["xml"] = get_GIBS_xml_filename(date)
                     rgb_dict["intermediate_tif"] = get_intermediate_tif_filename(out_plot_dir, extent_box, date)
                     rgb_dict["layered_rgb_name"] = layered_rgb_name
-                if debug or overwrite or not glob(out_plot_name) or (rgb and not glob(rgb_dict["layered_rgb_name"])):
+                if debug or overwrite or not db_entry or (rgb and not glob(rgb_dict["layered_rgb_name"])):
                     job_file = re.sub("png", "pkl", os.path.basename(out_plot_name))
                     processing_or_problem = check_processing_or_problem(job_file, verbose=verbose)
                     if not processing_or_problem:
@@ -187,6 +194,8 @@ if __name__ == "__main__":
                     if verbose:
                         print("Checking " + t + " tile")
                     out_plot_name = get_image_filename(out_plot_dir, var, TILE_DICT[t]["extent_box"], plot_tags)
+                    db_entry = cur.execute("SELECT * FROM created_imagery WHERE filename=?", (os.path.basename(out_plot_name),)).fetchall()
+                    #print(db_entry)
                     layered_rgb_name = os.path.join(out_plot_dir, re.sub(var, var +"_onRGB", os.path.basename(out_plot_name)))
                     if rgb:
                         rgb_dict["xml"] = get_GIBS_xml_filename(date)
@@ -197,7 +206,7 @@ if __name__ == "__main__":
                             plots_to_stitch[t] = layered_rgb_name
                         else:
                             plots_to_stitch[t] = out_plot_name
-                    if debug or overwrite or not glob(out_plot_name) or (rgb and not glob(rgb_dict["layered_rgb_name"])):
+                    if debug or overwrite or not db_entry or (rgb and not glob(rgb_dict["layered_rgb_name"])):
                         job_file = re.sub("png", "pkl", os.path.basename(out_plot_name))
                         processing_or_problem = check_processing_or_problem(job_file, verbose=verbose)
                         if not processing_or_problem:
@@ -219,3 +228,6 @@ if __name__ == "__main__":
                     if debug or overwrite or not glob(stitched_plot_name):
                         success = stitch_quadrants(plots_to_stitch, os.path.join(out_plot_dir, stitched_plot_name))
             
+    if CONN:
+        #print("Closing database connection from on_demand_processing.py")
+        CONN.close()

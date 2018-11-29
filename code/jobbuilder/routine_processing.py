@@ -11,6 +11,7 @@ import shutil
 import pickle
 import errno
 from multiprocessing import Process
+import sqlite3
 
 #Global Variables
 LITE_FILE_DIRS = {"LtCO2": "/data/oco2/scf/product/Lite/B9003r/r02", 
@@ -20,6 +21,8 @@ LOCKFILE_DIR = "/home/hcronk/oco2_worldview/processing_status"
 TRY_THRESHOLD = 3 #(number of times to try to process before moving to issues for analysis)
 TRY_WAIT = 3600 #(number of seconds to wait before trying to reprocess a failed job)
 OVERWRITE = False
+CONN = sqlite3.connect(os.path.join(CODE_DIR, "oco2_worldview_imagery.db"))
+CUR = CONN.cursor()
 
 DATA_DICT = { "LtCO2" : 
                 { "xco2" : {"data_field_name" : "xco2", "preprocessing" : False, "range": [380, 430], "cmap" : "viridis", "quality_info" : {"quality_field_name" : "xco2_quality_flag", "qc_val" :  0, "qc_operator" : operator.eq }}, 
@@ -51,6 +54,7 @@ def find_unprocessed_file(lite_product, verbose=False):
     Crawl Lite File directories and check if all expected output imagery exists and
     initiate a job for any missing imagery
     """
+    
     for root, subdirs, files in os.walk(LITE_FILE_DIRS[lite_product]):
         subdirs[:] = [d for d in subdirs if not d[0] == "."]
         files = [f for f in files if not f[0] == "."]
@@ -70,7 +74,8 @@ def find_unprocessed_file(lite_product, verbose=False):
                     if verbose:
                         print(t)
                     out_plot_name = get_image_filename(OUT_PLOT_DIR, v, TILE_DICT[t]["extent_box"], plot_tags)
-                    if not glob(out_plot_name) or OVERWRITE:
+                    db_entry = CUR.execute("SELECT filename FROM created_imagery WHERE filename=?", (os.path.basename(out_plot_name),)).fetchall()
+                    if not db_entry or OVERWRITE:
                         #job_file = re.sub("png", "json", os.path.basename(out_plot_name))
                         job_file = re.sub("png", "pkl", os.path.basename(out_plot_name))
                         processing_or_problem = check_processing_or_problem(job_file)
@@ -82,8 +87,7 @@ def build_config(oco2_file, lite_product, var, extent_box, out_plot_name, job_fi
     """
     Create a pickle (.pkl) formatted job configuration file with 
     the necessary parameters to create OCO-2 Worldview imagery
-    """
-    
+    """  
     config_dict = DATA_DICT[lite_product][var]
     
     config_dict["lite_file"] = oco2_file
@@ -195,16 +199,26 @@ def run_job(job_file, verbose=False):
     with open(job_file, "rb") as jf:
         contents = pickle.load(jf)
     
-    plot_name = contents["out_plot_name"]
-    rgb = contents["rgb"]
-    var = contents["var"]
-    
     if success:        
-        job_worked = check_job_worked(plot_name, var, rgb)
+        job_worked = check_job_worked(contents["out_plot_name"], contents["var"], contents["rgb"])
     
     if success and job_worked:
         if verbose:
             print("Success!")
+        db_entry = CUR.execute("SELECT * FROM created_imagery WHERE filename=?", (os.path.basename(contents["out_plot_name"]),)).fetchall()
+        if not db_entry:
+            if verbose:
+                print("Updating database")
+            #Update database
+            lite_file_substring_dict = re.match(LITE_FILE_REGEX, os.path.basename(contents["lite_file"])).groupdict()
+            CUR.execute("INSERT INTO created_imagery (filename, var, date, input_product, input_file) VALUES (?, ?, ?, ?, ?)", 
+                        ((os.path.basename(contents["out_plot_name"])), contents["var"], lite_file_substring_dict["yymmdd"], contents["product"], os.path.basename(contents["lite_file"])))
+            CONN.commit()
+        else:
+            if verbose:
+                print("This file is already in the database")
+                print(db_entry)
+        
         os.remove(job_file)
         os.remove(LOCKFILE)
         if glob(ISSUE_FILE):
@@ -215,13 +229,13 @@ def run_job(job_file, verbose=False):
         if verbose:
             print("There was a problem with the job")
             print("The job file has been left for debugging: " + job_file)            
-        silent_remove(plot_name)
+        silent_remove(contents["out_plot_name"])
     
     #Remove intermediate files no matter what
-    if rgb:
-        just_plot_name = os.path.basename(plot_name)
-        just_plot_dir = os.path.dirname(plot_name)
-        rgb_name = os.path.join(just_plot_dir, re.sub(var, "RGB", just_plot_name))
+    if contents["rgb"]:
+        just_plot_name = os.path.basename(contents["out_plot_name"])
+        just_plot_dir = os.path.dirname(contents["out_plot_name"])
+        rgb_name = os.path.join(just_plot_dir, re.sub(contents["var"], "RGB", just_plot_name))
         silent_remove(rgb_name)
         silent_remove(rgb["xml"])
         silent_remove(rgb["intermediate_tif"])   
@@ -241,8 +255,8 @@ def check_job_worked(plot_name, var, rgb=False):
             return False
     else:
         if (glob(plot_name) and os.path.getsize(plot_name) > 0 and
-	glob(metadata_name) and os.path.getsize(metadata_name) > 0 and 
-	glob(worldfile_name) and os.path.getsize(worldfile_name) > 0):
+        glob(metadata_name) and os.path.getsize(metadata_name) > 0 and 
+        glob(worldfile_name) and os.path.getsize(worldfile_name) > 0):
             return True
         else:
             return False
@@ -266,3 +280,6 @@ if __name__ == "__main__":
     for p in DATA_DICT.keys():
         find_unprocessed_file(p)
     
+    if CONN:
+        #print("Closing database connection from routine_processing.py")
+        CONN.close()
