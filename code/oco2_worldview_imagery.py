@@ -200,7 +200,7 @@ def prep_RGB(rgb_name, tif_file, extent, xpix, ypix):
     
     return True
 
-def patch_plot(data, grid_lat_south, grid_lat_north, grid_lon_west, grid_lon_east, extent, data_limits, cmap, out_plot_name, xpix, ypix, verbose=False):
+def patch_plot(data, grid_lat_south, grid_lat_north, grid_lon_west, grid_lon_east, extent, data_limits, cmap, norm, out_plot_name, xpix, ypix, verbose=False):
     """
     Plot data polygons on a lat/lon grid
     In operational path
@@ -233,7 +233,7 @@ def patch_plot(data, grid_lat_south, grid_lat_north, grid_lon_west, grid_lon_eas
     for row in zip_it:
         polygon = mpatches.Polygon(row)
         patches.append(polygon)                 
-    p = mpl.collections.PatchCollection(patches, cmap=cmap, edgecolor='none')
+    p = mpl.collections.PatchCollection(patches, cmap=cmap, norm=norm, edgecolor='none')
     p.set_array(valid_grid)
     p.set_clim(data_limits[0], data_limits[1])
     ax.add_collection(p)
@@ -467,6 +467,18 @@ def extent_box_to_indices(extent_box):
     
     return lat_data_indices, lon_data_indices       
 
+def make_cmap(gibs_csv_file):
+
+    cmap_df = pd.read_csv(gibs_csv_file)
+    
+    cmap_list = list(zip(cmap_df.red/255, cmap_df.green/255, cmap_df.blue/255))
+    bounds_list = list(cmap_df.data_lim_low)
+    bounds_list.append(cmap_df.data_lim_high.iloc[-1])
+    
+    cmap = mpl.colors.LinearSegmentedColormap.from_list("gibs_cmap", cmap_list, len(cmap_list))
+    norm = mpl.colors.BoundaryNorm(bounds_list, cmap.N)
+
+    return cmap, norm
 
 def regrid_oco2(data, vertex_latitude, vertex_longitude, lat_centers_subset, lon_centers_subset, verbose=False, debug=False):
     
@@ -647,8 +659,10 @@ def oco2_worldview_imagery(job_file, verbose=False, debug=False):
     grid_north_subset = LAT_GRID_NORTH[lat_data_indices]
     grid_west_subset = LON_GRID_WEST[lon_data_indices]
     grid_east_subset = LON_GRID_EAST[lon_data_indices]
+    
+    cmap, norm = make_cmap(job_info.cmap_file)
    
-    success = patch_plot(grid, grid_south_subset, grid_north_subset, grid_west_subset, grid_east_subset, job_info.extent_box, job_info.range, job_info.cmap, job_info.out_plot_name, float(len(lon_data_indices)), float(len(lat_data_indices)), verbose=verbose)
+    success = patch_plot(grid, grid_south_subset, grid_north_subset, grid_west_subset, grid_east_subset, job_info.extent_box, job_info.range, cmap, norm, job_info.out_plot_name, float(len(lon_data_indices)), float(len(lat_data_indices)), verbose=verbose)
     
     del grid
     del grid_south_subset
