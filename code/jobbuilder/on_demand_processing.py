@@ -13,16 +13,52 @@ sys.path.append(code_dir)
 from oco2_worldview_imagery import stitch_quadrants
 
 #Global Variables
-DATA_DICT = { "LtCO2" : 
-                { "xco2" : {"data_field_name" : "xco2", "preprocessing" : False, "range": [380, 430], "cmap" : "jet", "quality_info" : {"quality_field_name" : "xco2_quality_flag", "qc_val" :  0, "qc_operator" : operator.eq }}, 
-                  "xco2_relative" : {"data_field_name" : None, "preprocessing" : "ftp://aftp.cmdl.noaa.gov/products/trends/co2/co2_trend_gl.txt", "range": [-6, 6], "cmap" : "RdYlBu_r", "quality_info" : {"quality_field_name" : "xco2_quality_flag", "qc_val" :  0, "qc_operator" : operator.eq }}, 
-                  "tcwv" : {"data_field_name" : "Retrieval/tcwv", "preprocessing" : False, "range": [0, 75], "cmap" : "viridis", "quality_info" : {}}, 
-                },
-             "LtSIF" : 
-                { "sif757" : {"data_field_name" : "SIF_757nm", "preprocessing" : False, "range": [0, 2], "cmap" : "jet", "quality_info" : {}}, 
-                  "sif771" : {"data_field_name" : "SIF_771nm", "preprocessing" : False, "range": [0, 2], "cmap" : "jet", "quality_info" : {}}, 
-                  "sif_blended" : {"data_field_name" : None, "preprocessing" : True, "range": [0, 2], "cmap" : "jet", "quality_info" : {}}
-                }
+DATA_DICT = { "LtCO2" : {
+                	 "xco2" : {
+				   "data_field_name" : "xco2", 
+		        	   "preprocessing" : False, 
+				   "range": [380, 430], 
+				   "cmap_file" : os.path.join(code_dir, "utils", "gibs_cmaps", "xco2_viridis_380to430.csv"), 
+				   "quality_info" : {"quality_field_name" : "xco2_quality_flag", "qc_val" :  0, "qc_operator" : operator.eq }
+				  }, 
+                "xco2_relative" : {
+				   "data_field_name" : None, 
+		        	   "preprocessing" : "ftp://aftp.cmdl.noaa.gov/products/trends/co2/co2_trend_gl.txt", 
+		        	   "range": [-6, 6], 
+				   "cmap_file" : os.path.join(code_dir, "utils", "gibs_cmaps", "xco2_relative_RdBu_r_-6to6.csv"), 
+				   "quality_info" : {"quality_field_name" : "xco2_quality_flag", "qc_val" :  0, "qc_operator" : operator.eq }
+				  }, 
+                         "tcwv" : {
+		        	   "data_field_name" : "Retrieval/tcwv", 
+		        	   "preprocessing" : False, 
+				   "range": [0, 75], 
+				   "cmap_file" : os.path.join(code_dir, "utils", "gibs_cmaps", "tcwv_Blues_0to75.csv"), 
+				   "quality_info" : {}
+				  }, 
+                        },
+              "LtSIF" : {
+                       "sif757" : {
+			           "data_field_name" : "SIF_757nm", 
+				   "preprocessing" : False, 
+				   "range": [0, 2], 
+				   "cmap_file" : os.path.join(code_dir, "utils", "gibs_cmaps", "sif757_YlGn_-1to2.csv"), 
+				   "quality_info" : {}
+				  }, 
+                       "sif771" : {
+			           "data_field_name" : "SIF_771nm", 
+				   "preprocessing" : False, 
+				   "range": [0, 2], 
+				   "cmap_file" : os.path.join(code_dir, "utils", "gibs_cmaps", "sif771_YlGn_-1to2.csv"), 
+				   "quality_info" : {}
+				  }, 
+                  "sif_blended" : {
+		                   "data_field_name" : None, 
+				   "preprocessing" : True, 
+				   "range": [0, 2], 
+				   "cmap_file" : os.path.join(code_dir, "utils", "gibs_cmaps", "sif_blended_YlGn_-1to2.csv"), 
+				   "quality_info" : {}
+				  }
+                        }
             }
             
 TILE_DICT = { "NE": {"extent_box" : [0, 180, 0, 90]
