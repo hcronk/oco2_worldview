@@ -17,6 +17,7 @@ from collections import namedtuple
 from ftplib import FTP
 from glob import glob
 import matplotlib.patches as mpatches
+import xml.etree.ElementTree as ET
 from jinja2 import Template
 import matplotlib as mpl
 from osgeo import gdal, osr

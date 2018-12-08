@@ -273,8 +273,8 @@ def run_job(job_file, verbose=False):
         just_plot_dir = os.path.dirname(contents["out_plot_name"])
         rgb_name = os.path.join(just_plot_dir, re.sub(contents["var"], "RGB", just_plot_name))
         silent_remove(rgb_name)
-        silent_remove(rgb["xml"])
-        silent_remove(rgb["intermediate_tif"])   
+        silent_remove(contents["rgb"]["xml"])
+        silent_remove(contents["rgb"]["intermediate_tif"])   
 
 def check_job_worked(plot_name, var, rgb=False):
     """
