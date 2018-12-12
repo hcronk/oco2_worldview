@@ -215,44 +215,42 @@ def patch_plot(data, grid_lat_south, grid_lat_north, grid_lon_west, grid_lon_eas
     ax = plt.axes(projection=ccrs.PlateCarree())
     ax.set_extent(extent, crs=ccrs.PlateCarree())
     ax.outline_patch.set_visible(False)
-
-    xg, yg = np.nonzero(data)
-    if not xg.size or not yg.size:
-        if verbose:
-            print("No data!")
-        return False
     
-    valid_grid = data[xg,yg].astype(float)
+    if data:
+        xg, yg = np.nonzero(data)
 
-    subset_lat_vertex = np.vstack([grid_lat_south[y], grid_lat_south[y], grid_lat_north[y], grid_lat_north[y]] for y in yg)
-    subset_lon_vertex = np.vstack([grid_lon_west[x], grid_lon_east[x], grid_lon_east[x], grid_lon_west[x]] for x in xg)
-    
-    zip_it = np.dstack([subset_lon_vertex, subset_lat_vertex])
+        valid_grid = data[xg,yg].astype(float)
 
-    patches = []
+        subset_lat_vertex = np.vstack([grid_lat_south[y], grid_lat_south[y], grid_lat_north[y], grid_lat_north[y]] for y in yg)
+        subset_lon_vertex = np.vstack([grid_lon_west[x], grid_lon_east[x], grid_lon_east[x], grid_lon_west[x]] for x in xg)
 
-    for row in zip_it:
-        polygon = mpatches.Polygon(row)
-        patches.append(polygon)                 
-    p = mpl.collections.PatchCollection(patches, cmap=cmap, norm=norm, edgecolor='none')
-    p.set_array(valid_grid)
-    p.set_clim(data_limits[0], data_limits[1])
-    ax.add_collection(p)
+        zip_it = np.dstack([subset_lon_vertex, subset_lat_vertex])
+
+        patches = []
+
+        for row in zip_it:
+            polygon = mpatches.Polygon(row)
+            patches.append(polygon)                 
+        p = mpl.collections.PatchCollection(patches, cmap=cmap, norm=norm, edgecolor='none')
+        p.set_array(valid_grid)
+        p.set_clim(data_limits[0], data_limits[1])
+        ax.add_collection(p)
 
     if verbose:
         print("Saving plot to " + out_plot_name)
         
     fig.savefig(out_plot_name, bbox_inches='tight', pad_inches=0, dpi=DPI, transparent=True)
     
-    del xg
-    del yg
-    del valid_grid
-    del subset_lat_vertex
-    del subset_lon_vertex
-    del zip_it
-    del polygon
-    del patches
-    del p
+    if data:
+        del xg
+        del yg
+        del valid_grid
+        del subset_lat_vertex
+        del subset_lon_vertex
+        del zip_it
+        del polygon
+        del patches
+        del p
     
     return True
 
@@ -643,15 +641,16 @@ def oco2_worldview_imagery(job_file, verbose=False, debug=False):
     del vertex_miss_mask
     del vertex_zero_mask
     del vertex_crossDL_mask
+    
+    if grid:
+        x_action, y_action = np.nonzero(grid)
 
-    x_action, y_action = np.nonzero(grid)
+        for x, y in zip(x_action, y_action):
+            if grid[x,y] is not None:
+                grid[x,y] = np.mean(grid[x,y])
 
-    for x, y in zip(x_action, y_action):
-        if grid[x,y] is not None:
-            grid[x,y] = np.mean(grid[x,y])
-
-    del x_action
-    del y_action
+        del x_action
+        del y_action
 
     if verbose:
         print("Plotting")
