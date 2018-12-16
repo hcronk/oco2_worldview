@@ -179,7 +179,7 @@ def pull_Aqua_RGB_GIBS(lat_ul, lon_ul, lat_lr, lon_lr, xml_file, tif_file, xsize
     
     return True
 
-def prep_RGB(rgb_name, tif_file, extent, xpix, ypix):
+def prep_RGB(rgb_name, tif_file):
     """
     Prepares the RGB geotiff for layering with the data and writes it to a png
     For research mode, not operations
@@ -187,21 +187,13 @@ def prep_RGB(rgb_name, tif_file, extent, xpix, ypix):
     
     if not "matplotlib.pyplot" in sys.modules:
         success = import_pyplot_appropriately()
-    
-    fig = plt.figure(figsize=(xpix / DPI, ypix / DPI), dpi=DPI)
 
     img = plt.imread(tif_file)
-
-    ax = plt.axes(projection=ccrs.PlateCarree())
-    ax.set_extent(extent, crs=ccrs.PlateCarree())
-    ax.outline_patch.set_visible(False)
-    ax.imshow(img, origin='upper', transform=ccrs.PlateCarree(), extent=extent)
-    
-    fig.savefig(rgb_name, bbox_inches='tight', pad_inches=0, dpi=DPI)
+    plt.imsave(rgb_name, img, format="png")
     
     return True
 
-def patch_plot(data, grid_lat_south, grid_lat_north, grid_lon_west, grid_lon_east, extent, data_limits, cmap, norm, out_plot_name, xpix, ypix, verbose=False):
+def patch_plot(data, data_limits, cmap, out_plot_name, verbose=False):
     """
     Plot data polygons on a lat/lon grid
     In operational path
@@ -209,48 +201,12 @@ def patch_plot(data, grid_lat_south, grid_lat_north, grid_lon_west, grid_lon_eas
     
     if not "matplotlib.pyplot" in sys.modules:
         success = import_pyplot_appropriately()
-    
-    #print "In the function"
-    fig = plt.figure(figsize=(xpix / DPI, ypix / DPI), dpi=DPI)
-    ax = plt.axes(projection=ccrs.PlateCarree())
-    ax.set_extent(extent, crs=ccrs.PlateCarree())
-    ax.outline_patch.set_visible(False)
-    
-    if data:
-        xg, yg = np.nonzero(data)
-
-        valid_grid = data[xg,yg].astype(float)
-
-        subset_lat_vertex = np.vstack([grid_lat_south[y], grid_lat_south[y], grid_lat_north[y], grid_lat_north[y]] for y in yg)
-        subset_lon_vertex = np.vstack([grid_lon_west[x], grid_lon_east[x], grid_lon_east[x], grid_lon_west[x]] for x in xg)
-
-        zip_it = np.dstack([subset_lon_vertex, subset_lat_vertex])
-
-        patches = []
-
-        for row in zip_it:
-            polygon = mpatches.Polygon(row)
-            patches.append(polygon)                 
-        p = mpl.collections.PatchCollection(patches, cmap=cmap, norm=norm, edgecolor='none')
-        p.set_array(valid_grid)
-        p.set_clim(data_limits[0], data_limits[1])
-        ax.add_collection(p)
-
+	
     if verbose:
         print("Saving plot to " + out_plot_name)
-        
-    fig.savefig(out_plot_name, bbox_inches='tight', pad_inches=0, dpi=DPI, transparent=True)
-    
-    if data:
-        del xg
-        del yg
-        del valid_grid
-        del subset_lat_vertex
-        del subset_lon_vertex
-        del zip_it
-        del polygon
-        del patches
-        del p
+	
+    #imsave expects an array shape of M x N (i.e. vertical x horizontal), so the data needs to be transposed	
+    plt.imsave(out_plot_name, data.astype(float).T, origin="lower", format="png", cmap=cmap, vmin=data_limits[0], vmax=data_limits[1])
     
     return True
 
@@ -479,6 +435,9 @@ def make_cmap(gibs_csv_file):
 
     return cmap, norm
 
+#def plot_colors(grid, out_plot_name, gibs_csv_file):
+    
+
 def regrid_oco2(data, vertex_latitude, vertex_longitude, lat_centers_subset, lon_centers_subset, verbose=False, debug=False):
     
     """
@@ -642,7 +601,7 @@ def oco2_worldview_imagery(job_file, verbose=False, debug=False):
     del vertex_zero_mask
     del vertex_crossDL_mask
     
-    if grid:
+    if np.any(grid):
         x_action, y_action = np.nonzero(grid)
 
         for x, y in zip(x_action, y_action):
@@ -651,7 +610,7 @@ def oco2_worldview_imagery(job_file, verbose=False, debug=False):
 
         del x_action
         del y_action
-
+    
     if verbose:
         print("Plotting")
     
@@ -661,8 +620,8 @@ def oco2_worldview_imagery(job_file, verbose=False, debug=False):
     grid_east_subset = LON_GRID_EAST[lon_data_indices]
     
     cmap, norm = make_cmap(job_info.cmap_file)
-   
-    success = patch_plot(grid, grid_south_subset, grid_north_subset, grid_west_subset, grid_east_subset, job_info.extent_box, job_info.range, cmap, norm, job_info.out_plot_name, float(len(lon_data_indices)), float(len(lat_data_indices)), verbose=verbose)
+     
+    success = patch_plot(grid, job_info.range, cmap, job_info.out_plot_name, verbose=verbose)
     
     del grid
     del grid_south_subset
@@ -700,8 +659,8 @@ def oco2_worldview_imagery(job_file, verbose=False, debug=False):
         rgb_name = os.path.join(out_plot_dir, re.sub(job_info.var, "RGB", just_plot_name))
         
         success = update_GIBS_xml(date, job_info.rgb["xml"])
-        success = pull_Aqua_RGB_GIBS(lat_ul, lon_ul, lat_lr, lon_lr, job_info.rgb["xml"], job_info.rgb["intermediate_tif"])
-        success = prep_RGB(rgb_name, job_info.rgb["intermediate_tif"], job_info.extent_box, float(len(lon_data_indices)), float(len(lat_data_indices)))
+        success = pull_Aqua_RGB_GIBS(lat_ul, lon_ul, lat_lr, lon_lr, job_info.rgb["xml"], job_info.rgb["intermediate_tif"], xsize = len(lon_data_indices), ysize = len(lat_data_indices))
+        success = prep_RGB(rgb_name, job_info.rgb["intermediate_tif"])
         success = layer_rgb_and_data(rgb_name, job_info.out_plot_name, job_info.rgb["layered_rgb_name"])
     
     return True
