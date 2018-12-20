@@ -193,19 +193,18 @@ def prep_RGB(rgb_name, tif_file):
     
     return True
 
-def patch_plot(data, data_limits, cmap, out_plot_name, verbose=False):
+def rgba_plot(data, data_limits, cmap, out_plot_name, verbose=False):
     """
-    Plot data polygons on a lat/lon grid
-    In operational path
+    Plot data on a lat/lon grid
     """
     
     if not "matplotlib.pyplot" in sys.modules:
         success = import_pyplot_appropriately()
-	
+        
     if verbose:
         print("Saving plot to " + out_plot_name)
-	
-    #imsave expects an array shape of M x N (i.e. vertical x horizontal), so the data needs to be transposed	
+        
+    #imsave expects an array shape of M x N (i.e. vertical x horizontal), so the data needs to be transposed        
     plt.imsave(out_plot_name, data.astype(float).T, origin="lower", format="png", cmap=cmap, vmin=data_limits[0], vmax=data_limits[1])
     
     return True
@@ -432,11 +431,27 @@ def make_cmap(gibs_csv_file):
     
     cmap = mpl.colors.LinearSegmentedColormap.from_list("gibs_cmap", cmap_list, len(cmap_list))
     norm = mpl.colors.BoundaryNorm(bounds_list, cmap.N)
-
-    return cmap, norm
-
-#def plot_colors(grid, out_plot_name, gibs_csv_file):
     
+    #Needed the final value for the norm, but for digitizing for the color_idx_plot, it isn't
+    bounds_list.pop(-1)
+
+    return cmap, bounds_list
+
+def color_idx_plot(grid, cmap_bounds, out_plot_name, verbose=False):
+    #Change NaNs to 0
+    grid = np.nan_to_num(grid.astype(float))
+    
+    cmap_idx_array = np.digitize(grid, cmap_bounds)
+    
+    if verbose:
+        print("Saving plot to " + out_plot_name)
+        
+    #plt.imsave(out_plot_name, cmap_idx_array.T)
+    
+    im = Image.fromarray(cmap_idx_array, mode="P")
+    im.save(out_plot_name, format="PNG")
+    
+    return True
 
 def regrid_oco2(data, vertex_latitude, vertex_longitude, lat_centers_subset, lon_centers_subset, verbose=False, debug=False):
     
@@ -614,40 +629,19 @@ def oco2_worldview_imagery(job_file, verbose=False, debug=False):
     if verbose:
         print("Plotting")
     
-    grid_south_subset = LAT_GRID_SOUTH[lat_data_indices]
-    grid_north_subset = LAT_GRID_NORTH[lat_data_indices]
-    grid_west_subset = LON_GRID_WEST[lon_data_indices]
-    grid_east_subset = LON_GRID_EAST[lon_data_indices]
-    
-    cmap, norm = make_cmap(job_info.cmap_file)
-     
-    success = patch_plot(grid, job_info.range, cmap, job_info.out_plot_name, verbose=verbose)
-    
-    del grid
-    del grid_south_subset
-    del grid_north_subset
-    del grid_west_subset
-    del grid_east_subset
-
-    if not success:
-        if verbose:
-            print("Problem plotting!")
-        return
-    else:
-        granule_sounding_id = get_hdf5_data(GEO_DICT[job_info.product]["sid"], job_info.lite_file)
-        granule_start, granule_end = get_lite_oco2_timestamps(granule_sounding_id)
-        success = write_image_odl_metadata(granule_start, granule_end, job_info.out_plot_name, job_info.extent_box, job_info.lite_file)
-        if not success:
-            if verbose:
-                print("Problem writing metadata!")
-            return
-        success = write_image_worldfile(lon_data_indices, lat_data_indices, job_info.out_plot_name)
-        if not success:
-            if verbose:
-                print("Problem writing world file!")
-            return
+    cmap, bounds_list = make_cmap(job_info.cmap_file)
 
     if job_info.rgb:
+        
+        success = rgba_plot(grid, job_info.range, cmap, job_info.out_plot_name, verbose=verbose)
+        
+        if not success:
+            if verbose:
+                print("Problem plotting!")
+            return
+        
+        del grid
+        
         if verbose:
             print("RGB Dealings")
         lat_ul = job_info.extent_box[3]
@@ -662,6 +656,26 @@ def oco2_worldview_imagery(job_file, verbose=False, debug=False):
         success = pull_Aqua_RGB_GIBS(lat_ul, lon_ul, lat_lr, lon_lr, job_info.rgb["xml"], job_info.rgb["intermediate_tif"], xsize = len(lon_data_indices), ysize = len(lat_data_indices))
         success = prep_RGB(rgb_name, job_info.rgb["intermediate_tif"])
         success = layer_rgb_and_data(rgb_name, job_info.out_plot_name, job_info.rgb["layered_rgb_name"])
+    else:
+        success = color_idx_plot(grid, bounds_list, job_info.out_plot_name, verbose=verbose)
+        
+        if not success:
+            if verbose:
+                print("Problem plotting!")
+            return
+        else:
+            granule_sounding_id = get_hdf5_data(GEO_DICT[job_info.product]["sid"], job_info.lite_file)
+            granule_start, granule_end = get_lite_oco2_timestamps(granule_sounding_id)
+            success = write_image_odl_metadata(granule_start, granule_end, job_info.out_plot_name, job_info.extent_box, job_info.lite_file)
+            if not success:
+                if verbose:
+                    print("Problem writing metadata!")
+                return
+            success = write_image_worldfile(lon_data_indices, lat_data_indices, job_info.out_plot_name)
+            if not success:
+                if verbose:
+                    print("Problem writing world file!")
+                return
     
     return True
                     
