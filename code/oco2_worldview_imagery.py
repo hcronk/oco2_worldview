@@ -11,6 +11,7 @@ import datetime
 import sys
 import re
 import h5py
+from scipy.misc import toimage
 import pandas as pd
 from shapely.geometry import Polygon, Point, LineString
 import pickle
@@ -207,6 +208,42 @@ def rgba_plot(data, data_limits, cmap, out_plot_name, verbose=False):
         
     #imsave expects an array shape of M x N (i.e. vertical x horizontal), so the data needs to be transposed        
     plt.imsave(out_plot_name, data.astype(float).T, origin="lower", format="png", cmap=cmap, vmin=data_limits[0], vmax=data_limits[1])
+    
+    return True
+
+def color_idx_plot(grid, data_limits, cmap, norm, out_plot_name, verbose=False):
+#    #Change NaNs to 0
+#    grid = np.nan_to_num(grid.astype(float))
+#    
+#    cmap_idx_array = np.digitize(grid, cmap_bounds)
+#    
+#    cmap_idx_array = np.ma.masked_where(cmap_idx_array < 1, cmap_idx_array)
+#    
+#    print(np.nanmax(grid))
+#    print(np.amax(cmap_idx_array))
+#    print(len(cmap_bounds))
+#    #sys.exit()
+#    
+#    #grid_norm = (grid.astype(float) - data_limits[0]) / (data_limits[1] - data_limits[0])
+#    #cmap_idx_array_norm = cmap_idx_array / (len(cmap_bounds))
+#    
+#    #Image expects the origin at the top left and an M x N array
+#    #im = Image.fromarray(cmap(np.flipud(grid_norm).T, bytes=True)) 
+#    
+#    im = Image.fromarray(cmap(np.flipud(cmap_idx_array).T, bytes=True))
+
+    #print(cmap(norm(398.3433837890625)))
+    grid_norm = norm(grid.astype(float))
+    print(np.nanmax(grid.astype(float)))
+    print(np.nanmax(grid_norm))
+    #sys.exit()
+    #im = Image.fromarray(np.flipud(grid_norm).T)
+    #im = toimage(cmap(np.flipud(grid_norm.T), bytes=True))
+    im = toimage(np.flipud(grid_norm.T))
+    
+    if verbose:
+        print("Saving plot to " + out_plot_name)
+    im.save(out_plot_name, format="PNG")
     
     return True
 
@@ -440,8 +477,8 @@ def make_cmap(gibs_csv_file):
     bounds_list = list(cmap_df.data_lim_low)
     bounds_list.append(cmap_df.data_lim_high.iloc[-1])
     
-    cmap_list.insert(0, (0, 0, 0))
-    bounds_list.insert(0, 0)
+    #cmap_list.insert(0, (0, 0, 0))
+    #bounds_list.insert(0, 0)
     
     cmap = mpl.colors.LinearSegmentedColormap.from_list("gibs_cmap", cmap_list, len(cmap_list))
     norm = mpl.colors.BoundaryNorm(bounds_list, cmap.N)
@@ -450,21 +487,6 @@ def make_cmap(gibs_csv_file):
     #bounds_list.pop(-1)
 
     return cmap, norm
-
-#def color_idx_plot(grid, data_limits, cmap, out_plot_name, verbose=False):
-#
-#    grid_norm = (grid.astype(float) - data_limits[0]) / (data_limits[1] - data_limits[0])
-#    
-#    #Image expects the origin at the top left and an M x N array
-#    im = Image.fromarray(cmap(np.flipud(grid_norm).T, bytes=True))      
-#    if verbose:
-#        print("Saving plot to " + out_plot_name)
-#    im.save(out_plot_name, format="PNG")
-#    
-#    convert_params = ["convert", out_plot_name, "PNG8:" + out_plot_name]
-#    subprocess.check_call(convert_params)
-#    
-#    return True
 
 def regrid_oco2(data, vertex_latitude, vertex_longitude, lat_centers_subset, lon_centers_subset, verbose=False, debug=False):
     
@@ -644,7 +666,8 @@ def oco2_worldview_imagery(job_file, verbose=False, debug=False):
     
     cmap, norm = make_cmap(job_info.cmap_file)
     
-    success = rgba_plot(grid, job_info.range, cmap, job_info.out_plot_name, verbose=verbose)   
+    #success = rgba_plot(grid, job_info.range, cmap, job_info.out_plot_name, verbose=verbose)
+    success = color_idx_plot(grid, job_info.range, cmap, norm, job_info.out_plot_name, verbose=verbose)
     
     del grid
 
@@ -682,7 +705,7 @@ def oco2_worldview_imagery(job_file, verbose=False, debug=False):
         success = prep_RGB(rgb_name, job_info.rgb["intermediate_tif"])
         success = layer_rgb_and_data(rgb_name, job_info.out_plot_name, job_info.rgb["layered_rgb_name"])
     
-    success = convert_rgba_to_png8(job_info.out_plot_name, verbose=verbose)
+    #success = convert_rgba_to_png8(job_info.out_plot_name, verbose=verbose)
     
     return True
                     
