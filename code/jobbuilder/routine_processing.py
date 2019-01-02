@@ -25,50 +25,50 @@ CONN = sqlite3.connect(os.path.join(CODE_DIR, "oco2_worldview_imagery.db"))
 CUR = CONN.cursor()
 
 DATA_DICT = { "LtCO2" : {
-                	 "xco2" : {
-				   "data_field_name" : "xco2", 
-		        	   "preprocessing" : False, 
-				   "range": [380, 430], 
-				   "cmap_file" : os.path.join(CODE_DIR, "utils", "gibs_cmaps", "xco2_viridis_380to430.csv"), 
-				   "quality_info" : {"quality_field_name" : "xco2_quality_flag", "qc_val" :  0, "qc_operator" : operator.eq }
-				  }, 
+                         "xco2" : {
+                                   "data_field_name" : "xco2", 
+                                   "preprocessing" : False, 
+                                   "range": [380, 430], 
+                                   "cmap_file" : os.path.join(CODE_DIR, "utils", "gibs_cmaps", "xco2_viridis_380to430.csv"), 
+                                   "quality_info" : {"quality_field_name" : "xco2_quality_flag", "qc_val" :  0, "qc_operator" : operator.eq }
+                                  }, 
                 "xco2_relative" : {
-				   "data_field_name" : None, 
-		        	   "preprocessing" : "ftp://aftp.cmdl.noaa.gov/products/trends/co2/co2_trend_gl.txt", 
-		        	   "range": [-6, 6], 
-				   "cmap_file" : os.path.join(CODE_DIR, "utils", "gibs_cmaps", "xco2_relative_RdBu_r_-6to6.csv"), 
-				   "quality_info" : {"quality_field_name" : "xco2_quality_flag", "qc_val" :  0, "qc_operator" : operator.eq }
-				  }, 
+                                   "data_field_name" : None, 
+                                   "preprocessing" : "ftp://aftp.cmdl.noaa.gov/products/trends/co2/co2_trend_gl.txt", 
+                                   "range": [-6, 6], 
+                                   "cmap_file" : os.path.join(CODE_DIR, "utils", "gibs_cmaps", "xco2_relative_RdBu_r_-6to6.csv"), 
+                                   "quality_info" : {"quality_field_name" : "xco2_quality_flag", "qc_val" :  0, "qc_operator" : operator.eq }
+                                  }, 
                          "tcwv" : {
-		        	   "data_field_name" : "Retrieval/tcwv", 
-		        	   "preprocessing" : False, 
-				   "range": [0, 75], 
-				   "cmap_file" : os.path.join(CODE_DIR, "utils", "gibs_cmaps", "tcwv_Blues_0to75.csv"), 
-				   "quality_info" : {}
-				  }, 
+                                   "data_field_name" : "Retrieval/tcwv", 
+                                   "preprocessing" : False, 
+                                   "range": [0, 75], 
+                                   "cmap_file" : os.path.join(CODE_DIR, "utils", "gibs_cmaps", "tcwv_Blues_0to75.csv"), 
+                                   "quality_info" : {}
+                                  }, 
                         },
               "LtSIF" : {
                        "sif757" : {
-			           "data_field_name" : "SIF_757nm", 
-				   "preprocessing" : False, 
-				   "range": [0, 2], 
-				   "cmap_file" : os.path.join(CODE_DIR, "utils", "gibs_cmaps", "sif757_YlGn_-1to2.csv"), 
-				   "quality_info" : {}
-				  }, 
+                                   "data_field_name" : "SIF_757nm", 
+                                   "preprocessing" : False, 
+                                   "range": [0, 2], 
+                                   "cmap_file" : os.path.join(CODE_DIR, "utils", "gibs_cmaps", "sif757_YlGn_-1to2.csv"), 
+                                   "quality_info" : {}
+                                  }, 
                        "sif771" : {
-			           "data_field_name" : "SIF_771nm", 
-				   "preprocessing" : False, 
-				   "range": [0, 2], 
-				   "cmap_file" : os.path.join(CODE_DIR, "utils", "gibs_cmaps", "sif771_YlGn_-1to2.csv"), 
-				   "quality_info" : {}
-				  }, 
+                                   "data_field_name" : "SIF_771nm", 
+                                   "preprocessing" : False, 
+                                   "range": [0, 2], 
+                                   "cmap_file" : os.path.join(CODE_DIR, "utils", "gibs_cmaps", "sif771_YlGn_-1to2.csv"), 
+                                   "quality_info" : {}
+                                  }, 
                   "sif_blended" : {
-		                   "data_field_name" : None, 
-				   "preprocessing" : True, 
-				   "range": [0, 2], 
-				   "cmap_file" : os.path.join(CODE_DIR, "utils", "gibs_cmaps", "sif_blended_YlGn_-1to2.csv"), 
-				   "quality_info" : {}
-				  }
+                                   "data_field_name" : None, 
+                                   "preprocessing" : True, 
+                                   "range": [0, 2], 
+                                   "cmap_file" : os.path.join(CODE_DIR, "utils", "gibs_cmaps", "sif_blended_YlGn_-1to2.csv"), 
+                                   "quality_info" : {}
+                                  }
                         }
             }
 
@@ -266,7 +266,11 @@ def run_job(job_file, verbose=False):
         if verbose:
             print("There was a problem with the job")
             print("The job file has been left for debugging: " + job_file)            
+        metadata_name = re.sub("png", "met", contents["out_plot_name"])
+        worldfile_name = re.sub("png", "pgw", contents["out_plot_name"])
         silent_remove(contents["out_plot_name"])
+        silent_remove(metadata_name)
+        silent_remove(worldfile_name)
     
     #Remove intermediate files no matter what
     if contents["rgb"]:
@@ -294,6 +298,10 @@ def check_job_worked(plot_name, var, rgb=False):
         if (glob(plot_name) and os.path.getsize(plot_name) > 0 and
         glob(metadata_name) and os.path.getsize(metadata_name) > 0 and 
         glob(worldfile_name) and os.path.getsize(worldfile_name) > 0):
+            #update permissions
+            os.system("chmod 777 " + plot_name)
+            os.system("chmod 777 " + metadata_name)
+            os.system("chmod 777 " + worldfile_name)
             return True
         else:
             return False
