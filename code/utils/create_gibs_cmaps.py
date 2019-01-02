@@ -7,7 +7,8 @@ import pandas as pd
 import re
 import math
 
-CMAP_CSV_DIR = "/home/hcronk/oco2_worldview/code/utils/gibs_cmaps"
+#CMAP_CSV_DIR = "/home/hcronk/oco2_worldview/code/utils/gibs_cmaps"
+CMAP_CSV_DIR = "/home/jrhall/oco2_worldview/oco2_gibs_cmaps"
 
 DATA_DICT = { "xco2" : {"range": [380, 430], "cmap" : "cm.viridis", "binsize": 0.2}, 
               "xco2_relative" : {"range": [-6, 6], "cmap" : "cm.RdBu_r", "binsize": 0.05}, 
@@ -31,10 +32,11 @@ for var in DATA_DICT.keys():
     ncolors = len(data_crange_low)
 
     cmap_arr = np.array([[np.append(np.round(255*mpl.colors.to_rgba_array(eval(DATA_DICT[var]["cmap"])(n))), [round(data_crange_low[n], 3), round(data_crange_high[n], 3)])] for n in range(ncolors)]).squeeze()
+    cmap_arr = np.insert(cmap_arr, 0, [0, 0, 0, 255, math.floor(data_crange_low[0] - abs(data_crange_high[-1] - data_crange_low[0])), data_crange_low[0]], axis=0)
     cmap_df = pd.DataFrame(cmap_arr, columns = ["red", "green", "blue", "alpha", "data_lim_low", "data_lim_high"]).astype({"red": int, "green": int, "blue": int, "alpha": int})
     
     if var == "tcwv":
         cmap_df["data_lim_low"] = cmap_df["data_lim_low"].map(lambda x: truncate(x, 2))
         cmap_df["data_lim_high"] = cmap_df["data_lim_high"].map(lambda x: truncate(x, 2))
 
-    cmap_df.to_csv(cmap_name, index=False)
+    cmap_df.to_csv(cmap_name, index=False, header=False)
