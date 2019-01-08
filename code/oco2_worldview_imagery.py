@@ -212,35 +212,57 @@ def rgba_plot(data, data_limits, cmap, out_plot_name, verbose=False):
     
     return True
 
-def color_idx_plot(grid, data_limits, cmap, norm, out_plot_name, verbose=False):
-#    #Change NaNs to 0
-#    grid = np.nan_to_num(grid.astype(float))
-#    
-#    cmap_idx_array = np.digitize(grid, cmap_bounds)
-#    
-#    cmap_idx_array = np.ma.masked_where(cmap_idx_array < 1, cmap_idx_array)
-#    
-#    print(np.nanmax(grid))
-#    print(np.amax(cmap_idx_array))
-#    print(len(cmap_bounds))
-#    #sys.exit()
-#    
-#    #grid_norm = (grid.astype(float) - data_limits[0]) / (data_limits[1] - data_limits[0])
-#    #cmap_idx_array_norm = cmap_idx_array / (len(cmap_bounds))
-#    
-#    #Image expects the origin at the top left and an M x N array
-#    #im = Image.fromarray(cmap(np.flipud(grid_norm).T, bytes=True)) 
-#    
-#    im = Image.fromarray(cmap(np.flipud(cmap_idx_array).T, bytes=True))
-
-    #print(cmap(norm(398.3433837890625)))
+def color_idx_plot(grid, data_limits, cmap, norm, cmap_bounds, out_plot_name, verbose=False):
+##    
+    
     grid_norm = norm(grid.astype(float))
-    print(np.nanmax(grid.astype(float)))
+    
+    #Change NaNs to 0
+    grid = np.nan_to_num(grid.astype(float))  
+    cmap_idx_array = np.digitize(grid, cmap_bounds)
+    
+    print(np.where(grid_norm != cmap_idx_array))
+    print(grid_norm[92, 680])
+    
+    sys.exit()
+    
+    print(cmap_idx_array)
+    print(np.nanmax(cmap_idx_array))
+    print(cmap(cmap_idx_arr))
+    sys.exit()
+#    print(np.where(cmap_idx_array == np.nanmax(cmap_idx_array)))
+##    
+##    cmap_idx_array = np.ma.masked_where(cmap_idx_array < 1, cmap_idx_array)
+##    
+##    print(np.nanmax(grid))
+##    print(np.amax(cmap_idx_array))
+##    print(len(cmap_bounds))
+##    #sys.exit()
+##    
+##    #grid_norm = (grid.astype(float) - data_limits[0]) / (data_limits[1] - data_limits[0])
+##    #cmap_idx_array_norm = cmap_idx_array / (len(cmap_bounds))
+##    
+##    #Image expects the origin at the top left and an M x N array
+##    #im = Image.fromarray(cmap(np.flipud(grid_norm).T, bytes=True)) 
+##    
+##    im = Image.fromarray(cmap(np.flipud(cmap_idx_array).T, bytes=True))
+#
+#    #print(cmap(norm(398.3433837890625)))
+    grid_norm = norm(grid.astype(float))
+    apply_cmap = cmap(np.flipud(grid_norm.T), bytes=True)
+    #apply_cmap = cmap(grid.astype(float))
+    print(cmap(92))
+    sys.exit()
+    
+#    print(np.nanmax(grid.astype(float)))
     print(np.nanmax(grid_norm))
-    #sys.exit()
-    #im = Image.fromarray(np.flipud(grid_norm).T)
-    #im = toimage(cmap(np.flipud(grid_norm.T), bytes=True))
-    im = toimage(np.flipud(grid_norm.T))
+    print(np.nanmax(apply_cmap))
+#    print(np.where(grid_norm == np.nanmax(grid_norm)))
+    sys.exit()
+#    im = Image.fromarray(np.flipud(grid_norm).T)
+    im = toimage(cmap(np.flipud(grid_norm.T), bytes=True))
+#    #im = toimage(np.flipud(grid_norm.T))
+
     
     if verbose:
         print("Saving plot to " + out_plot_name)
@@ -253,7 +275,7 @@ def convert_rgba_to_png8(out_plot_name, verbose = False):
     if verbose:
         print("Converting " + out_plot_name + " to PNG8")
     
-    convert_params = ["convert", out_plot_name, "PNG8:" + out_plot_name]
+    convert_params = ["convert", out_plot_name, "-interpolate", "Nearest", "PNG8:" + out_plot_name]
     subprocess.check_call(convert_params)
     
     return True
@@ -480,9 +502,9 @@ def make_cmap(gibs_csv_file):
     norm = mpl.colors.BoundaryNorm(bounds_list, cmap.N)
     
     #Needed the final value for the norm, but for digitizing for the color_idx_plot, it isn't
-    #bounds_list.pop(-1)
+    bounds_list.pop(-1)
 
-    return cmap, norm
+    return cmap, norm, bounds_list
 
 def regrid_oco2(data, vertex_latitude, vertex_longitude, lat_centers_subset, lon_centers_subset, verbose=False, debug=False):
     
@@ -660,10 +682,10 @@ def oco2_worldview_imagery(job_file, verbose=False, debug=False):
     if verbose:
         print("Plotting")
     
-    cmap, norm = make_cmap(job_info.cmap_file)
+    cmap, norm, cmap_bounds = make_cmap(job_info.cmap_file)
     
     #success = rgba_plot(grid, job_info.range, cmap, job_info.out_plot_name, verbose=verbose)
-    success = color_idx_plot(grid, job_info.range, cmap, norm, job_info.out_plot_name, verbose=verbose)
+    success = color_idx_plot(grid, job_info.range, cmap, norm, cmap_bounds, job_info.out_plot_name, verbose=verbose)
     
     del grid
 
@@ -701,7 +723,7 @@ def oco2_worldview_imagery(job_file, verbose=False, debug=False):
         success = prep_RGB(rgb_name, job_info.rgb["intermediate_tif"])
         success = layer_rgb_and_data(rgb_name, job_info.out_plot_name, job_info.rgb["layered_rgb_name"])
     
-    #success = convert_rgba_to_png8(job_info.out_plot_name, verbose=verbose)
+    success = convert_rgba_to_png8(job_info.out_plot_name, verbose=verbose)
     
     return True
                     
