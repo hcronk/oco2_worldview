@@ -17,6 +17,7 @@ import sqlite3
 LITE_FILE_DIRS = {"LtCO2": "/data/oco2/scf/product/Lite/B9003r/r02", 
                   "LtSIF": "/data/oco2/scf/product/Lite/B8100r/r02"}
 OUT_PLOT_DIR = "/home/hcronk/oco2_worldview/test_plots"
+IMAGE_REGEX = "(?P<var>[a-z0-9](.*))_(?P<latspan>[Lato\.-](.*))_(?P<lonspan>[Lton\.-](.*))_(?P<yymmdd>[0-9]{6})_(?P<version>B[0-9r]{,5}).png"
 LOCKFILE_DIR = "/home/hcronk/oco2_worldview/processing_status"
 TRY_THRESHOLD = 3 #(number of times to try to process before moving to issues for analysis)
 TRY_WAIT = 3600 #(number of seconds to wait before trying to reprocess a failed job)
@@ -231,10 +232,18 @@ def run_job(job_file, verbose=False):
     and all intermediate files.
     """
     
+    global METADATA_NAME
+    global WORLDFILE_NAME
+    
     success = oco2_worldview_imagery(job_file, verbose=verbose)
     
     with open(job_file, "rb") as jf:
         contents = pickle.load(jf)
+    
+    image_filename_dict = re.match(IMAGE_REGEX, os.path.basename(contents["out_plot_name"])).groupdict()
+    METADATA_NAME = os.path.join(os.path.dirname(contents["out_plot_name"]), image_filename_dict["var"] + "_" + image_filename_dict["yymmdd"] + "_" + image_filename_dict["version"] + ".met")            
+    WORLDFILE_NAME = re.sub("png", "pgw", contents["out_plot_name"])
+
     
     if success:        
         job_worked = check_job_worked(contents["out_plot_name"], contents["var"], contents["rgb"])
@@ -265,12 +274,10 @@ def run_job(job_file, verbose=False):
         #but leave the job file for debugging
         if verbose:
             print("There was a problem with the job")
-            print("The job file has been left for debugging: " + job_file)            
-        metadata_name = re.sub("png", "met", contents["out_plot_name"])
-        worldfile_name = re.sub("png", "pgw", contents["out_plot_name"])
+            print("The job file has been left for debugging: " + job_file)
         silent_remove(contents["out_plot_name"])
-        silent_remove(metadata_name)
-        silent_remove(worldfile_name)
+        silent_remove(METADATA_NAME)
+        silent_remove(WORLDFILE_NAME)
     
     #Remove intermediate files no matter what
     if contents["rgb"]:
@@ -285,8 +292,6 @@ def check_job_worked(plot_name, var, rgb=False):
     """
     Check if the expected output files exist
     """ 
-    metadata_name = re.sub("png", "met", plot_name)
-    worldfile_name = re.sub("png", "pgw", plot_name)
     
     if rgb:
         if (glob(plot_name) and os.path.getsize(plot_name) > 0 and 
@@ -296,12 +301,12 @@ def check_job_worked(plot_name, var, rgb=False):
             return False
     else:
         if (glob(plot_name) and os.path.getsize(plot_name) > 0 and
-        glob(metadata_name) and os.path.getsize(metadata_name) > 0 and 
-        glob(worldfile_name) and os.path.getsize(worldfile_name) > 0):
+        glob(METADATA_NAME) and os.path.getsize(METADATA_NAME) > 0 and 
+        glob(WORLDFILE_NAME) and os.path.getsize(WORLDFILE_NAME) > 0):
             #update permissions
             os.system("chmod 777 " + plot_name)
-            os.system("chmod 777 " + metadata_name)
-            os.system("chmod 777 " + worldfile_name)
+            os.system("chmod 777 " + METADATA_NAME)
+            os.system("chmod 777 " + WORLDFILE_NAME)
             return True
         else:
             return False
