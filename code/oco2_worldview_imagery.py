@@ -213,60 +213,14 @@ def rgba_plot(data, data_limits, cmap, out_plot_name, verbose=False):
     return True
 
 def color_idx_plot(grid, data_limits, cmap, norm, cmap_bounds, out_plot_name, verbose=False):
-##    
-    
-    grid_norm = norm(grid.astype(float))
-    
-    #Change NaNs to 0
-    grid = np.nan_to_num(grid.astype(float))  
-    cmap_idx_array = np.digitize(grid, cmap_bounds)
-    
-    print(np.where(grid_norm != cmap_idx_array))
-    print(grid_norm[92, 680])
-    
-    sys.exit()
-    
-    print(cmap_idx_array)
-    print(np.nanmax(cmap_idx_array))
-    print(cmap(cmap_idx_arr))
-    sys.exit()
-#    print(np.where(cmap_idx_array == np.nanmax(cmap_idx_array)))
-##    
-##    cmap_idx_array = np.ma.masked_where(cmap_idx_array < 1, cmap_idx_array)
-##    
-##    print(np.nanmax(grid))
-##    print(np.amax(cmap_idx_array))
-##    print(len(cmap_bounds))
-##    #sys.exit()
-##    
-##    #grid_norm = (grid.astype(float) - data_limits[0]) / (data_limits[1] - data_limits[0])
-##    #cmap_idx_array_norm = cmap_idx_array / (len(cmap_bounds))
-##    
-##    #Image expects the origin at the top left and an M x N array
-##    #im = Image.fromarray(cmap(np.flipud(grid_norm).T, bytes=True)) 
-##    
-##    im = Image.fromarray(cmap(np.flipud(cmap_idx_array).T, bytes=True))
-#
-#    #print(cmap(norm(398.3433837890625)))
-    grid_norm = norm(grid.astype(float))
-    apply_cmap = cmap(np.flipud(grid_norm.T), bytes=True)
-    #apply_cmap = cmap(grid.astype(float))
-    print(cmap(92))
-    sys.exit()
-    
-#    print(np.nanmax(grid.astype(float)))
-    print(np.nanmax(grid_norm))
-    print(np.nanmax(apply_cmap))
-#    print(np.where(grid_norm == np.nanmax(grid_norm)))
-    sys.exit()
-#    im = Image.fromarray(np.flipud(grid_norm).T)
-    im = toimage(cmap(np.flipud(grid_norm.T), bytes=True))
-#    #im = toimage(np.flipud(grid_norm.T))
 
+    grid = np.nan_to_num(grid.astype(float))      
+    grid_norm = norm(grid.astype(float))
+    im = Image.fromarray(np.flipud(grid_norm.T))
     
     if verbose:
         print("Saving plot to " + out_plot_name)
-    im.save(out_plot_name, format="PNG")
+    im.save(out_plot_name, format="PNG", compress_level=0)
     
     return True
 
@@ -723,7 +677,7 @@ def oco2_worldview_imagery(job_file, verbose=False, debug=False):
         success = prep_RGB(rgb_name, job_info.rgb["intermediate_tif"])
         success = layer_rgb_and_data(rgb_name, job_info.out_plot_name, job_info.rgb["layered_rgb_name"])
     
-    success = convert_rgba_to_png8(job_info.out_plot_name, verbose=verbose)
+    #success = convert_rgba_to_png8(job_info.out_plot_name, verbose=verbose)
     
     return True
                     
