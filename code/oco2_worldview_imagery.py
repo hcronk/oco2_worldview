@@ -523,6 +523,8 @@ def regrid_oco2(data, vertex_latitude, vertex_longitude, lat_centers_subset, lon
         if debug:
             #Plot polygon vertices and gridpoints to visualize/quality check
             dot_colors = []
+	    #Need a new iterator
+            zip_it = zip(list(lat_m.flatten()), list(lon_m.flatten()))
             for ll in zip_it:
                 pt = Point(ll[0], ll[1])
                 if pt.within(pg):
