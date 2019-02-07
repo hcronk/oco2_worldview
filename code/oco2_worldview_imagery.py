@@ -215,7 +215,7 @@ def rgba_plot(data, data_limits, cmap, out_plot_name, verbose=False):
 def color_idx_plot(grid, data_limits, cmap, norm, cmap_bounds, out_plot_name, verbose=False):
 
     grid = np.nan_to_num(grid.astype(float))      
-    grid_norm = norm(grid.astype(float))
+    grid_norm = norm(grid)
     im = Image.fromarray(np.flipud(grid_norm.T))
     
     #Writes out M x N x 4, needs to be converted to PNG8, which still compresses the result currently. Revisit.
@@ -513,6 +513,12 @@ def regrid_oco2(data, vertex_latitude, vertex_longitude, lat_centers_subset, lon
                 y = np.where(ll[0] == lat_centers_subset)[0][0]
                 if np.isnan(grid[x,y]):
                     grid[x,y] = data[n]
+            else:
+                if pg.exterior.distance(pt) <= 1e-3:
+                    x = np.where(ll[1] == lon_centers_subset)[0][0]
+                    y = np.where(ll[0] == lat_centers_subset)[0][0]
+                    if np.isnan(grid[x,y]):
+                        grid[x,y] = data[n]
                         
         if debug:
             #Plot polygon vertices and gridpoints to visualize/quality check
@@ -524,7 +530,10 @@ def regrid_oco2(data, vertex_latitude, vertex_longitude, lat_centers_subset, lon
                 if pt.within(pg):
                     dot_colors.append("cyan")
                 else:
-                    dot_colors.append("black")
+                    if pg.exterior.distance(pt) <= 1e-3:
+                        dot_colors.append("cyan")
+                    else:
+                        dot_colors.append("black")
             fig = plt.figure(figsize=(10,8))
             ax = fig.add_subplot(111)
             plt.plot(np.append(vertices[:,1],vertices[0,1]), np.append(vertices[:,0], vertices[0,0]), "-o", c="red")
