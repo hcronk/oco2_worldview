@@ -218,6 +218,9 @@ def color_idx_plot(grid, data_limits, cmap, norm, cmap_bounds, out_plot_name, ve
     grid_norm = norm(grid.astype(float))
     im = Image.fromarray(np.flipud(grid_norm.T))
     
+    #Writes out M x N x 4, needs to be converted to PNG8, which still compresses the result currently. Revisit.
+    #im = Image.fromarray(cmap(np.flipud(grid_norm.T), bytes=True))
+    
     if verbose:
         print("Saving plot to " + out_plot_name)
     im.save(out_plot_name, format="PNG", compress_level=0)
@@ -229,7 +232,8 @@ def convert_rgba_to_png8(out_plot_name, verbose = False):
     if verbose:
         print("Converting " + out_plot_name + " to PNG8")
     
-    convert_params = ["convert", out_plot_name, "-interpolate", "Nearest", "PNG8:" + out_plot_name]
+    #This still appears to be compressing; revisit with the RGB color index plot eventually
+    convert_params = ["convert", out_plot_name, "-define", "PNG:compression-level=0", "-define", "PNG:compression-strategy=0", "PNG8:" + out_plot_name]
     subprocess.check_call(convert_params)
     
     return True
@@ -470,7 +474,7 @@ def regrid_oco2(data, vertex_latitude, vertex_longitude, lat_centers_subset, lon
     if not "matplotlib.pyplot" in sys.modules:
         success = import_pyplot_appropriately(debug)
     
-    grid = np.empty([len(lon_centers_subset), len(lat_centers_subset)], dtype=np.object)
+    grid = np.full([len(lon_centers_subset), len(lat_centers_subset)], np.nan)
     
     #Create lat/lon corner pairs from vertices
     #Each element of this array is a 4x2 array of lat/lon points of the parallelogram corners (Order: LL, UL, UR, LR)
@@ -507,18 +511,8 @@ def regrid_oco2(data, vertex_latitude, vertex_longitude, lat_centers_subset, lon
             if pt.within(pg):
                 x = np.where(ll[1] == lon_centers_subset)[0][0]
                 y = np.where(ll[0] == lat_centers_subset)[0][0]
-                if grid[x,y] is None:
-                    grid[x,y] = [data[n]]
-                else:
-                    grid[x,y].append(data[n])
-            else:
-                if pg.exterior.distance(pt) <= 1e-3:
-                    x = np.where(ll[1] == lon_centers_subset)[0][0]
-                    y = np.where(ll[0] == lat_centers_subset)[0][0]
-                    if grid[x,y] is None:
-                        grid[x,y] = [data[n]]
-                    else:
-                        grid[x,y].append(data[n])
+                if np.isnan(grid[x,y]):
+                    grid[x,y] = data[n]
                         
         if debug:
             #Plot polygon vertices and gridpoints to visualize/quality check
@@ -530,10 +524,7 @@ def regrid_oco2(data, vertex_latitude, vertex_longitude, lat_centers_subset, lon
                 if pt.within(pg):
                     dot_colors.append("cyan")
                 else:
-                    if pg.exterior.distance(pt) <= 1e-3:
-                        dot_colors.append("cyan")
-                    else:
-                        dot_colors.append("black")
+                    dot_colors.append("black")
             fig = plt.figure(figsize=(10,8))
             ax = fig.add_subplot(111)
             plt.plot(np.append(vertices[:,1],vertices[0,1]), np.append(vertices[:,0], vertices[0,0]), "-o", c="red")
@@ -624,16 +615,6 @@ def oco2_worldview_imagery(job_file, verbose=False, debug=False):
     del vertex_miss_mask
     del vertex_zero_mask
     del vertex_crossDL_mask
-    
-    if np.any(grid):
-        x_action, y_action = np.nonzero(grid)
-
-        for x, y in zip(x_action, y_action):
-            if grid[x,y] is not None:
-                grid[x,y] = np.mean(grid[x,y])
-
-        del x_action
-        del y_action
     
     if verbose:
         print("Plotting")
