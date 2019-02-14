@@ -23,7 +23,7 @@ import xml.etree.ElementTree as ET
 from jinja2 import Template
 import matplotlib as mpl
 from osgeo import gdal, osr
-from PIL import Image
+from PIL import Image, ImagePalette
 import cartopy
 import cartopy.feature as cfeature
 ccrs = cartopy.crs
@@ -212,20 +212,25 @@ def rgba_plot(data, data_limits, cmap, out_plot_name, verbose=False):
     
     return True
 
-def color_idx_plot(grid, data_limits, cmap, norm, cmap_bounds, out_plot_name, verbose=False):
+def color_idx_plot(grid, data_limits, cmap, norm, cmap_bounds, cmap_list, out_plot_name, verbose=False):
 
     grid = np.nan_to_num(grid.astype(float))      
     grid_norm = norm(grid)
     im = Image.fromarray(np.flipud(grid_norm.T))
-    print(np.max(grid_norm))
+    #print(im.mode)
+    #print(np.max(grid_norm))
+    #print(cmap(91))
     
     #Writes out M x N x 4, needs to be converted to PNG8, which still compresses the result currently. Revisit.
     #im = Image.fromarray(cmap(np.flipud(grid_norm.T), bytes=True))
+    im = im.convert("P")#, palette=ImagePalette.ImagePalette(palette=cmap_list))
+    #print(im.getpalette())
+    #sys.exit()
     
     if verbose:
         print("Saving plot to " + out_plot_name)
     #im.save(out_plot_name, format="PNG", compress_level=0)
-    im.save(out_plot_name, format="PNG")
+    im.save(out_plot_name, format="PNG")#, palette=ImagePalette.ImagePalette(palette=cmap_list))
     
     return True
 
@@ -235,7 +240,7 @@ def convert_rgba_to_png8(out_plot_name, verbose = False):
         print("Converting " + out_plot_name + " to PNG8")
     
     #This still appears to be compressing; revisit with the RGB color index plot eventually
-    convert_params = ["convert", out_plot_name, "-define", "PNG:compression-level=0", "-define", "PNG:compression-strategy=0", "PNG8:" + out_plot_name]
+    convert_params = ["convert", out_plot_name, "PNG8:" + out_plot_name]
     subprocess.check_call(convert_params)
     
     return True
@@ -451,6 +456,8 @@ def make_cmap(gibs_csv_file):
 
     cmap_df = pd.read_csv(gibs_csv_file)
     
+    cmap_bytes = list(zip(cmap_df.red, cmap_df.green, cmap_df.blue))
+    
     cmap_list = list(zip(cmap_df.red/255, cmap_df.green/255, cmap_df.blue/255))
     bounds_list = list(cmap_df.data_lim_low)
     bounds_list.append(cmap_df.data_lim_high.iloc[-1])
@@ -464,7 +471,7 @@ def make_cmap(gibs_csv_file):
     #Needed the final value for the norm, but for digitizing for the color_idx_plot, it isn't
     bounds_list.pop(-1)
 
-    return cmap, norm, bounds_list
+    return cmap, norm, bounds_list, cmap_bytes
 
 def regrid_oco2(data, vertex_latitude, vertex_longitude, lat_centers_subset, lon_centers_subset, verbose=False, debug=False):
     
@@ -630,10 +637,10 @@ def oco2_worldview_imagery(job_file, verbose=False, debug=False):
     if verbose:
         print("Plotting")
     
-    cmap, norm, cmap_bounds = make_cmap(job_info.cmap_file)
+    cmap, norm, cmap_bounds, cmap_list = make_cmap(job_info.cmap_file)
     
     #success = rgba_plot(grid, job_info.range, cmap, job_info.out_plot_name, verbose=verbose)
-    success = color_idx_plot(grid, job_info.range, cmap, norm, cmap_bounds, job_info.out_plot_name, verbose=verbose)
+    success = color_idx_plot(grid, job_info.range, cmap, norm, cmap_bounds, cmap_list, job_info.out_plot_name, verbose=verbose)
     
     del grid
 
