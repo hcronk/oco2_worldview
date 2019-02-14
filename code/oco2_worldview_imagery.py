@@ -217,13 +217,15 @@ def color_idx_plot(grid, data_limits, cmap, norm, cmap_bounds, out_plot_name, ve
     grid = np.nan_to_num(grid.astype(float))      
     grid_norm = norm(grid)
     im = Image.fromarray(np.flipud(grid_norm.T))
+    print(np.max(grid_norm))
     
     #Writes out M x N x 4, needs to be converted to PNG8, which still compresses the result currently. Revisit.
     #im = Image.fromarray(cmap(np.flipud(grid_norm.T), bytes=True))
     
     if verbose:
         print("Saving plot to " + out_plot_name)
-    im.save(out_plot_name, format="PNG", compress_level=0)
+    #im.save(out_plot_name, format="PNG", compress_level=0)
+    im.save(out_plot_name, format="PNG")
     
     return True
 
