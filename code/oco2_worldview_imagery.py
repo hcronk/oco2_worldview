@@ -12,6 +12,7 @@ import sys
 import re
 import h5py
 from scipy.misc import toimage
+from itertools import chain
 import pandas as pd
 from shapely.geometry import Polygon, Point, LineString
 import pickle
@@ -214,33 +215,73 @@ def rgba_plot(data, data_limits, cmap, out_plot_name, verbose=False):
 
 def color_idx_plot(grid, data_limits, cmap, norm, cmap_bounds, cmap_list, out_plot_name, verbose=False):
 
-    grid = np.nan_to_num(grid.astype(float))      
+    #grid = np.nan_to_num(grid.astype(float))
+        
     grid_norm = norm(grid)
+    
+    #print(np.max(grid_norm))
+    #print(np.max(cmap(np.flipud(grid_norm.T))))
+    
     im = Image.fromarray(np.flipud(grid_norm.T))
+    im = im.convert("P")
+    rgb_list = [i[n] for n in range(0,3) for i in cmap_list]
+    im.putpalette(ImagePalette.ImagePalette(palette=rgb_list))
+    #cmap_list = list(chain(*cmap_list))
+    #im = im.convert("P")#, palette=cmap_list)
+    
+    #im = Image.fromarray(cmap(np.flipud(grid_norm.T), bytes=True))
+    
+    #print(np.max(im.getdata()))
+    #print(im.mode)
+    #im = im.convert("P")#, palette=Image.ADAPTIVE, colors=cmap.N, dither="NONE")
+    #print(cmap_list)
+    #cmap_list = list(chain(*cmap_list))
+    #rgb_list = [i[n] for n in range(0,3) for i in cmap_list]
+    #print()
+    #print(rgb_list)
+    #sys.exit()
+    #print(len(rgb_list))
+    #print(cmap.N)
+    #print(cmap_list)
+    #sys.exit()
+    #im.putpalette(ImagePalette.ImagePalette(palette=rgb_list))
+    #im.putpalette(np.uint8(cmap_list).tolist())
+    #sys.exit()
+    #print(im.getpalette())
+    #im = im.convert("RGB")
+    #print(cmap.N)
+    #print(im.getcolors())
+    #print(len(im.getcolors()))
+    #sys.exit()
     #print(im.mode)
     #print(np.max(grid_norm))
     #print(cmap(91))
     
     #Writes out M x N x 4, needs to be converted to PNG8, which still compresses the result currently. Revisit.
     #im = Image.fromarray(cmap(np.flipud(grid_norm.T), bytes=True))
-    im = im.convert("P")#, palette=ImagePalette.ImagePalette(palette=cmap_list))
+    #print(im.getcolors())
+    #print(len(im.getcolors()))
+    #sys.exit()
+    #im = im.convert("P")#, palette=ImagePalette.ImagePalette(palette=cmap_list))
     #print(im.getpalette())
     #sys.exit()
     
     if verbose:
         print("Saving plot to " + out_plot_name)
     #im.save(out_plot_name, format="PNG", compress_level=0)
-    im.save(out_plot_name, format="PNG")#, palette=ImagePalette.ImagePalette(palette=cmap_list))
+    im.save(out_plot_name, format="PNG", transparency=0)
+    
+    #, palette=ImagePalette.ImagePalette(palette=cmap_list))
     
     return True
 
 def convert_rgba_to_png8(out_plot_name, verbose = False):  
     
     if verbose:
-        print("Converting " + out_plot_name + " to PNG8")
+        print("Converting " + out_plot_name + " to PNG24")
     
     #This still appears to be compressing; revisit with the RGB color index plot eventually
-    convert_params = ["convert", out_plot_name, "PNG8:" + out_plot_name]
+    convert_params = ["convert", out_plot_name, "PNG24:" + out_plot_name]
     subprocess.check_call(convert_params)
     
     return True
@@ -637,6 +678,7 @@ def oco2_worldview_imagery(job_file, verbose=False, debug=False):
     if verbose:
         print("Plotting")
     
+    #print(job_info.cmap_file)
     cmap, norm, cmap_bounds, cmap_list = make_cmap(job_info.cmap_file)
     
     #success = rgba_plot(grid, job_info.range, cmap, job_info.out_plot_name, verbose=verbose)
