@@ -229,17 +229,6 @@ def color_idx_plot(grid, data_limits, cmap, norm, cmap_bounds, cmap_list, out_pl
     
     return True
 
-def convert_rgba_to_png8(out_plot_name, verbose = False):  
-    
-    if verbose:
-        print("Converting " + out_plot_name + " to PNG24")
-    
-    #This still appears to be compressing; revisit with the RGB color index plot eventually
-    convert_params = ["convert", out_plot_name, "PNG24:" + out_plot_name]
-    subprocess.check_call(convert_params)
-    
-    return True
-
 def write_image_odl_metadata(start_ts, end_ts, image_name, lite_filename):
 
     try:
@@ -673,8 +662,6 @@ def oco2_worldview_imagery(job_file, verbose=False, debug=False):
         success = pull_Aqua_RGB_GIBS(lat_ul, lon_ul, lat_lr, lon_lr, job_info.rgb["xml"], job_info.rgb["intermediate_tif"], xsize = len(lon_data_indices), ysize = len(lat_data_indices))
         success = prep_RGB(rgb_name, job_info.rgb["intermediate_tif"])
         success = layer_rgb_and_data(rgb_name, job_info.out_plot_name, job_info.rgb["layered_rgb_name"])
-    
-    #success = convert_rgba_to_png8(job_info.out_plot_name, verbose=verbose)
     
     return True
                     
