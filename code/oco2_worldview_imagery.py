@@ -213,7 +213,7 @@ def rgba_plot(data, data_limits, cmap, out_plot_name, verbose=False):
     
     return True
 
-def color_idx_plot(grid, data_limits, cmap, norm, cmap_list, out_plot_name, verbose=False):
+def color_idx_plot(grid, cmap, norm, cmap_list, out_plot_name, verbose=False):
         
     grid_norm = norm(grid)
     
@@ -620,7 +620,7 @@ def oco2_worldview_imagery(job_file, verbose=False, debug=False):
     cmap, norm, cmap_list = make_cmap(job_info.cmap_file)
     
     #success = rgba_plot(grid, job_info.range, cmap, job_info.out_plot_name, verbose=verbose)
-    success = color_idx_plot(grid, job_info.range, cmap, norm, cmap_list, job_info.out_plot_name, verbose=verbose)
+    success = color_idx_plot(grid, cmap, norm, cmap_list, job_info.out_plot_name, verbose=verbose)
     
     del grid
 
