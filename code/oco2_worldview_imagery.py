@@ -213,7 +213,7 @@ def rgba_plot(data, data_limits, cmap, out_plot_name, verbose=False):
     
     return True
 
-def color_idx_plot(grid, data_limits, cmap, norm, cmap_bounds, cmap_list, out_plot_name, verbose=False):
+def color_idx_plot(grid, data_limits, cmap, norm, cmap_list, out_plot_name, verbose=False):
         
     grid_norm = norm(grid)
     
@@ -446,16 +446,11 @@ def make_cmap(gibs_csv_file):
     bounds_list = list(cmap_df.data_lim_low)
     bounds_list.append(cmap_df.data_lim_high.iloc[-1])
     
-    #cmap_list.insert(0, (0, 0, 0))
-    #bounds_list.insert(0, 0)
-    
     cmap = mpl.colors.LinearSegmentedColormap.from_list("gibs_cmap", cmap_list, len(cmap_list))
     norm = mpl.colors.BoundaryNorm(bounds_list, cmap.N)
     
-    #Needed the final value for the norm, but for digitizing for the color_idx_plot, it isn't
-    bounds_list.pop(-1)
 
-    return cmap, norm, bounds_list, cmap_bytes
+    return cmap, norm, cmap_bytes
 
 def regrid_oco2(data, vertex_latitude, vertex_longitude, lat_centers_subset, lon_centers_subset, verbose=False, debug=False):
     
@@ -622,10 +617,10 @@ def oco2_worldview_imagery(job_file, verbose=False, debug=False):
         print("Plotting")
     
     #print(job_info.cmap_file)
-    cmap, norm, cmap_bounds, cmap_list = make_cmap(job_info.cmap_file)
+    cmap, norm, cmap_list = make_cmap(job_info.cmap_file)
     
     #success = rgba_plot(grid, job_info.range, cmap, job_info.out_plot_name, verbose=verbose)
-    success = color_idx_plot(grid, job_info.range, cmap, norm, cmap_bounds, cmap_list, job_info.out_plot_name, verbose=verbose)
+    success = color_idx_plot(grid, job_info.range, cmap, norm, cmap_list, job_info.out_plot_name, verbose=verbose)
     
     del grid
 
