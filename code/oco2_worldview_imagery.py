@@ -119,7 +119,9 @@ def read_job_file(job_file):
 
 def stitch_quadrants(quadrant_plot_name_dict, result_plot):
     """
-    Stitches four existing plots into one single plot
+    Stitches four existing plots into one single plot.
+    For research mode, not operations. 
+    Called from on_demand_processing job builder.
     """
     
     NE_plot = quadrant_plot_name_dict["NE"]
@@ -196,7 +198,7 @@ def prep_RGB(rgb_name, tif_file):
 
 def rgba_plot(data, data_limits, cmap, out_plot_name, verbose=False):
     """
-    Plot data on a lat/lon grid
+    Plot data on a lat/lon grid. Produces an RGBA PNG image.
     """
     
     if not "matplotlib.pyplot" in sys.modules:
@@ -211,6 +213,9 @@ def rgba_plot(data, data_limits, cmap, out_plot_name, verbose=False):
     return True
 
 def color_idx_plot(grid, cmap, norm, rgb_list, out_plot_name, verbose=False):
+    """
+    Plot data to a paletted PNG
+    """
         
     grid_norm = norm(grid)
     
@@ -226,6 +231,9 @@ def color_idx_plot(grid, cmap, norm, rgb_list, out_plot_name, verbose=False):
     return True
 
 def write_image_odl_metadata(start_ts, end_ts, image_name, lite_filename):
+    """
+    Writes ODL formatted metadata. Need one file per day per variable.
+    """
 
     try:
         
@@ -258,6 +266,9 @@ def write_image_odl_metadata(start_ts, end_ts, image_name, lite_filename):
         return False
 
 def write_image_worldfile(x_indices, y_indices, image_name):
+    """
+    Writes ESRI world file. Need one per image produced.
+    """
     
     worldfile_name = re.sub("png", "pgw", image_name)
     
@@ -278,6 +289,9 @@ def write_image_worldfile(x_indices, y_indices, image_name):
     return True
 
 def get_lite_oco2_timestamps(sounding_id):
+    """
+    Produces start and end timestamp for the lite file from OCO-2 sounding IDs
+    """
 
     start = (sounding_id[0])
     count=1
@@ -421,6 +435,10 @@ def preprocess(var, lite_file, external_data_file=None, verbose=False):
     return data
 
 def extent_box_to_indices(extent_box):
+    """
+    Translates the latitude and longitude from the provided extent box 
+    into indices within the latitude and longitude arrays
+    """
 
     lat_ul = extent_box[3]
     lon_ul = extent_box[0]
@@ -433,6 +451,10 @@ def extent_box_to_indices(extent_box):
     return lat_data_indices, lon_data_indices       
 
 def make_cmap(gibs_csv_file):
+    """
+    Creates a matplotlib colormap from the custom OCO-2 colormaps produced for GIBS.
+    Returns the cmap, normalization, and a list of red, green, and blue bytes
+    """
 
     cmap_df = pd.read_csv(gibs_csv_file)
 
@@ -541,6 +563,9 @@ def regrid_oco2(data, vertex_latitude, vertex_longitude, lat_centers_subset, lon
     return grid    
 
 def oco2_worldview_imagery(job_file, verbose=False, debug=False):
+    """
+    Main code for generating gridded OCO-2 imagery for Worldview
+    """
     
     global LITE_FILE_SUBSTRING_DICT
     
