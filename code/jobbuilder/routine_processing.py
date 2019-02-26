@@ -30,21 +30,21 @@ DATA_DICT = { "LtCO2" : {
                                    "data_field_name" : "xco2", 
                                    "preprocessing" : False, 
                                    "range": [380, 430], 
-                                   "cmap_file" : os.path.join(CODE_DIR, "utils", "gibs_cmaps", "xco2_viridis_380to430.csv"), 
+                                   "cmap_file" : os.path.join(CODE_DIR, "utils", "gibs_cmaps", "devel", "xco2_viridis_380to430.csv"), 
                                    "quality_info" : {"quality_field_name" : "xco2_quality_flag", "qc_val" :  0, "qc_operator" : operator.eq }
                                   }, 
                 "xco2_relative" : {
                                    "data_field_name" : None, 
                                    "preprocessing" : "ftp://aftp.cmdl.noaa.gov/products/trends/co2/co2_trend_gl.txt", 
                                    "range": [-6, 6], 
-                                   "cmap_file" : os.path.join(CODE_DIR, "utils", "gibs_cmaps", "xco2_relative_RdBu_r_-6to6.csv"), 
+                                   "cmap_file" : os.path.join(CODE_DIR, "utils", "gibs_cmaps", "devel", "xco2_relative_RdBu_r_-6to6.csv"), 
                                    "quality_info" : {"quality_field_name" : "xco2_quality_flag", "qc_val" :  0, "qc_operator" : operator.eq }
                                   }, 
                          "tcwv" : {
                                    "data_field_name" : "Retrieval/tcwv", 
                                    "preprocessing" : False, 
                                    "range": [0, 75], 
-                                   "cmap_file" : os.path.join(CODE_DIR, "utils", "gibs_cmaps", "tcwv_Blues_0to75.csv"), 
+                                   "cmap_file" : os.path.join(CODE_DIR, "utils", "gibs_cmaps", "devel", "tcwv_Blues_0to75.csv"), 
                                    "quality_info" : {}
                                   }, 
                         },
@@ -53,21 +53,21 @@ DATA_DICT = { "LtCO2" : {
                                    "data_field_name" : "SIF_757nm", 
                                    "preprocessing" : False, 
                                    "range": [0, 2], 
-                                   "cmap_file" : os.path.join(CODE_DIR, "utils", "gibs_cmaps", "sif757_YlGn_-1to2.csv"), 
+                                   "cmap_file" : os.path.join(CODE_DIR, "utils", "gibs_cmaps", "devel", "sif757_YlGn_-1to2.csv"), 
                                    "quality_info" : {}
                                   }, 
                        "sif771" : {
                                    "data_field_name" : "SIF_771nm", 
                                    "preprocessing" : False, 
                                    "range": [0, 2], 
-                                   "cmap_file" : os.path.join(CODE_DIR, "utils", "gibs_cmaps", "sif771_YlGn_-1to2.csv"), 
+                                   "cmap_file" : os.path.join(CODE_DIR, "utils", "gibs_cmaps", "devel", "sif771_YlGn_-1to2.csv"), 
                                    "quality_info" : {}
                                   }, 
                   "sif_blended" : {
                                    "data_field_name" : None, 
                                    "preprocessing" : True, 
                                    "range": [0, 2], 
-                                   "cmap_file" : os.path.join(CODE_DIR, "utils", "gibs_cmaps", "sif_blended_YlGn_-1to2.csv"), 
+                                   "cmap_file" : os.path.join(CODE_DIR, "utils", "gibs_cmaps", "devel", "sif_blended_YlGn_-1to2.csv"), 
                                    "quality_info" : {}
                                   }
                         }
