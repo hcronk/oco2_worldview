@@ -11,15 +11,12 @@ import datetime
 import sys
 import re
 import h5py
-from scipy.misc import toimage
-from itertools import chain
 import pandas as pd
-from shapely.geometry import Polygon, Point, LineString
+from shapely.geometry import Polygon, Point
 import pickle
 from collections import namedtuple
 from ftplib import FTP
 from glob import glob
-import matplotlib.patches as mpatches
 import xml.etree.ElementTree as ET
 from jinja2 import Template
 import matplotlib as mpl
@@ -614,7 +611,6 @@ def oco2_worldview_imagery(job_file, verbose=False, debug=False):
     if verbose:
         print("Plotting")
     
-    #print(job_info.cmap_file)
     cmap, norm, rgb_list = make_cmap(job_info.cmap_file)
     
     #success = rgba_plot(grid, job_info.range, cmap, job_info.out_plot_name, verbose=verbose)
