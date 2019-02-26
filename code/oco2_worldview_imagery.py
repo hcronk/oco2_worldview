@@ -532,22 +532,6 @@ def prep_RGB(rgb_name, tif_file):
     
     return True
 
-def rgba_plot(data, data_limits, cmap, out_plot_name, verbose=False):
-    """
-    Plot data on a lat/lon grid. Produces an RGBA PNG image.
-    """
-    
-    if not "matplotlib.pyplot" in sys.modules:
-        success = import_pyplot_appropriately()
-        
-    if verbose:
-        print("Saving plot to " + out_plot_name)
-        
-    #imsave expects an array shape of M x N (i.e. vertical x horizontal), so the data needs to be transposed        
-    plt.imsave(out_plot_name, data.astype(float).T, origin="lower", format="png", cmap=cmap, vmin=data_limits[0], vmax=data_limits[1])
-    
-    return True
-
 def layer_rgb_and_data(rgb_name, data_plot_name, layered_plot_name):
     """
     Layers the data PNG on top of the RGB PNG
@@ -642,7 +626,6 @@ def oco2_worldview_imagery(job_file, verbose=False, debug=False):
     
     cmap, norm, rgb_list = make_cmap(job_info.cmap_file)
     
-    #success = rgba_plot(grid, job_info.range, cmap, job_info.out_plot_name, verbose=verbose)
     success = color_idx_plot(grid, cmap, norm, rgb_list, job_info.out_plot_name, verbose=verbose)
     
     del grid
