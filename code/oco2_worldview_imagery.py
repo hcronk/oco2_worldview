@@ -213,13 +213,12 @@ def rgba_plot(data, data_limits, cmap, out_plot_name, verbose=False):
     
     return True
 
-def color_idx_plot(grid, cmap, norm, cmap_list, out_plot_name, verbose=False):
+def color_idx_plot(grid, cmap, norm, rgb_list, out_plot_name, verbose=False):
         
     grid_norm = norm(grid)
     
     im = Image.fromarray(np.flipud(grid_norm.T))
     im = im.convert("P")
-    rgb_list = [i[n] for n in range(0,3) for i in cmap_list]
     im.putpalette(ImagePalette.ImagePalette(palette=rgb_list))
     
     if verbose:
@@ -439,18 +438,17 @@ def extent_box_to_indices(extent_box):
 def make_cmap(gibs_csv_file):
 
     cmap_df = pd.read_csv(gibs_csv_file)
-    
-    cmap_bytes = list(zip(cmap_df.red, cmap_df.green, cmap_df.blue))
+
+    rgb_list = cmap_df.red.tolist() + cmap_df.green.tolist() + cmap_df.blue.tolist()
     
     cmap_list = list(zip(cmap_df.red/255, cmap_df.green/255, cmap_df.blue/255))
     bounds_list = list(cmap_df.data_lim_low)
     bounds_list.append(cmap_df.data_lim_high.iloc[-1])
     
     cmap = mpl.colors.LinearSegmentedColormap.from_list("gibs_cmap", cmap_list, len(cmap_list))
-    norm = mpl.colors.BoundaryNorm(bounds_list, cmap.N)
-    
+    norm = mpl.colors.BoundaryNorm(bounds_list, cmap.N)    
 
-    return cmap, norm, cmap_bytes
+    return cmap, norm, rgb_list
 
 def regrid_oco2(data, vertex_latitude, vertex_longitude, lat_centers_subset, lon_centers_subset, verbose=False, debug=False):
     
@@ -617,10 +615,10 @@ def oco2_worldview_imagery(job_file, verbose=False, debug=False):
         print("Plotting")
     
     #print(job_info.cmap_file)
-    cmap, norm, cmap_list = make_cmap(job_info.cmap_file)
+    cmap, norm, rgb_list = make_cmap(job_info.cmap_file)
     
     #success = rgba_plot(grid, job_info.range, cmap, job_info.out_plot_name, verbose=verbose)
-    success = color_idx_plot(grid, cmap, norm, cmap_list, job_info.out_plot_name, verbose=verbose)
+    success = color_idx_plot(grid, cmap, norm, rgb_list, job_info.out_plot_name, verbose=verbose)
     
     del grid
 
