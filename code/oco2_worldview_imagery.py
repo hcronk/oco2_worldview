@@ -74,6 +74,7 @@ LAT_CENTERS = np.arange(LAT_GRID_SOUTH[0] + GIBS_RESOLUTION_DICT[RESOLUTION] / 2
 #West to East, starting 1/2km East of the western most bin line and ending 1/2 km east of the easternmost bin line
 LON_CENTERS = np.arange(LON_GRID_WEST[0] + GIBS_RESOLUTION_DICT[RESOLUTION] / 2., LON_GRID_EAST[-1], GIBS_RESOLUTION_DICT[RESOLUTION], dtype=float)
 
+#Operational Functionality
 def import_pyplot_appropriately(debug=False):
     """
     In matplotlib 2.x, the matplotlib.pyplot import chokes in certain scenarios if the 
@@ -117,101 +118,124 @@ def read_job_file(job_file):
     job_info = tuple_setup(**contents)
     return job_info
 
-def stitch_quadrants(quadrant_plot_name_dict, result_plot):
+def get_hdf5_data(var, hdf5_file):
     """
-    Stitches four existing plots into one single plot.
-    For research mode, not operations. 
-    Called from on_demand_processing job builder.
+    Extract given variable data from an HDF-5 file
+    In operational path
     """
-    
-    NE_plot = quadrant_plot_name_dict["NE"]
-    SE_plot = quadrant_plot_name_dict["SE"]
-    SW_plot = quadrant_plot_name_dict["SW"]
-    NW_plot = quadrant_plot_name_dict["NW"]
-    
-    north_imgs = [Image.open(i) for i in [NW_plot, NE_plot]]
-    min_shape = sorted([(np.sum(i.size), i.size) for i in north_imgs])[0][1]
-    north = np.hstack((np.asarray(i.resize(min_shape)) for i in north_imgs))
-    north_img = Image.fromarray(north)
-    north_img.save("temp_north.png")
-    
-    south_imgs = [Image.open(i) for i in [SW_plot, SE_plot]]
-    min_shape = sorted([(np.sum(i.size), i.size) for i in south_imgs])[0][1]
-    south = np.hstack((np.asarray(i.resize(min_shape)) for i in south_imgs))
-    south_img = Image.fromarray(south)
-    south_img.save("temp_south.png")
-    
-    global_imgs = [Image.open(i) for i in ["temp_north.png", "temp_south.png"]]
-    min_shape = sorted([(np.sum(i.size), i.size) for i in global_imgs])[0][1]
-    global_stack = np.vstack((np.asarray(i.resize(min_shape)) for i in global_imgs))
-    global_img = Image.fromarray(global_stack)
-    global_img.save(result_plot)
-    
-    return True
+    f = h5py.File(hdf5_file, "r")
+    try: 
+        data = f[var][:]
+    except:
+        print("Problem retrieving " + var + " from " + hdf5_file)
+        f.close()
+        return
+    f.close()
+    return data
 
-def update_GIBS_xml(date, xml_file):
+def ftp_pull(ftp_path, verbose=False):
     """
-    Puts the date of interest into the GIBS XML file.
-    For research mode, not operations
+    Pulls data via FTP
+    In operational path for pulling Reference XCO2 dataset from NOAA ESRL
     """
+    global FTP_SUBSTRING_DICT
     
-    tree = ET.parse(xml_file)
-    root = tree.getroot()
-
-    url = root[0][0].text
-
-    old_date = re.split('/', url)[6]
-
-    new_url = re.sub(old_date, date, url)
-
-    root[0][0].text = new_url
-    tree.write(xml_file)
+    FTP_SUBSTRING_DICT = re.match(FTP_REGEX, ftp_path).groupdict()
     
-    return True
+    count = 0
+    tries = 5
     
-def pull_Aqua_RGB_GIBS(lat_ul, lon_ul, lat_lr, lon_lr, xml_file, tif_file, xsize=1200, ysize=1000):
+    while count < tries:
+        try:
+            if verbose:
+                print("FTP Connection attempt number " + str(count+1))
+            cnx = FTP(FTP_SUBSTRING_DICT["ftp_host"])
+            break
+        except:
+            print("Connection failed, trying again.")
+        count += 1
+
+    cnx.login()
+    
+    cnx.cwd(FTP_SUBSTRING_DICT["ftp_cwd"])
+    
+    with open(FTP_SUBSTRING_DICT["ftp_file"], "wb") as f:
+        cnx.retrbinary("RETR " + FTP_SUBSTRING_DICT["ftp_file"], f.write)
+    
+    if glob(FTP_SUBSTRING_DICT["ftp_file"]) and os.path.getsize(FTP_SUBSTRING_DICT["ftp_file"]) == cnx.size(FTP_SUBSTRING_DICT["ftp_file"]):
+        cnx.close()
+        return True
+    else:
+        cnx.close()
+        return False
+
+def preprocess(var, lite_file, external_data_file=None, verbose=False):
     """
-    Pulls the Aqua RGB imagery from WorldView using GIBS and puts it in specified tif file with associated metadata.
-    For research mode, not operations
-    """ 
-    
-    print("\nPulling RGB imagery from GIBS")
-    gdal_path = os.popen("which gdal_translate").read().strip()
-    cmd = gdal_path + " -of GTiff -outsize "+str(xsize)+" "+str(ysize)+" -projwin "+str(lon_ul)+" "+str(lat_ul)+" "+str(lon_lr)+" "+str(lat_lr)+" "+xml_file+" "+tif_file
-    os.system(cmd)
-    
-    return True
-
-def prep_RGB(rgb_name, tif_file):
-    """
-    Prepares the RGB geotiff for layering with the data and writes it to a png
-    For research mode, not operations
+    Do any necessary processing to get data for the given variable
+    In operational path
     """
     
-    if not "matplotlib.pyplot" in sys.modules:
-        success = import_pyplot_appropriately()
-
-    img = plt.imread(tif_file)
-    plt.imsave(rgb_name, img, format="png")
+    if var == "xco2_relative":
+        success = ftp_pull(external_data_file, verbose=verbose)
+        if success:
+            df = pd.read_csv(FTP_SUBSTRING_DICT["ftp_file"], comment="#", na_values=-99.99, header=None, \
+                            names=['year', 'month', 'day', 'trend'], delim_whitespace=True)
+            
+            ref_xco2 = float(df["trend"][df.index[df["year"] == int("20" + LITE_FILE_SUBSTRING_DICT["yy"])] & df.index[df["month"] == int(LITE_FILE_SUBSTRING_DICT["mm"])] & df.index[df["day"] == int(LITE_FILE_SUBSTRING_DICT["dd"])]])
+            oco2_xco2 = get_hdf5_data("xco2", lite_file)
+            data = oco2_xco2 - ref_xco2
+            del oco2_xco2
+            del df
+        else:
+            print("Unable to retrieve " + external_data_file)
+            sys.exit()  
+    elif var == "sif_blended":
+        sif757 = get_hdf5_data("SIF_757nm", lite_file)
+        sif771 = get_hdf5_data("SIF_771nm", lite_file)
+        data = 0.5 * (sif757 + 1.5 * sif771)
+        del sif757
+        del sif771
+    else:
+        print("No preprocessing required for " + var)
+        return
     
-    return True
+    return data
 
-def rgba_plot(data, data_limits, cmap, out_plot_name, verbose=False):
+def extent_box_to_indices(extent_box):
     """
-    Plot data on a lat/lon grid. Produces an RGBA PNG image.
+    Translates the latitude and longitude from the provided extent box 
+    into indices within the latitude and longitude arrays
     """
-    
-    if not "matplotlib.pyplot" in sys.modules:
-        success = import_pyplot_appropriately()
-        
-    if verbose:
-        print("Saving plot to " + out_plot_name)
-        
-    #imsave expects an array shape of M x N (i.e. vertical x horizontal), so the data needs to be transposed        
-    plt.imsave(out_plot_name, data.astype(float).T, origin="lower", format="png", cmap=cmap, vmin=data_limits[0], vmax=data_limits[1])
-    
-    return True
 
+    lat_ul = extent_box[3]
+    lon_ul = extent_box[0]
+    lat_lr = extent_box[2]
+    lon_lr = extent_box[1]
+
+    lon_data_indices = np.where(np.logical_and(LON_CENTERS >= lon_ul, LON_CENTERS <= lon_lr))[0]
+    lat_data_indices = np.where(np.logical_and(LAT_CENTERS >= lat_lr, LAT_CENTERS <= lat_ul))[0]
+    
+    return lat_data_indices, lon_data_indices       
+
+def make_cmap(gibs_csv_file):
+    """
+    Creates a matplotlib colormap from the custom OCO-2 colormaps produced for GIBS.
+    Returns the cmap, normalization, and a list of red, green, and blue bytes
+    """
+
+    cmap_df = pd.read_csv(gibs_csv_file)
+
+    rgb_list = cmap_df.red.tolist() + cmap_df.green.tolist() + cmap_df.blue.tolist()
+    
+    cmap_list = list(zip(cmap_df.red/255, cmap_df.green/255, cmap_df.blue/255))
+    bounds_list = list(cmap_df.data_lim_low)
+    bounds_list.append(cmap_df.data_lim_high.iloc[-1])
+    
+    cmap = mpl.colors.LinearSegmentedColormap.from_list("gibs_cmap", cmap_list, len(cmap_list))
+    norm = mpl.colors.BoundaryNorm(bounds_list, cmap.N)    
+
+    return cmap, norm, rgb_list
+    
 def color_idx_plot(grid, cmap, norm, rgb_list, out_plot_name, verbose=False):
     """
     Plot data to a paletted PNG
@@ -332,143 +356,6 @@ def get_lite_oco2_timestamps(sounding_id):
     #print(start_ts, end_ts)
     return start_ts, end_ts
 
-def layer_rgb_and_data(rgb_name, data_plot_name, layered_plot_name):
-    """
-    Layers the data PNG on top of the RGB PNG
-    For research mode, not operations
-    """
-    
-    base = Image.open(rgb_name)
-    top = Image.open(data_plot_name)
-    pixel_dat = list(top.getdata())
-    for i, p in enumerate(pixel_dat):
-        if p[:3] == (255, 255, 255):
-            pixel_dat[i] = (255, 255, 255, 0)
-    top.putdata(pixel_dat)
-    base_copy = base.copy()
-    base_copy.paste(top, (0,0), top)
-    base_copy.save(layered_plot_name)
-    
-    return True
-
-def get_hdf5_data(var, hdf5_file):
-    """
-    Extract given variable data from an HDF-5 file
-    In operational path
-    """
-    f = h5py.File(hdf5_file, "r")
-    try: 
-        data = f[var][:]
-    except:
-        print("Problem retrieving " + var + " from " + hdf5_file)
-        f.close()
-        return
-    f.close()
-    return data
-
-def ftp_pull(ftp_path, verbose=False):
-    """
-    Pulls data via FTP
-    In operational path for pulling Reference XCO2 dataset from NOAA ESRL
-    """
-    global FTP_SUBSTRING_DICT
-    
-    FTP_SUBSTRING_DICT = re.match(FTP_REGEX, ftp_path).groupdict()
-    
-    count = 0
-    tries = 5
-    
-    while count < tries:
-        try:
-            if verbose:
-                print("FTP Connection attempt number " + str(count+1))
-            cnx = FTP(FTP_SUBSTRING_DICT["ftp_host"])
-            break
-        except:
-            print("Connection failed, trying again.")
-        count += 1
-
-    cnx.login()
-    
-    cnx.cwd(FTP_SUBSTRING_DICT["ftp_cwd"])
-    
-    with open(FTP_SUBSTRING_DICT["ftp_file"], "wb") as f:
-        cnx.retrbinary("RETR " + FTP_SUBSTRING_DICT["ftp_file"], f.write)
-    
-    if glob(FTP_SUBSTRING_DICT["ftp_file"]) and os.path.getsize(FTP_SUBSTRING_DICT["ftp_file"]) == cnx.size(FTP_SUBSTRING_DICT["ftp_file"]):
-        cnx.close()
-        return True
-    else:
-        cnx.close()
-        return False
-
-def preprocess(var, lite_file, external_data_file=None, verbose=False):
-    """
-    Do any necessary processing to get data for the given variable
-    In operational path
-    """
-    
-    if var == "xco2_relative":
-        success = ftp_pull(external_data_file, verbose=verbose)
-        if success:
-            df = pd.read_csv(FTP_SUBSTRING_DICT["ftp_file"], comment="#", na_values=-99.99, header=None, \
-                            names=['year', 'month', 'day', 'trend'], delim_whitespace=True)
-            
-            ref_xco2 = float(df["trend"][df.index[df["year"] == int("20" + LITE_FILE_SUBSTRING_DICT["yy"])] & df.index[df["month"] == int(LITE_FILE_SUBSTRING_DICT["mm"])] & df.index[df["day"] == int(LITE_FILE_SUBSTRING_DICT["dd"])]])
-            oco2_xco2 = get_hdf5_data("xco2", lite_file)
-            data = oco2_xco2 - ref_xco2
-            del oco2_xco2
-            del df
-        else:
-            print("Unable to retrieve " + external_data_file)
-            sys.exit()  
-    elif var == "sif_blended":
-        sif757 = get_hdf5_data("SIF_757nm", lite_file)
-        sif771 = get_hdf5_data("SIF_771nm", lite_file)
-        data = 0.5 * (sif757 + 1.5 * sif771)
-        del sif757
-        del sif771
-    else:
-        print("No preprocessing required for " + var)
-        return
-    
-    return data
-
-def extent_box_to_indices(extent_box):
-    """
-    Translates the latitude and longitude from the provided extent box 
-    into indices within the latitude and longitude arrays
-    """
-
-    lat_ul = extent_box[3]
-    lon_ul = extent_box[0]
-    lat_lr = extent_box[2]
-    lon_lr = extent_box[1]
-
-    lon_data_indices = np.where(np.logical_and(LON_CENTERS >= lon_ul, LON_CENTERS <= lon_lr))[0]
-    lat_data_indices = np.where(np.logical_and(LAT_CENTERS >= lat_lr, LAT_CENTERS <= lat_ul))[0]
-    
-    return lat_data_indices, lon_data_indices       
-
-def make_cmap(gibs_csv_file):
-    """
-    Creates a matplotlib colormap from the custom OCO-2 colormaps produced for GIBS.
-    Returns the cmap, normalization, and a list of red, green, and blue bytes
-    """
-
-    cmap_df = pd.read_csv(gibs_csv_file)
-
-    rgb_list = cmap_df.red.tolist() + cmap_df.green.tolist() + cmap_df.blue.tolist()
-    
-    cmap_list = list(zip(cmap_df.red/255, cmap_df.green/255, cmap_df.blue/255))
-    bounds_list = list(cmap_df.data_lim_low)
-    bounds_list.append(cmap_df.data_lim_high.iloc[-1])
-    
-    cmap = mpl.colors.LinearSegmentedColormap.from_list("gibs_cmap", cmap_list, len(cmap_list))
-    norm = mpl.colors.BoundaryNorm(bounds_list, cmap.N)    
-
-    return cmap, norm, rgb_list
-
 def regrid_oco2(data, vertex_latitude, vertex_longitude, lat_centers_subset, lon_centers_subset, verbose=False, debug=False):
     
     """
@@ -560,7 +447,127 @@ def regrid_oco2(data, vertex_latitude, vertex_longitude, lat_centers_subset, lon
     del lon_m
     del zip_it
     
-    return grid    
+    return grid 
+   
+### End Operational Functionality ###
+
+### Research Functionality ###
+
+def stitch_quadrants(quadrant_plot_name_dict, result_plot):
+    """
+    Stitches four existing plots into one single plot.
+    For research mode, not operations. 
+    Called from on_demand_processing job builder.
+    """
+    
+    NE_plot = quadrant_plot_name_dict["NE"]
+    SE_plot = quadrant_plot_name_dict["SE"]
+    SW_plot = quadrant_plot_name_dict["SW"]
+    NW_plot = quadrant_plot_name_dict["NW"]
+    
+    north_imgs = [Image.open(i) for i in [NW_plot, NE_plot]]
+    min_shape = sorted([(np.sum(i.size), i.size) for i in north_imgs])[0][1]
+    north = np.hstack((np.asarray(i.resize(min_shape)) for i in north_imgs))
+    north_img = Image.fromarray(north)
+    north_img.save("temp_north.png")
+    
+    south_imgs = [Image.open(i) for i in [SW_plot, SE_plot]]
+    min_shape = sorted([(np.sum(i.size), i.size) for i in south_imgs])[0][1]
+    south = np.hstack((np.asarray(i.resize(min_shape)) for i in south_imgs))
+    south_img = Image.fromarray(south)
+    south_img.save("temp_south.png")
+    
+    global_imgs = [Image.open(i) for i in ["temp_north.png", "temp_south.png"]]
+    min_shape = sorted([(np.sum(i.size), i.size) for i in global_imgs])[0][1]
+    global_stack = np.vstack((np.asarray(i.resize(min_shape)) for i in global_imgs))
+    global_img = Image.fromarray(global_stack)
+    global_img.save(result_plot)
+    
+    return True
+
+def update_GIBS_xml(date, xml_file):
+    """
+    Puts the date of interest into the GIBS XML file.
+    For research mode, not operations
+    """
+    
+    tree = ET.parse(xml_file)
+    root = tree.getroot()
+
+    url = root[0][0].text
+
+    old_date = re.split('/', url)[6]
+
+    new_url = re.sub(old_date, date, url)
+
+    root[0][0].text = new_url
+    tree.write(xml_file)
+    
+    return True
+    
+def pull_Aqua_RGB_GIBS(lat_ul, lon_ul, lat_lr, lon_lr, xml_file, tif_file, xsize=1200, ysize=1000):
+    """
+    Pulls the Aqua RGB imagery from WorldView using GIBS and puts it in specified tif file with associated metadata.
+    For research mode, not operations
+    """ 
+    
+    print("\nPulling RGB imagery from GIBS")
+    gdal_path = os.popen("which gdal_translate").read().strip()
+    cmd = gdal_path + " -of GTiff -outsize "+str(xsize)+" "+str(ysize)+" -projwin "+str(lon_ul)+" "+str(lat_ul)+" "+str(lon_lr)+" "+str(lat_lr)+" "+xml_file+" "+tif_file
+    os.system(cmd)
+    
+    return True
+
+def prep_RGB(rgb_name, tif_file):
+    """
+    Prepares the RGB geotiff for layering with the data and writes it to a png
+    For research mode, not operations
+    """
+    
+    if not "matplotlib.pyplot" in sys.modules:
+        success = import_pyplot_appropriately()
+
+    img = plt.imread(tif_file)
+    plt.imsave(rgb_name, img, format="png")
+    
+    return True
+
+def rgba_plot(data, data_limits, cmap, out_plot_name, verbose=False):
+    """
+    Plot data on a lat/lon grid. Produces an RGBA PNG image.
+    """
+    
+    if not "matplotlib.pyplot" in sys.modules:
+        success = import_pyplot_appropriately()
+        
+    if verbose:
+        print("Saving plot to " + out_plot_name)
+        
+    #imsave expects an array shape of M x N (i.e. vertical x horizontal), so the data needs to be transposed        
+    plt.imsave(out_plot_name, data.astype(float).T, origin="lower", format="png", cmap=cmap, vmin=data_limits[0], vmax=data_limits[1])
+    
+    return True
+
+def layer_rgb_and_data(rgb_name, data_plot_name, layered_plot_name):
+    """
+    Layers the data PNG on top of the RGB PNG
+    For research mode, not operations
+    """
+    
+    base = Image.open(rgb_name)
+    top = Image.open(data_plot_name)
+    pixel_dat = list(top.getdata())
+    for i, p in enumerate(pixel_dat):
+        if p[:3] == (255, 255, 255):
+            pixel_dat[i] = (255, 255, 255, 0)
+    top.putdata(pixel_dat)
+    base_copy = base.copy()
+    base_copy.paste(top, (0,0), top)
+    base_copy.save(layered_plot_name)
+    
+    return True
+    
+### End Research Functionality ###
 
 def oco2_worldview_imagery(job_file, verbose=False, debug=False):
     """
