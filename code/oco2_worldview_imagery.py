@@ -555,11 +555,8 @@ def layer_rgb_and_data(rgb_name, data_plot_name, layered_plot_name):
     """
     
     base = Image.open(rgb_name)
-    top = Image.open(data_plot_name)
+    top = Image.open(data_plot_name).convert("RGBA")
     pixel_dat = list(top.getdata())
-    for i, p in enumerate(pixel_dat):
-        if p[:3] == (255, 255, 255):
-            pixel_dat[i] = (255, 255, 255, 0)
     top.putdata(pixel_dat)
     base_copy = base.copy()
     base_copy.paste(top, (0,0), top)
