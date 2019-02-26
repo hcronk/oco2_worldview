@@ -217,26 +217,25 @@ def extent_box_to_indices(extent_box):
     
     return lat_data_indices, lon_data_indices       
 
-def make_cmap(gibs_csv_file):
+def make_cnorm(gibs_csv_file):
     """
-    Creates a matplotlib colormap from the custom OCO-2 colormaps produced for GIBS.
-    Returns the cmap, normalization, and a list of red, green, and blue bytes
+    Creates a matplotlib color normalization from the custom OCO-2 colormaps produced for GIBS.
+    Returns the normalization and a list of red, green, and blue bytes
     """
 
     cmap_df = pd.read_csv(gibs_csv_file)
 
     rgb_list = cmap_df.red.tolist() + cmap_df.green.tolist() + cmap_df.blue.tolist()
     
-    cmap_list = list(zip(cmap_df.red/255, cmap_df.green/255, cmap_df.blue/255))
     bounds_list = list(cmap_df.data_lim_low)
+    n_colors = len(bounds_list)
     bounds_list.append(cmap_df.data_lim_high.iloc[-1])
     
-    cmap = mpl.colors.LinearSegmentedColormap.from_list("gibs_cmap", cmap_list, len(cmap_list))
-    norm = mpl.colors.BoundaryNorm(bounds_list, cmap.N)    
+    norm = mpl.colors.BoundaryNorm(bounds_list, n_colors)  
 
-    return cmap, norm, rgb_list
+    return norm, rgb_list
     
-def color_idx_plot(grid, cmap, norm, rgb_list, out_plot_name, verbose=False):
+def color_idx_plot(grid, norm, rgb_list, out_plot_name, verbose=False):
     """
     Plot data to a paletted PNG
     """
@@ -624,9 +623,9 @@ def oco2_worldview_imagery(job_file, verbose=False, debug=False):
     if verbose:
         print("Plotting")
     
-    cmap, norm, rgb_list = make_cmap(job_info.cmap_file)
+    norm, rgb_list = make_cnorm(job_info.cmap_file)
     
-    success = color_idx_plot(grid, cmap, norm, rgb_list, job_info.out_plot_name, verbose=verbose)
+    success = color_idx_plot(grid, norm, rgb_list, job_info.out_plot_name, verbose=verbose)
     
     del grid
 
