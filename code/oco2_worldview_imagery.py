@@ -253,7 +253,7 @@ def color_idx_plot(grid, norm, rgb_list, out_plot_name, verbose=False):
     
     return True
 
-def write_image_odl_metadata(start_ts, end_ts, out_plot_name, extent_box, lite_filename):
+def write_image_odl_metadata(start_ts, end_ts, out_plot_name, extent_box, lite_file):
     """
     Writes ODL formatted metadata. One per image
     """
@@ -272,7 +272,7 @@ def write_image_odl_metadata(start_ts, end_ts, out_plot_name, extent_box, lite_f
 
         render = template.render(image_id=os.path.splitext(os.path.basename(metadata_filename))[0],
                                  production_datetime=datetime.datetime.utcnow().strftime(METADATA_TIMESTAMP_FORMAT),
-                                 lite_file=os.path.basename(lite_filename), 
+                                 lite_file=os.path.basename(lite_file), 
                                  latspan_lonspan=metadata_filename_dict["latspan"] + "_" + metadata_filename_dict["lonspan"],
                                  yyyyddd=start_ts.date().strftime(METADATA_DAY_FORMAT),
                                  data_start_timestamp_truncated=start_ts.replace(microsecond=0).strftime(METADATA_TIME_TRUNCATED_FORMAT),
