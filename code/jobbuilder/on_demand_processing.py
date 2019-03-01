@@ -7,7 +7,7 @@ import re
 import numpy as np
 import shutil
 import sqlite3
-from routine_processing import get_image_filename, check_processing_or_problem, build_config, get_intermediate_tif_filename, get_GIBS_xml_filename
+from routine_processing import get_image_filename, check_processing_or_problem, build_config
 code_dir = os.path.join(os.path.dirname(os.path.realpath(__file__)), os.path.pardir)
 sys.path.append(code_dir)
 from oco2_worldview_imagery import stitch_quadrants
@@ -76,6 +76,21 @@ TILE_DICT = { "NE": {"extent_box" : [0, 180, 0, 90]
 LITE_FILE_REGEX = "oco2_(?P<product>[A-Za-z0-9]{5})_(?P<yymmdd>[0-9]{6})_(?P<version>B[0-9r]{,5})_[0-9]{12}s.nc4"
 
 CONN = sqlite3.connect(os.path.join(code_dir, "oco2_worldview_imagery.db"))
+
+def get_GIBS_xml_filename(date):
+    """
+    Build the filename of the GIBS XML configuration file
+    """
+    
+    return os.path.join(CODE_DIR, "GIBS_Aqua_MODIS_truecolor_" + date + ".xml")
+
+def get_intermediate_tif_filename(tif_dir, extent_box, date):
+    """
+    Build the filename of the intermediate TIFF imagery filename
+    """
+    
+    return os.path.join(tif_dir, "intermediate_RGB_Lat" + str(extent_box[2]) + "to" + str(extent_box[3]) + "_Lon" + str(extent_box[0]) + "to" + str(extent_box[1]) + "_" + date + ".tif")
+
 
 if __name__ == "__main__":
     

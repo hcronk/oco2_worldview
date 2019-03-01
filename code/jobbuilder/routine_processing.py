@@ -160,20 +160,6 @@ def get_image_filename(image_dir, var, extent_box, plot_name_tags):
     
     return os.path.join(image_dir, var + "_Lat" + str(extent_box[2]) + "to" + str(extent_box[3]) + "_Lon" + str(extent_box[0]) + "to" + str(extent_box[1]) + "_" + plot_name_tags)
 
-def get_GIBS_xml_filename(date):
-    """
-    Build the filename of the GIBS XML configuration file
-    """
-    
-    return os.path.join(CODE_DIR, "GIBS_Aqua_MODIS_truecolor_" + date + ".xml")
-
-def get_intermediate_tif_filename(tif_dir, extent_box, date):
-    """
-    Build the filename of the intermediate TIFF imagery filename
-    """
-    
-    return os.path.join(tif_dir, "intermediate_RGB_Lat" + str(extent_box[2]) + "to" + str(extent_box[3]) + "_Lon" + str(extent_box[0]) + "to" + str(extent_box[1]) + "_" + date + ".tif")
-
 def check_processing_or_problem(job_file, verbose=False):
     """
     Check if the job is already processing or if there is a problem with it.
