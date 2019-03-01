@@ -253,7 +253,7 @@ def color_idx_plot(grid, norm, rgb_list, out_plot_name, verbose=False):
     
     return True
 
-def write_image_odl_metadata(start_ts, end_ts, image_name, extent_box, lite_filename):
+def write_image_odl_metadata(start_ts, end_ts, out_plot_name, extent_box, lite_filename):
     """
     Writes ODL formatted metadata. One per image
     """
@@ -264,7 +264,7 @@ def write_image_odl_metadata(start_ts, end_ts, image_name, extent_box, lite_file
         lat_lr = extent_box[2]
         lon_lr = extent_box[1]
 
-        metadata_filename = re.sub("png", "met", image_name)
+        metadata_filename = re.sub("png", "met", out_plot_name)
         metadata_filename_dict = re.match(METADATA_REGEX, os.path.basename(metadata_filename)).groupdict()
 
         with open(ODL_METADATA_TEMPLATE, "r") as tf:
@@ -294,12 +294,12 @@ def write_image_odl_metadata(start_ts, end_ts, image_name, extent_box, lite_file
         return False
 
 
-def write_image_worldfile(x_indices, y_indices, image_name):
+def write_image_worldfile(x_indices, y_indices, out_plot_name):
     """
     Writes ESRI world file. Need one per image produced.
     """
     
-    worldfile_name = re.sub("png", "pgw", image_name)
+    worldfile_name = re.sub("png", "pgw", out_plot_name)
     
     with open(worldfile_name, "w") as wf:
         #Pixel X size in map units/pixel
