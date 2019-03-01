@@ -241,7 +241,7 @@ def run_job(job_file, verbose=False):
         contents = pickle.load(jf)
     
     image_filename_dict = re.match(IMAGE_REGEX, os.path.basename(contents["out_plot_name"])).groupdict()
-    METADATA_NAME = os.path.join(os.path.dirname(contents["out_plot_name"]), image_filename_dict["var"] + "_" + image_filename_dict["yymmdd"] + "_" + image_filename_dict["version"] + ".met")            
+    METADATA_NAME = re.sub("png", "met", contents["out_plot_name"])
     WORLDFILE_NAME = re.sub("png", "pgw", contents["out_plot_name"])
 
     

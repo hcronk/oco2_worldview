@@ -46,7 +46,7 @@ LITE_FILE_REGEX = "oco2_(?P<product>[A-Za-z0-9]{5})_(?P<yy>[0-9]{2})(?P<mm>[0-9]
 FTP_REGEX = "ftp://(?P<ftp_host>([^/]*))(?P<ftp_cwd>/.*)/(?P<ftp_file>([^/]*)$)"
 
 IMAGE_REGEX = "(?P<var>[a-z0-9](.*))_(?P<latspan>[Lato\.-](.*))_(?P<lonspan>[Lton\.-](.*))_(?P<yymmdd>[0-9]{6})_(?P<version>B[0-9r]{,5}).png"
-METADATA_REGEX = "(?P<var>[a-z0-9](.*))_(?P<yymmdd>[0-9]{6})_(?P<version>B[0-9r]{,5}).met"
+METADATA_REGEX = "(?P<var>[a-z0-9](.*))_(?P<latspan>[Lato\.-](.*))_(?P<lonspan>[Lton\.-](.*))_(?P<yymmdd>[0-9]{6})_(?P<version>B[0-9r]{,5}).met"
 ODL_METADATA_TEMPLATE = os.path.join(CODE_DIR, "template.met")
 METADATA_TIMESTAMP_FORMAT = "%Y-%m-%dT%H:%M:%S.%fZ"
 METADATA_DATE_FORMAT = "%Y-%m-%d"
@@ -253,15 +253,19 @@ def color_idx_plot(grid, norm, rgb_list, out_plot_name, verbose=False):
     
     return True
 
-def write_image_odl_metadata(start_ts, end_ts, image_name, lite_filename):
+def write_image_odl_metadata(start_ts, end_ts, image_name, extent_box, lite_filename):
     """
-    Writes ODL formatted metadata. Need one file per day per variable.
+    Writes ODL formatted metadata. One per image
     """
-
+    
     try:
-        
-        image_filename_dict = re.match(IMAGE_REGEX, os.path.basename(image_name)).groupdict()
-        metadata_filename = os.path.join(os.path.dirname(image_name), image_filename_dict["var"] + "_" + image_filename_dict["yymmdd"] + "_" + image_filename_dict["version"] + ".met")
+        lat_ul = extent_box[3]
+        lon_ul = extent_box[0]
+        lat_lr = extent_box[2]
+        lon_lr = extent_box[1]
+
+        metadata_filename = re.sub("png", "met", image_name)
+        metadata_filename_dict = re.match(METADATA_REGEX, os.path.basename(metadata_filename)).groupdict()
 
         with open(ODL_METADATA_TEMPLATE, "r") as tf:
             template = Template(tf.read())
@@ -269,16 +273,17 @@ def write_image_odl_metadata(start_ts, end_ts, image_name, lite_filename):
         render = template.render(image_id=os.path.splitext(os.path.basename(metadata_filename))[0],
                                  production_datetime=datetime.datetime.utcnow().strftime(METADATA_TIMESTAMP_FORMAT),
                                  lite_file=os.path.basename(lite_filename), 
+                                 latspan_lonspan=metadata_filename_dict["latspan"] + "_" + metadata_filename_dict["lonspan"],
                                  yyyyddd=start_ts.date().strftime(METADATA_DAY_FORMAT),
                                  data_start_timestamp_truncated=start_ts.replace(microsecond=0).strftime(METADATA_TIME_TRUNCATED_FORMAT),
                                  data_start_timestamp=start_ts.strftime(METADATA_TIME_FORMAT),
                                  data_end_date=end_ts.date().strftime(METADATA_DATE_FORMAT),
                                  data_start_date=start_ts.date().strftime(METADATA_DATE_FORMAT),
                                  data_end_timestamp=end_ts.strftime(METADATA_TIME_FORMAT),
-                                 latmin=-90,
-                                 lonmin=-180,
-                                 latmax=90,
-                                 lonmax=180)
+                                 latmin=extent_box[2],
+                                 lonmin=extent_box[0],
+                                 latmax=extent_box[3],
+                                 lonmax=extent_box[1])
 
         with open(metadata_filename, "w") as mf:
             mf.write(render)
@@ -287,6 +292,7 @@ def write_image_odl_metadata(start_ts, end_ts, image_name, lite_filename):
 
     except:
         return False
+
 
 def write_image_worldfile(x_indices, y_indices, image_name):
     """
@@ -636,7 +642,7 @@ def oco2_worldview_imagery(job_file, verbose=False, debug=False):
     else:
         granule_sounding_id = get_hdf5_data(GEO_DICT[job_info.product]["sid"], job_info.lite_file)
         granule_start, granule_end = get_lite_oco2_timestamps(granule_sounding_id)
-        success = write_image_odl_metadata(granule_start, granule_end, job_info.out_plot_name, job_info.lite_file)
+        success = write_image_odl_metadata(granule_start, granule_end, job_info.out_plot_name, job_info.extent_box, job_info.lite_file)
         if not success:
             if verbose:
                 print("Problem writing metadata!")
