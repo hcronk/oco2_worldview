@@ -640,9 +640,9 @@ def oco2_worldview_imagery(job_file, verbose=False, debug=False):
             print("Problem plotting!")
         return
     else:
-        granule_sounding_id = get_hdf5_data(GEO_DICT[job_info.product]["sid"], job_info.lite_file)
-        granule_start, granule_end = get_lite_oco2_timestamps(granule_sounding_id)
-        success = write_image_odl_metadata(granule_start, granule_end, job_info.out_plot_name, job_info.extent_box, job_info.lite_file)
+        lite_sounding_id = get_hdf5_data(GEO_DICT[job_info.product]["sid"], job_info.lite_file)
+        lite_start, lite_end = get_lite_oco2_timestamps(lite_sounding_id)
+        success = write_image_odl_metadata(lite_start, lite_end, job_info.out_plot_name, job_info.extent_box, job_info.lite_file)
         if not success:
             if verbose:
                 print("Problem writing metadata!")
