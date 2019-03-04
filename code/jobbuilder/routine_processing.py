@@ -121,7 +121,7 @@ def find_unprocessed_file(lite_product, verbose=False):
                             build_config(f, lite_product, v, TILE_DICT[t]["extent_box"], out_plot_name, job_file)
             
 
-def build_config(oco2_file, lite_product, var, extent_box, out_plot_name, job_file, rgb=False, debug=False, verbose=False):
+def build_config(oco2_file, lite_product, var, extent_box, out_plot_name, job_file, rgb=False, update_db=True, debug=False, verbose=False):
     """
     Create a pickle (.pkl) formatted job configuration file with 
     the necessary parameters to create OCO-2 Worldview imagery
@@ -146,7 +146,7 @@ def build_config(oco2_file, lite_product, var, extent_box, out_plot_name, job_fi
     #Run as a multiprocessing Process even though just one process runs now to allow for multiprocessing
     #and also to ensure memory is released between jobs and to make sure jobs are killed if the parent process
     #is killed
-    process = Process(target=run_job, args=(job_file, verbose))
+    process = Process(target=run_job, args=(job_file, update_db, verbose))
     process.daemon = True
     process.start()
     process.join()
@@ -211,7 +211,7 @@ def check_processing_or_problem(job_file, verbose=False):
     
         return False
 
-def run_job(job_file, verbose=False):
+def run_job(job_file, update_db=True, verbose=False):
     """
     Create imagery using specifications in job file
     and if the imagery is produced, get rid of the lockfile
@@ -237,19 +237,20 @@ def run_job(job_file, verbose=False):
     if success and job_worked:
         if verbose:
             print("Success!")
-        db_entry = CUR.execute("SELECT * FROM created_imagery WHERE filename=?", (os.path.basename(contents["out_plot_name"]),)).fetchall()
-        if not db_entry:
-            if verbose:
-                print("Updating database")
-            #Update database
-            lite_file_substring_dict = re.match(LITE_FILE_REGEX, os.path.basename(contents["lite_file"])).groupdict()
-            CUR.execute("INSERT INTO created_imagery (filename, var, date, input_product, input_file) VALUES (?, ?, ?, ?, ?)", 
-                        ((os.path.basename(contents["out_plot_name"])), contents["var"], lite_file_substring_dict["yymmdd"], contents["product"], os.path.basename(contents["lite_file"])))
-            CONN.commit()
-        else:
-            if verbose:
-                print("This file is already in the database")
-                print(db_entry)
+        if update_db:
+            db_entry = CUR.execute("SELECT * FROM created_imagery WHERE filename=?", (os.path.basename(contents["out_plot_name"]),)).fetchall()
+            if not db_entry:
+                if verbose:
+                    print("Updating database")
+                #Update database
+                lite_file_substring_dict = re.match(LITE_FILE_REGEX, os.path.basename(contents["lite_file"])).groupdict()
+                CUR.execute("INSERT INTO created_imagery (filename, var, date, input_product, input_file) VALUES (?, ?, ?, ?, ?)", 
+                            ((os.path.basename(contents["out_plot_name"])), contents["var"], lite_file_substring_dict["yymmdd"], contents["product"], os.path.basename(contents["lite_file"])))
+                CONN.commit()
+            else:
+                if verbose:
+                    print("This file is already in the database")
+                    print(db_entry)
         
         os.remove(job_file)
         os.remove(LOCKFILE)
