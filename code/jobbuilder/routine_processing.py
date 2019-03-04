@@ -244,8 +244,8 @@ def run_job(job_file, update_db=True, verbose=False):
                     print("Updating database")
                 #Update database
                 lite_file_substring_dict = re.match(LITE_FILE_REGEX, os.path.basename(contents["lite_file"])).groupdict()
-                CUR.execute("INSERT INTO created_imagery (filename, var, date, input_product, input_file) VALUES (?, ?, ?, ?, ?)", 
-                            ((os.path.basename(contents["out_plot_name"])), contents["var"], lite_file_substring_dict["yymmdd"], contents["product"], os.path.basename(contents["lite_file"])))
+                CUR.execute("INSERT INTO created_imagery (filename, var, date, input_product, input_file, creation_date) VALUES (?, ?, ?, ?, ?, ?)", 
+                            ((os.path.basename(contents["out_plot_name"])), contents["var"], lite_file_substring_dict["yymmdd"], contents["product"], os.path.basename(contents["lite_file"]), datetime.datetime.now()))
                 CONN.commit()
             else:
                 if verbose:
