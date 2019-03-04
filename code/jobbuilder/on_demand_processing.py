@@ -14,50 +14,50 @@ from oco2_worldview_imagery import stitch_quadrants
 
 #Global Variables
 DATA_DICT = { "LtCO2" : {
-                	 "xco2" : {
-				   "data_field_name" : "xco2", 
-		        	   "preprocessing" : False, 
-				   "range": [380, 430], 
-				   "cmap_file" : os.path.join(code_dir, "utils", "gibs_cmaps", "devel", "xco2_viridis_380to430.csv"), 
-				   "quality_info" : {"quality_field_name" : "xco2_quality_flag", "qc_val" :  0, "qc_operator" : operator.eq }
-				  }, 
+                         "xco2" : {
+                                   "data_field_name" : "xco2", 
+                                   "preprocessing" : False, 
+                                   "range": [380, 430], 
+                                   "cmap_file" : os.path.join(code_dir, "utils", "gibs_cmaps", "devel", "xco2_viridis_380to430.csv"), 
+                                   "quality_info" : {"quality_field_name" : "xco2_quality_flag", "qc_val" :  0, "qc_operator" : operator.eq }
+                                  }, 
                 "xco2_relative" : {
-				   "data_field_name" : None, 
-		        	   "preprocessing" : "ftp://aftp.cmdl.noaa.gov/products/trends/co2/co2_trend_gl.txt", 
-		        	   "range": [-6, 6], 
-				   "cmap_file" : os.path.join(code_dir, "utils", "gibs_cmaps", "devel", "xco2_relative_RdBu_r_-6to6.csv"), 
-				   "quality_info" : {"quality_field_name" : "xco2_quality_flag", "qc_val" :  0, "qc_operator" : operator.eq }
-				  }, 
+                                   "data_field_name" : None, 
+                                   "preprocessing" : "ftp://aftp.cmdl.noaa.gov/products/trends/co2/co2_trend_gl.txt", 
+                                   "range": [-6, 6], 
+                                   "cmap_file" : os.path.join(code_dir, "utils", "gibs_cmaps", "devel", "xco2_relative_RdBu_r_-6to6.csv"), 
+                                   "quality_info" : {"quality_field_name" : "xco2_quality_flag", "qc_val" :  0, "qc_operator" : operator.eq }
+                                  }, 
                          "tcwv" : {
-		        	   "data_field_name" : "Retrieval/tcwv", 
-		        	   "preprocessing" : False, 
-				   "range": [0, 75], 
-				   "cmap_file" : os.path.join(code_dir, "utils", "gibs_cmaps", "devel", "tcwv_Blues_0to75.csv"), 
-				   "quality_info" : {}
-				  }, 
+                                   "data_field_name" : "Retrieval/tcwv", 
+                                   "preprocessing" : False, 
+                                   "range": [0, 75], 
+                                   "cmap_file" : os.path.join(code_dir, "utils", "gibs_cmaps", "devel", "tcwv_Blues_0to75.csv"), 
+                                   "quality_info" : {}
+                                  }, 
                         },
               "LtSIF" : {
                        "sif757" : {
-			           "data_field_name" : "SIF_757nm", 
-				   "preprocessing" : False, 
-				   "range": [0, 2], 
-				   "cmap_file" : os.path.join(code_dir, "utils", "gibs_cmaps", "devel", "sif757_YlGn_-1to2.csv"), 
-				   "quality_info" : {}
-				  }, 
+                                   "data_field_name" : "SIF_757nm", 
+                                   "preprocessing" : False, 
+                                   "range": [0, 2], 
+                                   "cmap_file" : os.path.join(code_dir, "utils", "gibs_cmaps", "devel", "sif757_YlGn_-1to2.csv"), 
+                                   "quality_info" : {}
+                                  }, 
                        "sif771" : {
-			           "data_field_name" : "SIF_771nm", 
-				   "preprocessing" : False, 
-				   "range": [0, 2], 
-				   "cmap_file" : os.path.join(code_dir, "utils", "gibs_cmaps", "devel", "sif771_YlGn_-1to2.csv"), 
-				   "quality_info" : {}
-				  }, 
+                                   "data_field_name" : "SIF_771nm", 
+                                   "preprocessing" : False, 
+                                   "range": [0, 2], 
+                                   "cmap_file" : os.path.join(code_dir, "utils", "gibs_cmaps", "devel", "sif771_YlGn_-1to2.csv"), 
+                                   "quality_info" : {}
+                                  }, 
                   "sif_blended" : {
-		                   "data_field_name" : None, 
-				   "preprocessing" : True, 
-				   "range": [0, 2], 
-				   "cmap_file" : os.path.join(code_dir, "utils", "gibs_cmaps", "devel", "sif_blended_YlGn_-1to2.csv"), 
-				   "quality_info" : {}
-				  }
+                                   "data_field_name" : None, 
+                                   "preprocessing" : True, 
+                                   "range": [0, 2], 
+                                   "cmap_file" : os.path.join(code_dir, "utils", "gibs_cmaps", "devel", "sif_blended_YlGn_-1to2.csv"), 
+                                   "quality_info" : {}
+                                  }
                         }
             }
 
@@ -82,7 +82,7 @@ def get_GIBS_xml_filename(date):
     Build the filename of the GIBS XML configuration file
     """
     
-    return os.path.join(CODE_DIR, "GIBS_Aqua_MODIS_truecolor_" + date + ".xml")
+    return os.path.join(code_dir, "GIBS_Aqua_MODIS_truecolor_" + date + ".xml")
 
 def get_intermediate_tif_filename(tif_dir, extent_box, date):
     """
@@ -107,6 +107,7 @@ if __name__ == "__main__":
     parser.add_argument("@w", "@@overwrite", help="Overwrite existing plots", action="store_true")
     parser.add_argument("@d", "@@debug", help="Just create job config file for debugging", action="store_true")
     parser.add_argument("@s", "@@stitch", help="Stitch together four quadrant plots", action="store_true")
+    parser.add_argument("@u", "@@update", help="Update the database to keep a record that the plot has been created", action="store_true")
     args = parser.parse_args()
     
     verbose = args.verbose
@@ -119,6 +120,7 @@ if __name__ == "__main__":
     overwrite = args.overwrite
     debug = args.debug
     stitch = args.stitch
+    update_db = args.update
             
     cur = CONN.cursor()
     
@@ -148,6 +150,11 @@ if __name__ == "__main__":
             sys.exit()
     
     if custom_geo_box:
+        #Don't check or update the created imagery database with custom box plots
+        if update_db and verbose:
+            print("Records of customized box plots are not stored in the created imagery database, even though the @u flag was set")
+        update_db = False
+        #Get the extent box
         custom_geo_box = [float(x.strip("[,]")) for x in custom_geo_box]
         if len(custom_geo_box) != 4 \
             or custom_geo_box[0] > custom_geo_box[1] \
@@ -223,7 +230,8 @@ if __name__ == "__main__":
                     rgb_dict["xml"] = get_GIBS_xml_filename(date)
                     rgb_dict["intermediate_tif"] = get_intermediate_tif_filename(out_plot_dir, extent_box, date)
                     rgb_dict["layered_rgb_name"] = layered_rgb_name
-                if debug or overwrite or not db_entry or (rgb and not glob(rgb_dict["layered_rgb_name"])):
+                #if debug or overwrite or not db_entry or (rgb and not glob(rgb_dict["layered_rgb_name"])):
+                if debug or overwrite or not update_db or (update_db and not db_entry) or (rgb and not glob(rgb_dict["layered_rgb_name"])):
                     job_file = re.sub("png", "pkl", os.path.basename(out_plot_name))
                     processing_or_problem = check_processing_or_problem(job_file, verbose=verbose)
                     if not processing_or_problem:
@@ -231,7 +239,7 @@ if __name__ == "__main__":
                             print("Creating config file for " + var)
                         if rgb:
                             shutil.copy(GIBS_xml_template, rgb_dict["xml"])
-                        build_config(lf, lite_file_substring_dict["product"], var, extent_box, out_plot_name, job_file, rgb=rgb_dict, debug=debug, verbose=verbose)
+                        build_config(lf, lite_file_substring_dict["product"], var, extent_box, out_plot_name, job_file, rgb=rgb_dict, update_db=update_db, debug=debug, verbose=verbose)
                 else:
                     if verbose:
                         print(out_plot_name + " exists and will not be overwritten.")
@@ -259,7 +267,8 @@ if __name__ == "__main__":
                             plots_to_stitch[t] = layered_rgb_name
                         else:
                             plots_to_stitch[t] = out_plot_name
-                    if debug or overwrite or not db_entry or (rgb and not glob(rgb_dict["layered_rgb_name"])):
+                    #if debug or overwrite or not db_entry or (rgb and not glob(rgb_dict["layered_rgb_name"])):
+                    if debug or overwrite or not update_db or (update_db and not db_entry) or (rgb and not glob(rgb_dict["layered_rgb_name"])):
                         job_file = re.sub("png", "pkl", os.path.basename(out_plot_name))
                         processing_or_problem = check_processing_or_problem(job_file, verbose=verbose)
                         if not processing_or_problem:
@@ -267,7 +276,7 @@ if __name__ == "__main__":
                                 print("Creating config file for " + var)
                             if rgb:
                                 shutil.copy(GIBS_xml_template, rgb_dict["xml"])
-                            build_config(lf, lite_file_substring_dict["product"], var, TILE_DICT[t]["extent_box"], out_plot_name, job_file, rgb=rgb_dict, debug=debug, verbose=verbose)
+                            build_config(lf, lite_file_substring_dict["product"], var, TILE_DICT[t]["extent_box"], out_plot_name, job_file, rgb=rgb_dict, update_db=update_db, debug=debug, verbose=verbose)
                     else:
                         if verbose:
                             print(out_plot_name + " exists and will not be overwritten.")
