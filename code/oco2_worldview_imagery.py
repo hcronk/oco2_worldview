@@ -179,9 +179,9 @@ def preprocess(var, lite_file, external_data_file=None, verbose=False):
         success = ftp_pull(external_data_file, verbose=verbose)
         if success:
             df = pd.read_csv(FTP_SUBSTRING_DICT["ftp_file"], comment="#", na_values=-99.99, header=None, \
-                            names=['year', 'month', 'day', 'trend'], delim_whitespace=True)
+                            names=['year', 'month', 'day', 'cycle', 'trend'], delim_whitespace=True)
             
-            ref_xco2 = float(df["trend"][df.index[df["year"] == int("20" + LITE_FILE_SUBSTRING_DICT["yy"])] & df.index[df["month"] == int(LITE_FILE_SUBSTRING_DICT["mm"])] & df.index[df["day"] == int(LITE_FILE_SUBSTRING_DICT["dd"])]])
+            ref_xco2 = float(df["cycle"][df.index[df["year"] == int("20" + LITE_FILE_SUBSTRING_DICT["yy"])] & df.index[df["month"] == int(LITE_FILE_SUBSTRING_DICT["mm"])] & df.index[df["day"] == int(LITE_FILE_SUBSTRING_DICT["dd"])]])
             oco2_xco2 = get_hdf5_data("xco2", lite_file)
             data = oco2_xco2 - ref_xco2
             del oco2_xco2
@@ -248,7 +248,7 @@ def color_idx_plot(grid, norm, rgb_list, out_plot_name, verbose=False):
     
     if verbose:
         print("Saving plot to " + out_plot_name)
-	
+        
     im.save(out_plot_name, format="PNG", transparency=0)
     
     return True
@@ -420,7 +420,7 @@ def regrid_oco2(data, vertex_latitude, vertex_longitude, lat_centers_subset, lon
         if debug:
             #Plot polygon vertices and gridpoints to visualize/quality check
             dot_colors = []
-	    #Need a new iterator
+            #Need a new iterator
             zip_it = zip(list(lat_m.flatten()), list(lon_m.flatten()))
             for ll in zip_it:
                 pt = Point(ll[0], ll[1])
