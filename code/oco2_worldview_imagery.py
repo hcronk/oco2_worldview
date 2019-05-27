@@ -175,12 +175,15 @@ def preprocess(var, lite_file, external_data_file=None, verbose=False):
     In operational path
     """
     
+    global REFERENCE_XCO2_TO_SAVE
+    
     if var == "xco2_relative":
         success = ftp_pull(external_data_file, verbose=verbose)
         if success:
             df = pd.read_csv(FTP_SUBSTRING_DICT["ftp_file"], comment="#", na_values=-99.99, header=None, \
                             names=['year', 'month', 'day', 'cycle', 'trend'], delim_whitespace=True)
             
+            REFERENCE_XCO2_TO_SAVE = df.loc[df.index[df["year"] == int("20" + LITE_FILE_SUBSTRING_DICT["yy"])] & df.index[df["month"] == int(LITE_FILE_SUBSTRING_DICT["mm"])] & df.index[df["day"] == int(LITE_FILE_SUBSTRING_DICT["dd"])]]
             ref_xco2 = float(df["cycle"][df.index[df["year"] == int("20" + LITE_FILE_SUBSTRING_DICT["yy"])] & df.index[df["month"] == int(LITE_FILE_SUBSTRING_DICT["mm"])] & df.index[df["day"] == int(LITE_FILE_SUBSTRING_DICT["dd"])]])
             oco2_xco2 = get_hdf5_data("xco2", lite_file)
             data = oco2_xco2 - ref_xco2
@@ -198,7 +201,6 @@ def preprocess(var, lite_file, external_data_file=None, verbose=False):
     else:
         print("No preprocessing required for " + var)
         return
-    
     return data
 
 def extent_box_to_indices(extent_box):
@@ -668,6 +670,11 @@ def oco2_worldview_imagery(job_file, verbose=False, debug=False):
         success = pull_Aqua_RGB_GIBS(lat_ul, lon_ul, lat_lr, lon_lr, job_info.rgb["xml"], job_info.rgb["intermediate_tif"], xsize = len(lon_data_indices), ysize = len(lat_data_indices))
         success = prep_RGB(rgb_name, job_info.rgb["intermediate_tif"])
         success = layer_rgb_and_data(rgb_name, job_info.out_plot_name, job_info.rgb["layered_rgb_name"])
+        
+#    if job_info.ops and job_info.var == "xco2_relative":
+#        df = pd.read_csv(j, comment="#", na_values=-99.99, header=None, \
+#                         names=['year', 'month', 'day', 'cycle', 'trend'], delim_whitespace=True)
+ 
     
     return True
                     
