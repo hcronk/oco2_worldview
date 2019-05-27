@@ -12,6 +12,9 @@
 # the values used to produce the relative OCO-2 relative XCO2 imagery product 
 # are preserved in this file and updated only as the imagery products are updated.
 #
+# The current, complete data record produced by ESRL is available at
+# ftp://aftp.cmdl.noaa.gov/products/trends/co2/co2_trend_gl.txt
+#
 # Questions about the data and how it is produced should be addressed to
 # the ESRL point of contact below. Questions about how these data are used 
 # to produce relative OCO-2 relative XCO2 imagery can be addressed to
