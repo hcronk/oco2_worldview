@@ -1,0 +1,79 @@
+# FILE DESCRIPTION
+# 
+# This file contains a snapshot of the Estimated CO2 Daily Global 
+# Seasonal Cycle and Trend (ppm) produced by NOAA ESRL as it is used 
+# as reference XCO2 to produce the OCO-2/3 relative XCO2 imagery product
+# for the NASA Global Imagery Browse Services (GIBS).
+
+# As noted below, the native data produced by ESRL "for the last year 
+# are subject to change, depending on recalibration of the reference 
+# gas mixtures used, and other quality control procedures. Occasionally, 
+# earlier years may also be changed for the same reasons."  Due to this possibility, 
+# the values used to produce the relative OCO-2 relative XCO2 imagery product 
+# are preserved in this file and updated only as the imagery products are updated.
+
+# Questions about the data and how it is produced should be addressed to
+# the ESRL point of contact below. Questions about how these data are used 
+# to produce relative OCO-2 relative XCO2 imagery can be addressed to
+# Heather.Cronk@colostate.edu
+#
+# --------------------------------------------------------------------
+# USE OF NOAA ESRL DATA
+# 
+# These data are made freely available to the public and the
+# scientific community in the belief that their wide dissemination
+# will lead to greater understanding and new scientific insights.
+# The availability of these data does not constitute publication
+# of the data.  NOAA relies on the ethics and integrity of the user to
+# ensure that ESRL receives fair credit for their work.  If the data
+# are obtained for potential use in a publication or presentation,
+# ESRL should be informed at the outset of the nature of this work.
+# If the ESRL data are essential to the work, or if an important
+# result or conclusion depends on the ESRL data, co-authorship
+# may be appropriate.  This should be discussed at an early stage in
+# the work.  Manuscripts using the ESRL data should be sent to ESRL
+# for review before they are submitted for publication so we can
+# ensure that the quality and limitations of the data are accurately
+# represented.
+# 
+# Contact:  Kirk Thoning (303 497 6078; kirk.w.thoning@noaa.gov)
+# 
+# File Creation: Tue Apr  2 05:00:49 2019
+# 
+# RECIPROCITY
+# 
+# Use of these data implies an agreement to reciprocate.
+# Laboratories making similar measurements agree to make their
+# own data available to the general public and to the scientific
+# community in an equally complete and easily accessible form.
+# Modelers are encouraged to make available to the community,
+# upon request, their own tools used in the interpretation
+# of the ESRL data, namely well documented model code, transport
+# fields, and additional information necessary for other
+# scientists to repeat the work and to run modified versions.
+# Model availability includes collaborative support for new
+# users of the models.
+# --------------------------------------------------------------------
+# 
+# See www.esrl.noaa.gov/gmd/ccgg/trends/ for additional details.
+# 
+# Estimated CO2 Daily Global Seasonal Cycle and Trend (ppm).
+# 
+# The estimated daily global seasonal cycle and trend value for CO2 are determined
+# from the daily averaged CO2 data from the four NOAA/ESRL/GMD Baseline
+# observatories.  A smoothed seasonal cycle and a smoothed de-seasonalized trend
+# curve are determined for each observatory record at daily intervals.  An
+# estimated global seasonal cycle and trend are computed by averaging the four
+# individual observatory seasonal cycle and trend curves at each daily interval.
+# 
+# For details on the curve fitting process see
+# https://www.esrl.noaa.gov/gmd/ccgg/mbl/crvfit/crvfit.html
+# 
+# CO2 is expressed as a mole fraction in dry air, micromol/mol, abbreviated as ppm
+# 
+# NOTE: In general, the data presented for the last year are subject to change,
+# depending on recalibration of the reference gas mixtures used, and other quality
+# control procedures. Occasionally, earlier years may also be changed for the same
+# reasons.  Usually these changes are minor.
+# 
+# year	month	day	cycle	trend	tile
