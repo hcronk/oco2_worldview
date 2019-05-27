@@ -184,8 +184,12 @@ def preprocess(var, lite_file, external_data_file=None, verbose=False):
             df = pd.read_csv(FTP_SUBSTRING_DICT["ftp_file"], comment="#", na_values=-99.99, header=None, \
                             names=['year', 'month', 'day', 'cycle', 'trend'], delim_whitespace=True)
             
-            REFERENCE_XCO2_TO_SAVE = df.loc[df.index[df["year"] == int("20" + LITE_FILE_SUBSTRING_DICT["yy"])] & df.index[df["month"] == int(LITE_FILE_SUBSTRING_DICT["mm"])] & df.index[df["day"] == int(LITE_FILE_SUBSTRING_DICT["dd"])]]
-            ref_xco2 = float(df["cycle"][df.index[df["year"] == int("20" + LITE_FILE_SUBSTRING_DICT["yy"])] & df.index[df["month"] == int(LITE_FILE_SUBSTRING_DICT["mm"])] & df.index[df["day"] == int(LITE_FILE_SUBSTRING_DICT["dd"])]])
+            REFERENCE_XCO2_TO_SAVE = df.loc[df.index[df["year"] == int("20" + LITE_FILE_SUBSTRING_DICT["yy"])] & 
+                                            df.index[df["month"] == int(LITE_FILE_SUBSTRING_DICT["mm"])] & 
+                                            df.index[df["day"] == int(LITE_FILE_SUBSTRING_DICT["dd"])]]#.to_dict("records")[0]
+            ref_xco2 = float(df["cycle"][df.index[df["year"] == int("20" + LITE_FILE_SUBSTRING_DICT["yy"])] & 
+                                         df.index[df["month"] == int(LITE_FILE_SUBSTRING_DICT["mm"])] & 
+                                         df.index[df["day"] == int(LITE_FILE_SUBSTRING_DICT["dd"])]])
             oco2_xco2 = get_hdf5_data("xco2", lite_file)
             data = oco2_xco2 - ref_xco2
             del oco2_xco2
@@ -674,9 +678,19 @@ def oco2_worldview_imagery(job_file, update_db=True, verbose=False, debug=False)
         
     if update_db and job_info.var == "xco2_relative":
         #official relative XCO2 imagery was produced; update the reference XCO2 file
+        image_filename_dict = re.match(IMAGE_REGEX, os.path.basename(job_info.out_plot_name)).groupdict()
+        latspan_lonspan = image_filename_dict["latspan"] + "_" + image_filename_dict["lonspan"]
         df = pd.read_csv(REFERENCE_XCO2_FILE, comment="#", na_values=-99.99, header=None, \
                          names=['year', 'month', 'day', 'cycle', 'trend', 'tile'], delim_whitespace=True)
-        #df[df.iloc[df.index[df["year"] == int("20" + LITE_FILE_SUBSTRING_DICT["yy"])] & df.index[df["month"] == int(LITE_FILE_SUBSTRING_DICT["mm"])] & df.index[df["day"] == int(LITE_FILE_SUBSTRING_DICT["dd"])]]] = REFERENCE_XCO2_TO_SAVE
+        REFERENCE_XCO2_TO_SAVE["tile"] = latspan_lonspan
+        relevant_tile_vals = df["tile"][df.index[df["year"] == int("20" + LITE_FILE_SUBSTRING_DICT["yy"])] & df.index[df["month"] == int(LITE_FILE_SUBSTRING_DICT["mm"])] & df.index[df["day"] == int(LITE_FILE_SUBSTRING_DICT["dd"])]]        
+        if relevant_tile_vals.isnull().all():
+            df.iloc[df.index[df["year"] == int("20" + LITE_FILE_SUBSTRING_DICT["yy"])] & df.index[df["month"] == int(LITE_FILE_SUBSTRING_DICT["mm"])] & df.index[df["day"] == int(LITE_FILE_SUBSTRING_DICT["dd"])]] = REFERENCE_XCO2_TO_SAVE
+        elif latspan_lonspan in relevant_tile_vals.values:
+            df.iloc[df.index[df["year"] == int("20" + LITE_FILE_SUBSTRING_DICT["yy"])] & df.index[df["month"] == int(LITE_FILE_SUBSTRING_DICT["mm"])] & df.index[df["day"] == int(LITE_FILE_SUBSTRING_DICT["dd"])] & df.index[df["tile"] == latspan_lonspan]] = REFERENCE_XCO2_TO_SAVE
+        elif latspan_lonspan not in relevant_tile_vals.values:
+            df = pd.concat([df, REFERENCE_XCO2_TO_SAVE]).sort_values(by=["year", "month", "day", "tile"])
+        df.astype({"year": int, "month": int, "day": int})
         df.to_csv("intermediate_reference_xco2.csv", header=False, index=False, sep="	")
         with open(REFERENCE_XCO2_FILE, "w") as rf:
             for fname in [REFERENCE_XCO2_FILE_HEADER, "intermediate_reference_xco2.csv"]:
