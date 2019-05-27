@@ -562,7 +562,7 @@ def layer_rgb_and_data(rgb_name, data_plot_name, layered_plot_name):
     
 ### End Research Functionality ###
 
-def oco2_worldview_imagery(job_file, update_db=True, verbose=False, debug=False):
+def oco2_worldview_imagery(job_file, update_db=False, verbose=False, debug=False):
     """
     Main code for generating gridded OCO-2 imagery for Worldview
     """
