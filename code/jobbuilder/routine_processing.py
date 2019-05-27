@@ -211,7 +211,7 @@ def check_processing_or_problem(job_file, verbose=False):
     
         return False
 
-def run_job(job_file, update_db=True, verbose=False):
+def run_job(job_file, update_db=False, verbose=False):
     """
     Create imagery using specifications in job file
     and if the imagery is produced, get rid of the lockfile
@@ -221,7 +221,7 @@ def run_job(job_file, update_db=True, verbose=False):
     global METADATA_NAME
     global WORLDFILE_NAME
     
-    success = oco2_worldview_imagery(job_file, verbose=verbose)
+    success = oco2_worldview_imagery(job_file, update_db=update_db, verbose=verbose)
     
     with open(job_file, "rb") as jf:
         contents = pickle.load(jf)
@@ -273,7 +273,8 @@ def run_job(job_file, update_db=True, verbose=False):
         rgb_name = os.path.join(just_plot_dir, re.sub(contents["var"], "RGB", just_plot_name))
         silent_remove(rgb_name)
         silent_remove(contents["rgb"]["xml"])
-        silent_remove(contents["rgb"]["intermediate_tif"])   
+        silent_remove(contents["rgb"]["intermediate_tif"])
+    silent_remove("intermediate_reference_xco2.csv")
 
 def check_job_worked(plot_name, var, rgb=False):
     """
