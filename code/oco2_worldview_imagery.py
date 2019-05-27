@@ -690,7 +690,7 @@ def oco2_worldview_imagery(job_file, update_db=True, verbose=False, debug=False)
             df.iloc[df.index[df["year"] == int("20" + LITE_FILE_SUBSTRING_DICT["yy"])] & df.index[df["month"] == int(LITE_FILE_SUBSTRING_DICT["mm"])] & df.index[df["day"] == int(LITE_FILE_SUBSTRING_DICT["dd"])] & df.index[df["tile"] == latspan_lonspan]] = REFERENCE_XCO2_TO_SAVE
         elif latspan_lonspan not in relevant_tile_vals.values:
             df = pd.concat([df, REFERENCE_XCO2_TO_SAVE]).sort_values(by=["year", "month", "day", "tile"])
-        df.astype({"year": int, "month": int, "day": int})
+        df = df.astype({"year": int, "month": int, "day": int})
         df.to_csv("intermediate_reference_xco2.csv", header=False, index=False, sep="	")
         with open(REFERENCE_XCO2_FILE, "w") as rf:
             for fname in [REFERENCE_XCO2_FILE_HEADER, "intermediate_reference_xco2.csv"]:
