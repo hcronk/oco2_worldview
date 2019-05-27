@@ -6,7 +6,6 @@ from functools import reduce
 import argparse
 import os
 import operator
-import subprocess
 import datetime
 import sys
 import re
@@ -29,6 +28,8 @@ ccrs = cartopy.crs
 
 #Global Variables
 CODE_DIR = os.path.dirname(os.path.realpath(__file__))
+REFERENCE_XCO2_FILE = os.path.join(CODE_DIR, "ref_co2_trend_gl.txt")
+REFERENCE_XCO2_FILE_HEADER = os.path.join(CODE_DIR, "ref_co2_trend_gl_header.txt")
 
 GEO_DICT = { "LtCO2" : {
                 "lat" : "vertex_latitude",
@@ -557,7 +558,7 @@ def layer_rgb_and_data(rgb_name, data_plot_name, layered_plot_name):
     
 ### End Research Functionality ###
 
-def oco2_worldview_imagery(job_file, verbose=False, debug=False):
+def oco2_worldview_imagery(job_file, update_db=True, verbose=False, debug=False):
     """
     Main code for generating gridded OCO-2 imagery for Worldview
     """
@@ -671,10 +672,16 @@ def oco2_worldview_imagery(job_file, verbose=False, debug=False):
         success = prep_RGB(rgb_name, job_info.rgb["intermediate_tif"])
         success = layer_rgb_and_data(rgb_name, job_info.out_plot_name, job_info.rgb["layered_rgb_name"])
         
-#    if job_info.ops and job_info.var == "xco2_relative":
-#        df = pd.read_csv(j, comment="#", na_values=-99.99, header=None, \
-#                         names=['year', 'month', 'day', 'cycle', 'trend'], delim_whitespace=True)
- 
+    if update_db and job_info.var == "xco2_relative":
+        #official relative XCO2 imagery was produced; update the reference XCO2 file
+        df = pd.read_csv(REFERENCE_XCO2_FILE, comment="#", na_values=-99.99, header=None, \
+                         names=['year', 'month', 'day', 'cycle', 'trend', 'tile'], delim_whitespace=True)
+        #df[df.iloc[df.index[df["year"] == int("20" + LITE_FILE_SUBSTRING_DICT["yy"])] & df.index[df["month"] == int(LITE_FILE_SUBSTRING_DICT["mm"])] & df.index[df["day"] == int(LITE_FILE_SUBSTRING_DICT["dd"])]]] = REFERENCE_XCO2_TO_SAVE
+        df.to_csv("intermediate_reference_xco2.csv", header=False, index=False, sep="	")
+        with open(REFERENCE_XCO2_FILE, "w") as rf:
+            for fname in [REFERENCE_XCO2_FILE_HEADER, "intermediate_reference_xco2.csv"]:
+                with open(fname) as infile:
+                    rf.write(infile.read())
     
     return True
                     
