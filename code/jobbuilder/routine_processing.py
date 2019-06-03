@@ -16,7 +16,7 @@ import sqlite3
 #Global Variables
 LITE_FILE_DIRS = {"LtCO2": "/data/oco2/scf/product/Lite/B9003r/r02", 
                   "LtSIF": "/data/oco2/scf/product/Lite/B8100r/r02"}
-OUT_PLOT_DIR = "/home/hcronk/oco2_worldview/test_plots"
+OUT_PLOT_DIR = "/home/jrhall/oco2_worldview/images"
 IMAGE_REGEX = "(?P<var>[a-z0-9](.*))_(?P<latspan>[Lato\.-](.*))_(?P<lonspan>[Lton\.-](.*))_(?P<yymmdd>[0-9]{6})_(?P<version>B[0-9r]{,5}).png"
 LOCKFILE_DIR = "/home/hcronk/oco2_worldview/processing_status"
 TRY_THRESHOLD = 3 #(number of times to try to process before moving to issues for analysis)
@@ -100,7 +100,7 @@ def find_unprocessed_file(lite_product, verbose=False):
             f = os.path.join(root, just_filename)
             if verbose:
                 print(f)
-            sys.exit()
+            #sys.exit()
             lite_file_substring_dict = re.match(LITE_FILE_REGEX, just_filename).groupdict()
         
             plot_tags = lite_file_substring_dict["yymmdd"] + "_" + lite_file_substring_dict["version"] + ".png"
@@ -316,7 +316,7 @@ if __name__ == "__main__":
         os.makedirs(OUT_PLOT_DIR)
     
     for p in DATA_DICT.keys():
-        find_unprocessed_file(p)
+        find_unprocessed_file(p, verbose=True)
     
     if CONN:
         #print("Closing database connection from routine_processing.py")
