@@ -260,6 +260,21 @@ def color_idx_plot(grid, norm, rgb_list, out_plot_name, verbose=False):
     
     return True
 
+def blank_plot(x, y, rgb_list, out_plot_name, verbose=False):
+    """
+    Create a blank PNG
+    """
+    
+    im = Image.new("P", (x, y))
+    im.putpalette(ImagePalette.ImagePalette(palette=rgb_list))
+    
+    if verbose:
+        print("Saving plot to " + out_plot_name)
+        
+    im.save(out_plot_name, format="PNG", transparency=0)
+    
+    return True
+
 def write_image_odl_metadata(start_ts, end_ts, out_plot_name, extent_box, lite_file):
     """
     Writes ODL formatted metadata. One per image
@@ -635,10 +650,14 @@ def oco2_worldview_imagery(job_file, update_db=False, verbose=False, debug=False
     
     if verbose:
         print("Plotting")
-    
+        
     norm, rgb_list = make_cnorm(job_info.cmap_file)
-    
-    success = color_idx_plot(grid, norm, rgb_list, job_info.out_plot_name, verbose=verbose)
+        
+    if isinstance(grid, bool):
+        #Grid is empty (False returned from regrid_oco2) because there are no data points that fall within the given geolocation box
+        success = blank_plot(len(LON_CENTERS[lon_data_indices]), len(LAT_CENTERS[lat_data_indices]), rgb_list, job_info.out_plot_name, verbose=verbose)
+    else:    
+        success = color_idx_plot(grid, norm, rgb_list, job_info.out_plot_name, verbose=verbose)
     
     del grid
 
