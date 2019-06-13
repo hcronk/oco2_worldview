@@ -450,7 +450,7 @@ def regrid_oco2(data, vertex_latitude, vertex_longitude, lat_centers_subset, lon
 
     del poly
     
-    if not np.any(grid):
+    if not np.any(np.isfinite(grid)):
         if verbose:
             print("There are no data points that fall within the given geolocation box")
         return False
