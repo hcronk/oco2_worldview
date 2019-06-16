@@ -251,6 +251,10 @@ def run_job(job_file, update_db=False, verbose=False):
                 if verbose:
                     print("This file is already in the database")
                     print(db_entry)
+                    print("Updating creation datetime")
+                CUR.execute("UPDATE created_imagery SET creation_date=? WHERE filename=?", (datetime.datetime.now(), os.path.basename(contents["out_plot_name"])))
+                CONN.commit()
+                
         
         os.remove(job_file)
         os.remove(LOCKFILE)
