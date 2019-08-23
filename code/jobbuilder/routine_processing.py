@@ -14,8 +14,8 @@ from multiprocessing import Process
 import sqlite3
 
 #Global Variables
-LITE_FILE_DIRS = {"LtCO2": "/data/oco2/scf/product/Lite/B9003r/r02", 
-                  "LtSIF": "/data/oco2/scf/product/Lite/B8100r/r02"}
+LITE_FILE_DIRS = {"LtCO2": "/data/oco2/scf/product/Lite/B9*r/r02", 
+                  "LtSIF": "/data/oco2/scf/product/Lite/B8*r/r02"}
 OUT_PLOT_DIR = "/home/jrhall/oco2_worldview/images"
 IMAGE_REGEX = "(?P<var>[a-z0-9](.*))_(?P<latspan>[Lato\.-](.*))_(?P<lonspan>[Lton\.-](.*))_(?P<yymmdd>[0-9]{6})_(?P<version>B[0-9r]{,5}).png"
 LOCKFILE_DIR = "/home/hcronk/oco2_worldview/processing_status"
@@ -93,32 +93,33 @@ def find_unprocessed_file(lite_product, verbose=False):
     initiate a job for any missing imagery
     """
     
-    for root, subdirs, files in os.walk(LITE_FILE_DIRS[lite_product]):
-        subdirs[:] = [d for d in subdirs if not d[0] == "."]
-        files = [f for f in files if not f[0] == "."]
-        for just_filename in files:
-            f = os.path.join(root, just_filename)
-            if verbose:
-                print(f)
-            #sys.exit()
-            lite_file_substring_dict = re.match(LITE_FILE_REGEX, just_filename).groupdict()
-        
-            plot_tags = lite_file_substring_dict["yymmdd"] + "_" + lite_file_substring_dict["version"] + ".png"
-
-            for v in DATA_DICT[lite_product].keys():
+    for walk_dir in glob(LITE_FILE_DIRS[lite_product]):
+        for root, subdirs, files in os.walk(walk_dir):
+            subdirs[:] = [d for d in subdirs if not d[0] == "."]
+            files = [f for f in files if not f[0] == "."]
+            for just_filename in files:
+                f = os.path.join(root, just_filename)
                 if verbose:
-                    print(v)
-                for t in TILE_DICT.keys():
+                    print(f)
+                #sys.exit()
+                lite_file_substring_dict = re.match(LITE_FILE_REGEX, just_filename).groupdict()
+
+                plot_tags = lite_file_substring_dict["yymmdd"] + "_" + lite_file_substring_dict["version"] + ".png"
+
+                for v in DATA_DICT[lite_product].keys():
                     if verbose:
-                        print(t)
-                    out_plot_name = get_image_filename(OUT_PLOT_DIR, v, TILE_DICT[t]["extent_box"], plot_tags)
-                    db_entry = CUR.execute("SELECT filename FROM created_imagery WHERE filename=?", (os.path.basename(out_plot_name),)).fetchall()
-                    if not db_entry or OVERWRITE:
-                        #job_file = re.sub("png", "json", os.path.basename(out_plot_name))
-                        job_file = re.sub("png", "pkl", os.path.basename(out_plot_name))
-                        processing_or_problem = check_processing_or_problem(job_file)
-                        if not processing_or_problem:
-                            build_config(f, lite_product, v, TILE_DICT[t]["extent_box"], out_plot_name, job_file)
+                        print(v)
+                    for t in TILE_DICT.keys():
+                        if verbose:
+                            print(t)
+                        out_plot_name = get_image_filename(OUT_PLOT_DIR, v, TILE_DICT[t]["extent_box"], plot_tags)
+                        db_entry = CUR.execute("SELECT filename FROM created_imagery WHERE filename=?", (os.path.basename(out_plot_name),)).fetchall()
+                        if not db_entry or OVERWRITE:
+                            #job_file = re.sub("png", "json", os.path.basename(out_plot_name))
+                            job_file = re.sub("png", "pkl", os.path.basename(out_plot_name))
+                            processing_or_problem = check_processing_or_problem(job_file)
+                            if not processing_or_problem:
+                                build_config(f, lite_product, v, TILE_DICT[t]["extent_box"], out_plot_name, job_file)
             
 
 def build_config(oco2_file, lite_product, var, extent_box, out_plot_name, job_file, rgb=False, update_db=True, debug=False, verbose=False):
