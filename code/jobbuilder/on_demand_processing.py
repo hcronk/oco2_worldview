@@ -195,7 +195,13 @@ if __name__ == "__main__":
         if verbose:
             print("Checking " + lf)  
         
-        lite_file_substring_dict = re.match(LITE_FILE_REGEX, os.path.basename(lf)).groupdict()
+        try:
+            lite_file_substring_dict = re.match(LITE_FILE_REGEX, os.path.basename(lf)).groupdict()
+        except AttributeError:
+            print("File provided does not match the expected Lite File regex. Exiting.")
+            print("Filename: " + lf)
+            print("Regex: " + LITE_FILE_REGEX)
+            sys.exit()
 
         date = "20" + lite_file_substring_dict["yymmdd"][:2] + "-" + lite_file_substring_dict["yymmdd"][2:4] + "-" + lite_file_substring_dict["yymmdd"][4:]
 

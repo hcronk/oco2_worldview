@@ -104,7 +104,13 @@ def find_unprocessed_file(lite_product, verbose=False):
                 if verbose:
                     print(f)
                 #sys.exit()
-                lite_file_substring_dict = re.match(LITE_FILE_REGEX, just_filename).groupdict()
+                try:
+                    lite_file_substring_dict = re.match(LITE_FILE_REGEX, just_filename).groupdict()
+                except AttributeError:
+                    print("File does not match the expected Lite File regex. Moving on.")
+                    print("Filename: " + just_filename)
+                    print("Regex: " + LITE_FILE_REGEX)
+                    sys.exit()
 
                 plot_tags = lite_file_substring_dict["yymmdd"] + "_" + lite_file_substring_dict["version"] + ".png"
 
@@ -246,6 +252,7 @@ def run_job(job_file, update_db=False, verbose=False):
                 if verbose:
                     print("Updating database")
                 #Update database
+                #Assume if we get to this point, we're working with an official Lite File so this re.match should not error
                 lite_file_substring_dict = re.match(LITE_FILE_REGEX, os.path.basename(contents["lite_file"])).groupdict()
                 CUR.execute("INSERT INTO created_imagery (filename, var, date, input_product, input_file, creation_date) VALUES (?, ?, ?, ?, ?, ?)", 
                             ((os.path.basename(contents["out_plot_name"])), contents["var"], lite_file_substring_dict["yymmdd"], contents["product"], os.path.basename(contents["lite_file"]), datetime.datetime.now()))
