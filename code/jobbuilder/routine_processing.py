@@ -86,7 +86,7 @@ TILE_DICT = { "NE": {"extent_box" : [0, 180, 0, 90]
                     }
             }
 
-LITE_FILE_REGEX = "oco2_(?P<product>[A-Za-z0-9]{5})_(?P<yymmdd>[0-9]{6})_(?P<version>B[0-9r]{,5})_[0-9]{12}s.nc4"
+LITE_FILE_REGEX = "(?P<satellite>[oco2|oco3]{4})_(?P<product>[A-Za-z0-9]{5})_(?P<yymmdd>[0-9]{6})_(?P<version>B[0-9r]{,5})_[0-9]{12}s.nc4"
 
 
 def find_unprocessed_file(lite_product, verbose=False):
