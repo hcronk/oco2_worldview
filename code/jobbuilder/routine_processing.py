@@ -19,7 +19,7 @@ import sqlite3
 LITE_FILE_DIRS = {"LtCO2": "/data/oco2/scf/product/Lite/B9*r/r02", 
                   "LtSIF": "/data/oco2/scf/product/Lite/B8*r/r02"}
 OUT_PLOT_DIR = "/home/jrhall/oco2_worldview/images"
-IMAGE_REGEX = "(?P<var>[a-z0-9](.*))_(?P<latspan>[Lato\.-](.*))_(?P<lonspan>[Lton\.-](.*))_(?P<yymmdd>[0-9]{6})_(?P<version>B[0-9r]{,5}).png"
+IMAGE_REGEX = "(?P<satellite>[oco2|oco3]{4})_(?P<var>[a-z0-9](.*))_(?P<latspan>[Lato\.-](.*))_(?P<lonspan>[Lton\.-](.*))_(?P<yymmdd>[0-9]{6})_(?P<version>B[0-9r]{,5}).png"
 LOCKFILE_DIR = "/home/hcronk/oco2_worldview/processing_status"
 TRY_THRESHOLD = 3 #(number of times to try to process before moving to issues for analysis)
 TRY_WAIT = 3600 #(number of seconds to wait before trying to reprocess a failed job)
@@ -120,7 +120,7 @@ def find_unprocessed_file(lite_product, verbose=False):
                     for t in TILE_DICT.keys():
                         if verbose:
                             print(t)
-                        out_plot_name = get_image_filename(OUT_PLOT_DIR, v, TILE_DICT[t]["extent_box"], plot_tags)
+                        out_plot_name = get_image_filename(OUT_PLOT_DIR, lite_file_substring_dict["satellite"], v, TILE_DICT[t]["extent_box"], plot_tags)
                         db_entry = CUR.execute("SELECT filename FROM created_imagery WHERE filename=?", (os.path.basename(out_plot_name),)).fetchall()
                         if not db_entry or OVERWRITE:
                             #job_file = re.sub("png", "json", os.path.basename(out_plot_name))
@@ -162,12 +162,12 @@ def build_config(oco2_file, lite_product, var, extent_box, out_plot_name, job_fi
     if process.is_alive():
         process.terminate()   
     
-def get_image_filename(image_dir, var, extent_box, plot_name_tags):
+def get_image_filename(image_dir, satellite, var, extent_box, plot_name_tags):
     """
     Build the filename of the output image
     """
     
-    return os.path.join(image_dir, var + "_Lat" + str(extent_box[2]) + "to" + str(extent_box[3]) + "_Lon" + str(extent_box[0]) + "to" + str(extent_box[1]) + "_" + plot_name_tags)
+    return os.path.join(image_dir, satellite + "_" + var + "_Lat" + str(extent_box[2]) + "to" + str(extent_box[3]) + "_Lon" + str(extent_box[0]) + "to" + str(extent_box[1]) + "_" + plot_name_tags)
 
 def check_processing_or_problem(job_file, verbose=False):
     """

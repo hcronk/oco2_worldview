@@ -228,7 +228,7 @@ if __name__ == "__main__":
             for var in var_list:
                 if verbose:
                     print("Checking " + var)
-                out_plot_name = get_image_filename(out_plot_dir, var, extent_box, plot_tags)
+                out_plot_name = get_image_filename(out_plot_dir, lite_file_substring_dict["satellite"], var, extent_box, plot_tags)
                 db_entry = cur.execute("SELECT * FROM created_imagery WHERE filename=?", (os.path.basename(out_plot_name),)).fetchall()
                 #print(db_entry)
                 layered_rgb_name = os.path.join(out_plot_dir, re.sub(var, var +"_onRGB", os.path.basename(out_plot_name)))
@@ -260,7 +260,7 @@ if __name__ == "__main__":
                 for t in TILE_DICT.keys():
                     if verbose:
                         print("Checking " + t + " tile")
-                    out_plot_name = get_image_filename(out_plot_dir, var, TILE_DICT[t]["extent_box"], plot_tags)
+                    out_plot_name = get_image_filename(out_plot_dir, lite_file_substring_dict["satellite"], var, TILE_DICT[t]["extent_box"], plot_tags)
                     db_entry = cur.execute("SELECT * FROM created_imagery WHERE filename=?", (os.path.basename(out_plot_name),)).fetchall()
                     #print(db_entry)
                     layered_rgb_name = os.path.join(out_plot_dir, re.sub(var, var +"_onRGB", os.path.basename(out_plot_name)))
