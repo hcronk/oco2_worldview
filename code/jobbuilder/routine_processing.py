@@ -19,7 +19,7 @@ import sqlite3
 LITE_FILE_DIRS = {"LtCO2": "/data/oco2/scf/product/Lite/B9*r/r02", 
                   "LtSIF": "/data/oco2/scf/product/Lite/B8*r/r02"}
 OUT_PLOT_DIR = "/home/jrhall/oco2_worldview/images"
-IMAGE_REGEX = "(?P<satellite>[oco2|oco3]{4})_(?P<var>[a-z0-9](.*))_(?P<latspan>[Lato\.-](.*))_(?P<lonspan>[Lton\.-](.*))_(?P<yymmdd>[0-9]{6})_(?P<version>B[0-9r]{,5}).png"
+IMAGE_REGEX = "(?P<satellite>[oco2|oco3]{4})_(?P<var>[a-z0-9](.*))_(?P<latspan>[Lato\.-](.*))_(?P<lonspan>[Lton\.-](.*))_(?P<yymmdd>[0-9]{6})_(?P<version>B[0-9A-Za-z]{0,7}).png"
 LOCKFILE_DIR = "/home/hcronk/oco2_worldview/processing_status"
 TRY_THRESHOLD = 3 #(number of times to try to process before moving to issues for analysis)
 TRY_WAIT = 3600 #(number of seconds to wait before trying to reprocess a failed job)
@@ -86,7 +86,7 @@ TILE_DICT = { "NE": {"extent_box" : [0, 180, 0, 90]
                     }
             }
 
-LITE_FILE_REGEX = "(?P<satellite>[oco2|oco3]{4})_(?P<product>[A-Za-z0-9]{5})_(?P<yymmdd>[0-9]{6})_(?P<version>B[0-9r]{,5})_[0-9]{12}s.nc4"
+LITE_FILE_REGEX = "(?P<satellite>[oco2|oco3]{4})_(?P<product>[A-Za-z0-9]{5})_(?P<yymmdd>[0-9]{6})_(?P<version>[0-9A-Za-z]{5,8})_[0-9]{12}s.nc4"
 
 
 def find_unprocessed_file(lite_product, verbose=False):
@@ -111,7 +111,12 @@ def find_unprocessed_file(lite_product, verbose=False):
                     print("Filename: " + just_filename)
                     print("Regex: " + LITE_FILE_REGEX)
                     sys.exit()
-
+                
+                if (lite_file_substring_dict["version"] == "B10205Xr" or
+                  lite_file_substring_dict["version"] == "B10206r"):
+                    print("Handle version conversion to EarlyR")
+                    lite_file_substring_dict["version"] = "EarlyR"
+                
                 plot_tags = lite_file_substring_dict["yymmdd"] + "_" + lite_file_substring_dict["version"] + ".png"
 
                 for v in DATA_DICT[lite_product].keys():
@@ -235,7 +240,7 @@ def run_job(job_file, update_db=False, verbose=False):
     with open(job_file, "rb") as jf:
         contents = pickle.load(jf)
     
-    image_filename_dict = re.match(IMAGE_REGEX, os.path.basename(contents["out_plot_name"])).groupdict()
+    #image_filename_dict = re.match(IMAGE_REGEX, os.path.basename(contents["out_plot_name"])).groupdict()
     METADATA_NAME = re.sub("png", "met", contents["out_plot_name"])
     WORLDFILE_NAME = re.sub("png", "pgw", contents["out_plot_name"])
 

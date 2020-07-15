@@ -73,7 +73,7 @@ TILE_DICT = { "NE": {"extent_box" : [0, 180, 0, 90]
             }
 
 
-LITE_FILE_REGEX = "(?P<satellite>[oco2|oco3]{4})_(?P<product>[A-Za-z0-9]{5})_(?P<yymmdd>[0-9]{6})_(?P<version>B[0-9r]{,5})_[0-9]{12}s.nc4"
+LITE_FILE_REGEX = "(?P<satellite>[oco2|oco3]{4})_(?P<product>[A-Za-z0-9]{5})_(?P<yymmdd>[0-9]{6})_(?P<version>[0-9A-Za-z]{5,8})_[0-9]{12}s.nc4"
 
 CONN = sqlite3.connect(os.path.join(code_dir, "oco2_worldview_imagery.db"))
 
@@ -203,6 +203,11 @@ if __name__ == "__main__":
             print("Regex: " + LITE_FILE_REGEX)
             sys.exit()
 
+        if (lite_file_substring_dict["version"] == "B10205Xr" or
+          lite_file_substring_dict["version"] == "B10206r"):
+                    print("Handle version conversion to EarlyR")
+                    lite_file_substring_dict["version"] = "EarlyR"
+        
         date = "20" + lite_file_substring_dict["yymmdd"][:2] + "-" + lite_file_substring_dict["yymmdd"][2:4] + "-" + lite_file_substring_dict["yymmdd"][4:]
 
         plot_tags = lite_file_substring_dict["yymmdd"] + "_" + lite_file_substring_dict["version"] + ".png"
