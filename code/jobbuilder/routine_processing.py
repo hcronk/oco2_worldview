@@ -52,14 +52,14 @@ DATA_DICT = { "LtCO2" : {
                         },
               "LtSIF" : {
                        "sif757" : {
-                                   "data_field_name" : "SIF_757nm", 
+                                   "data_field_name" : "Daily_SIF_757nm", 
                                    "preprocessing" : False, 
                                    "range": [0, 2], 
                                    "cmap_file" : os.path.join(CODE_DIR, "utils", "gibs_cmaps", "padded", "sif757_YlGn_-1to2.csv"), 
                                    "quality_info" : {}
                                   }, 
                        "sif771" : {
-                                   "data_field_name" : "SIF_771nm", 
+                                   "data_field_name" : "Daily_SIF_771nm", 
                                    "preprocessing" : False, 
                                    "range": [0, 2], 
                                    "cmap_file" : os.path.join(CODE_DIR, "utils", "gibs_cmaps", "padded", "sif771_YlGn_-1to2.csv"), 

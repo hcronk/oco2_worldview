@@ -37,9 +37,9 @@ GEO_DICT = { "LtCO2" : {
                 "sid" : "sounding_id",
                 },
              "LtSIF" : {
-                "lat" : "footprint_vertex_latitude",
-                "lon" : "footprint_vertex_longitude",
-                "sid" : "sounding_id",
+                "lat" : "Latitude_Corners",
+                "lon" : "Longitude_Corners",
+                "sid" : "Metadata/SoundingId",
                 }
             }          
 
@@ -198,8 +198,8 @@ def preprocess(var, lite_file, external_data_file=None, verbose=False):
             print("Unable to retrieve " + external_data_file)
             sys.exit()  
     elif var == "sif_blended":
-        sif757 = get_hdf5_data("SIF_757nm", lite_file)
-        sif771 = get_hdf5_data("SIF_771nm", lite_file)
+        sif757 = get_hdf5_data("Daily_SIF_757nm", lite_file)
+        sif771 = get_hdf5_data("Daily_SIF_771nm", lite_file)
         data = 0.5 * (sif757 + 1.5 * sif771)
         del sif757
         del sif771
