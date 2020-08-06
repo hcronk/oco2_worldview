@@ -203,10 +203,11 @@ if __name__ == "__main__":
             print("Regex: " + LITE_FILE_REGEX)
             sys.exit()
 
-        if (lite_file_substring_dict["version"] == "B10205Xr" or
-          lite_file_substring_dict["version"] == "B10206r"):
-                    print("Handle version conversion to EarlyR")
-                    lite_file_substring_dict["version"] = "EarlyR"
+        if (lite_file_substring_dict["satellite"] == "oco3" and (
+           lite_file_substring_dict["version"] == "B10205Xr" or
+           lite_file_substring_dict["version"] == "B10206r")):
+                print("Handle version conversion to EarlyR")
+                lite_file_substring_dict["version"] = "EarlyR"
         
         date = "20" + lite_file_substring_dict["yymmdd"][:2] + "-" + lite_file_substring_dict["yymmdd"][2:4] + "-" + lite_file_substring_dict["yymmdd"][4:]
 

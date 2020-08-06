@@ -112,8 +112,9 @@ def find_unprocessed_file(lite_product, verbose=False):
                     print("Regex: " + LITE_FILE_REGEX)
                     sys.exit()
                 
-                if (lite_file_substring_dict["version"] == "B10205Xr" or
-                  lite_file_substring_dict["version"] == "B10206r"):
+                if (lite_file_substring_dict["satellite"] == "oco3" and (
+                  lite_file_substring_dict["version"] == "B10205Xr" or
+                  lite_file_substring_dict["version"] == "B10206r")):
                     print("Handle version conversion to EarlyR")
                     lite_file_substring_dict["version"] = "EarlyR"
                 
