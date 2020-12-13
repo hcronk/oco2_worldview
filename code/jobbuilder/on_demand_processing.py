@@ -75,7 +75,7 @@ TILE_DICT = { "NE": {"extent_box" : [0, 180, 0, 90]
 
 LITE_FILE_REGEX = "(?P<satellite>[oco2|oco3]{4})_(?P<product>[A-Za-z0-9]{5})_(?P<yymmdd>[0-9]{6})_(?P<version>[0-9A-Za-z]{5,8})_[0-9]{12}s.nc4"
 
-CONN = sqlite3.connect(os.path.join(code_dir, "oco2_worldview_imagery.db"))
+#CONN = sqlite3.connect(os.path.join(code_dir, "oco2_worldview_imagery.db"))
 
 def get_GIBS_xml_filename(date):
     """
@@ -122,7 +122,7 @@ if __name__ == "__main__":
     stitch = args.stitch
     update_db = args.update
             
-    cur = CONN.cursor()
+    #cur = CONN.cursor()
     
     if user_defined_var_list:
         user_defined_var_list = [x.strip("[,]") for x in user_defined_var_list]      
@@ -235,7 +235,11 @@ if __name__ == "__main__":
                 if verbose:
                     print("Checking " + var)
                 out_plot_name = get_image_filename(out_plot_dir, lite_file_substring_dict["satellite"], var, extent_box, plot_tags)
+                CONN = sqlite3.connect(os.path.join(code_dir, "oco2_worldview_imagery.db"), timeout=60.0)
+                cur = CONN.cursor()
                 db_entry = cur.execute("SELECT * FROM created_imagery WHERE filename=?", (os.path.basename(out_plot_name),)).fetchall()
+                cur.close()
+                CONN.close()
                 #print(db_entry)
                 layered_rgb_name = os.path.join(out_plot_dir, re.sub(var, var +"_onRGB", os.path.basename(out_plot_name)))
                 if rgb:
@@ -267,7 +271,11 @@ if __name__ == "__main__":
                     if verbose:
                         print("Checking " + t + " tile")
                     out_plot_name = get_image_filename(out_plot_dir, lite_file_substring_dict["satellite"], var, TILE_DICT[t]["extent_box"], plot_tags)
+                    CONN = sqlite3.connect(os.path.join(code_dir, "oco2_worldview_imagery.db"), timeout=60.0)
+                    cur = CONN.cursor()
                     db_entry = cur.execute("SELECT * FROM created_imagery WHERE filename=?", (os.path.basename(out_plot_name),)).fetchall()
+                    cur.close()
+                    CONN.close()
                     #print(db_entry)
                     layered_rgb_name = os.path.join(out_plot_dir, re.sub(var, var +"_onRGB", os.path.basename(out_plot_name)))
                     if rgb:

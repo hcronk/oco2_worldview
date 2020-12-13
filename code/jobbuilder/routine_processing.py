@@ -16,16 +16,18 @@ from multiprocessing import Process
 import sqlite3
 
 #Global Variables
-LITE_FILE_DIRS = {"LtCO2": "/data/oco2/scf/product/Lite/B9*r/r02", 
-                  "LtSIF": "/data/oco2/scf/product/Lite/B8*r/r02"}
+# oco3: SIF: /data/oco3/scf/product/Lite_B10206r_r02, CO2: /data/oco3/scf/product/Lite_B10205Xr_r02
+# oco2: SIF: /data/oco2/scf/product/Lite/B10206r/r02, CO2: /data/oco2/scf/product/Lite/B10206Ar/r02
+LITE_FILE_DIRS = {"LtCO2": "/data/oco2/scf/product/Lite/B10206Ar/r02", 
+                  "LtSIF": "/data/oco2/scf/product/Lite/B10206r/r02"}
 OUT_PLOT_DIR = "/home/jrhall/oco2_worldview/images"
 IMAGE_REGEX = "(?P<satellite>[oco2|oco3]{4})_(?P<var>[a-z0-9](.*))_(?P<latspan>[Lato\.-](.*))_(?P<lonspan>[Lton\.-](.*))_(?P<yymmdd>[0-9]{6})_(?P<version>B[0-9A-Za-z]{0,7}).png"
 LOCKFILE_DIR = "/home/hcronk/oco2_worldview/processing_status"
 TRY_THRESHOLD = 3 #(number of times to try to process before moving to issues for analysis)
 TRY_WAIT = 3600 #(number of seconds to wait before trying to reprocess a failed job)
 OVERWRITE = False
-CONN = sqlite3.connect(os.path.join(CODE_DIR, "oco2_worldview_imagery.db"))
-CUR = CONN.cursor()
+#CONN = sqlite3.connect(os.path.join(CODE_DIR, "oco2_worldview_imagery.db"))
+#CUR = CONN.cursor()
 
 DATA_DICT = { "LtCO2" : {
                          "xco2" : {
@@ -95,6 +97,8 @@ def find_unprocessed_file(lite_product, verbose=False):
     initiate a job for any missing imagery
     """
     
+    global CONN
+    
     for walk_dir in glob(LITE_FILE_DIRS[lite_product]):
         for root, subdirs, files in os.walk(walk_dir):
             subdirs[:] = [d for d in subdirs if not d[0] == "."]
@@ -127,7 +131,11 @@ def find_unprocessed_file(lite_product, verbose=False):
                         if verbose:
                             print(t)
                         out_plot_name = get_image_filename(OUT_PLOT_DIR, lite_file_substring_dict["satellite"], v, TILE_DICT[t]["extent_box"], plot_tags)
+                        CONN = sqlite3.connect(os.path.join(CODE_DIR, "oco2_worldview_imagery.db"), timeout=60.0)
+                        CUR = CONN.cursor()
                         db_entry = CUR.execute("SELECT filename FROM created_imagery WHERE filename=?", (os.path.basename(out_plot_name),)).fetchall()
+                        CUR.close()
+                        CONN.close()
                         if not db_entry or OVERWRITE:
                             #job_file = re.sub("png", "json", os.path.basename(out_plot_name))
                             job_file = re.sub("png", "pkl", os.path.basename(out_plot_name))
@@ -235,6 +243,7 @@ def run_job(job_file, update_db=False, verbose=False):
     
     global METADATA_NAME
     global WORLDFILE_NAME
+    global CONN
     
     success = oco2_worldview_imagery(job_file, update_db=update_db, verbose=verbose)
     
@@ -253,6 +262,8 @@ def run_job(job_file, update_db=False, verbose=False):
         if verbose:
             print("Success!")
         if update_db:
+            CONN = sqlite3.connect(os.path.join(CODE_DIR, "oco2_worldview_imagery.db"), timeout=60.0)
+            CUR = CONN.cursor()
             db_entry = CUR.execute("SELECT * FROM created_imagery WHERE filename=?", (os.path.basename(contents["out_plot_name"]),)).fetchall()
             if not db_entry:
                 if verbose:
@@ -270,6 +281,8 @@ def run_job(job_file, update_db=False, verbose=False):
                     print("Updating creation datetime")
                 CUR.execute("UPDATE created_imagery SET creation_date=? WHERE filename=?", (datetime.datetime.now(), os.path.basename(contents["out_plot_name"])))
                 CONN.commit()
+            CUR.close()
+            CONN.close()
                 
         
         os.remove(job_file)
