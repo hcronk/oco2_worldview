@@ -744,11 +744,8 @@ def oco2_worldview_imagery(job_file, update_db=False, verbose=False, debug=False
                          names=['year', 'month', 'day', 'cycle', 'trend', 'tile'], delim_whitespace=True)     
         REFERENCE_XCO2_TO_SAVE["tile"] = latspan_lonspan
         relevant_tile_vals = df["tile"][df.index[df["year"] == int("20" + LITE_FILE_SUBSTRING_DICT["yy"])] & df.index[df["month"] == int(LITE_FILE_SUBSTRING_DICT["mm"])] & df.index[df["day"] == int(LITE_FILE_SUBSTRING_DICT["dd"])]]        
-        if relevant_tile_vals.isnull().all():
-            df.loc[df.index[df["year"] == int("20" + LITE_FILE_SUBSTRING_DICT["yy"])] & 
-                   df.index[df["month"] == int(LITE_FILE_SUBSTRING_DICT["mm"])] & 
-                   df.index[df["day"] == int(LITE_FILE_SUBSTRING_DICT["dd"])], "tile"] = REFERENCE_XCO2_TO_SAVE["tile"].values[0]
-        elif latspan_lonspan in relevant_tile_vals.values:
+        if latspan_lonspan in relevant_tile_vals.values:
+            #Update the value of cycle and trend to the one that is available now
             df.loc[df.index[df["year"] == int("20" + LITE_FILE_SUBSTRING_DICT["yy"])] & 
                     df.index[df["month"] == int(LITE_FILE_SUBSTRING_DICT["mm"])] & 
                     df.index[df["day"] == int(LITE_FILE_SUBSTRING_DICT["dd"])] & 
@@ -758,7 +755,10 @@ def oco2_worldview_imagery(job_file, update_db=False, verbose=False, debug=False
                     df.index[df["day"] == int(LITE_FILE_SUBSTRING_DICT["dd"])] & 
                     df.index[df["tile"] == latspan_lonspan], "trend"] = REFERENCE_XCO2_TO_SAVE["trend"].values[0]
         elif latspan_lonspan not in relevant_tile_vals.values:
+            # Add the cycle and trend for the given date and tile
             df = pd.concat([df, REFERENCE_XCO2_TO_SAVE]).sort_values(by=["year", "month", "day", "tile"])
+        else:
+            raise ValueError("Unexpected value in relevant_tile_vals:,", relevant_tile_vals)
         df = df.astype({"year": int, "month": int, "day": int})
         df = df[["year", "month", "day", "cycle", "trend", "tile"]]
         df.to_csv(INTERMEDIATE_REFERENCE_XCO2_FILE_DICT[LITE_FILE_SUBSTRING_DICT["satellite"]], header=False, index=False, sep="	")
