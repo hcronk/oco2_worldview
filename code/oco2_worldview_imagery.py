@@ -28,8 +28,19 @@ ccrs = cartopy.crs
 
 #Global Variables
 CODE_DIR = os.path.dirname(os.path.realpath(__file__))
-REFERENCE_XCO2_FILE = os.path.join(CODE_DIR, "ref_co2_trend_gl.txt")
+REFERENCE_XCO2_FILE_DICT = { "oco2" : 
+                            os.path.join(CODE_DIR, "oco2_ref_co2_trend_gl.txt"),
+                            "oco3" : 
+                            os.path.join(CODE_DIR, "oco3_ref_co2_trend_gl.txt")
+                            }
+                            
 REFERENCE_XCO2_FILE_HEADER = os.path.join(CODE_DIR, "ref_co2_trend_gl_header.txt")
+INTERMEDIATE_REFERENCE_XCO2_FILE_DICT = { "oco2" : 
+                                         os.path.join(CODE_DIR, "oco2_intermediate_reference_xco2.csv"),
+                                         "oco3" : 
+                                         os.path.join(CODE_DIR, "oco3_intermediate_reference_xco2.csv")
+                                        }
+                      
 
 GEO_DICT = { "LtCO2" : {
                 "lat" : "vertex_latitude",
@@ -160,10 +171,11 @@ def ftp_pull(ftp_path, verbose=False):
     
     cnx.cwd(FTP_SUBSTRING_DICT["ftp_cwd"])
     
-    with open(FTP_SUBSTRING_DICT["ftp_file"], "wb") as f:
+    with open(os.path.join(CODE_DIR, FTP_SUBSTRING_DICT["ftp_file"]), "wb") as f:
         cnx.retrbinary("RETR " + FTP_SUBSTRING_DICT["ftp_file"], f.write)
     
-    if glob(FTP_SUBSTRING_DICT["ftp_file"]) and os.path.getsize(FTP_SUBSTRING_DICT["ftp_file"]) == cnx.size(FTP_SUBSTRING_DICT["ftp_file"]):
+    if (glob(os.path.join(CODE_DIR, FTP_SUBSTRING_DICT["ftp_file"])) and 
+      os.path.getsize(os.path.join(CODE_DIR, FTP_SUBSTRING_DICT["ftp_file"]))) == cnx.size(FTP_SUBSTRING_DICT["ftp_file"]):
         cnx.close()
         return True
     else:
@@ -181,7 +193,7 @@ def preprocess(var, lite_file, external_data_file=None, verbose=False):
     if var == "xco2_relative":
         success = ftp_pull(external_data_file, verbose=verbose)
         if success:
-            df = pd.read_csv(FTP_SUBSTRING_DICT["ftp_file"], comment="#", na_values=-99.99, header=None, \
+            df = pd.read_csv(os.path.join(CODE_DIR, FTP_SUBSTRING_DICT["ftp_file"]), comment="#", na_values=-99.99, header=None, \
                             names=['year', 'month', 'day', 'cycle', 'trend'], delim_whitespace=True)
             
             REFERENCE_XCO2_TO_SAVE = df.iloc[df.index[df["year"] == int("20" + LITE_FILE_SUBSTRING_DICT["yy"])] & 
@@ -380,6 +392,32 @@ def get_lite_oco2_timestamps(sounding_id):
 
     end_ts = datetime.datetime(end_yyyy, end_mm, end_dd, end_hh, end_mn, end_ss)
 
+    #print(start_ts, end_ts)
+    return start_ts, end_ts
+
+def get_lite_sif_date_time_coverage(sif_lite_file):
+    
+    """
+    Produces start and end timestamp for the B10+ SIF lite file from
+    the date_time_coverage global attribute
+    """ 
+    
+    f = h5py.File(sif_lite_file, "r")
+    dt_attr_list = [x.strip("'[,]") for x in f.attrs["date_time_coverage"]]
+    
+    dt_regex = "(?P<yyyy>[0-9]{4})-(?P<mm>[0-9]{2})-(?P<dd>[0-9]{2})T(?P<hh>[0-9]{2}):(?P<mn>[0-9]{2}):(?P<ss>[0-9]{2})\.[0-9]{6}Z"
+    
+    start_dt_dict = re.match(dt_regex, dt_attr_list[0]).groupdict()
+    end_dt_dict = re.match(dt_regex, dt_attr_list[1]).groupdict()
+    
+    start_ts = datetime.datetime(int(start_dt_dict["yyyy"]),
+                                int(start_dt_dict["mm"]), int(start_dt_dict["dd"]),
+                                int(start_dt_dict["hh"]), int(start_dt_dict["mn"]), 
+                                int(start_dt_dict["ss"]))
+    end_ts = datetime.datetime(int(end_dt_dict["yyyy"]),
+                              int(end_dt_dict["mm"]), int(end_dt_dict["dd"]),
+                              int(end_dt_dict["hh"]), int(end_dt_dict["mn"]), 
+                              int(end_dt_dict["ss"]))
     #print(start_ts, end_ts)
     return start_ts, end_ts
 
@@ -666,8 +704,11 @@ def oco2_worldview_imagery(job_file, update_db=False, verbose=False, debug=False
             print("Problem plotting!")
         return
     else:
-        lite_sounding_id = get_hdf5_data(GEO_DICT[job_info.product]["sid"], job_info.lite_file)
-        lite_start, lite_end = get_lite_oco2_timestamps(lite_sounding_id)
+        if job_info.product == "LtCO2":
+            lite_sounding_id = get_hdf5_data(GEO_DICT[job_info.product]["sid"], job_info.lite_file)
+            lite_start, lite_end = get_lite_oco2_timestamps(lite_sounding_id)
+        elif job_info.product == "LtSIF":
+            lite_start, lite_end = get_lite_sif_date_time_coverage(job_info.lite_file)
         success = write_image_odl_metadata(lite_start, lite_end, job_info.out_plot_name, job_info.extent_box, job_info.lite_file)
         if not success:
             if verbose:
@@ -699,15 +740,12 @@ def oco2_worldview_imagery(job_file, update_db=False, verbose=False, debug=False
         #official relative XCO2 imagery was produced; update the reference XCO2 file
         image_filename_dict = re.match(IMAGE_REGEX, os.path.basename(job_info.out_plot_name)).groupdict()
         latspan_lonspan = image_filename_dict["latspan"] + "_" + image_filename_dict["lonspan"]
-        df = pd.read_csv(REFERENCE_XCO2_FILE, comment="#", na_values=-99.99, header=None, \
+        df = pd.read_csv(REFERENCE_XCO2_FILE_DICT[LITE_FILE_SUBSTRING_DICT["satellite"]], comment="#", na_values=-99.99, header=None, \
                          names=['year', 'month', 'day', 'cycle', 'trend', 'tile'], delim_whitespace=True)     
         REFERENCE_XCO2_TO_SAVE["tile"] = latspan_lonspan
         relevant_tile_vals = df["tile"][df.index[df["year"] == int("20" + LITE_FILE_SUBSTRING_DICT["yy"])] & df.index[df["month"] == int(LITE_FILE_SUBSTRING_DICT["mm"])] & df.index[df["day"] == int(LITE_FILE_SUBSTRING_DICT["dd"])]]        
-        if relevant_tile_vals.isnull().all():
-            df.loc[df.index[df["year"] == int("20" + LITE_FILE_SUBSTRING_DICT["yy"])] & 
-                   df.index[df["month"] == int(LITE_FILE_SUBSTRING_DICT["mm"])] & 
-                   df.index[df["day"] == int(LITE_FILE_SUBSTRING_DICT["dd"])], "tile"] = REFERENCE_XCO2_TO_SAVE["tile"].values[0]
-        elif latspan_lonspan in relevant_tile_vals.values:
+        if latspan_lonspan in relevant_tile_vals.values:
+            #Update the value of cycle and trend to the one that is available now
             df.loc[df.index[df["year"] == int("20" + LITE_FILE_SUBSTRING_DICT["yy"])] & 
                     df.index[df["month"] == int(LITE_FILE_SUBSTRING_DICT["mm"])] & 
                     df.index[df["day"] == int(LITE_FILE_SUBSTRING_DICT["dd"])] & 
@@ -717,12 +755,15 @@ def oco2_worldview_imagery(job_file, update_db=False, verbose=False, debug=False
                     df.index[df["day"] == int(LITE_FILE_SUBSTRING_DICT["dd"])] & 
                     df.index[df["tile"] == latspan_lonspan], "trend"] = REFERENCE_XCO2_TO_SAVE["trend"].values[0]
         elif latspan_lonspan not in relevant_tile_vals.values:
+            # Add the cycle and trend for the given date and tile
             df = pd.concat([df, REFERENCE_XCO2_TO_SAVE]).sort_values(by=["year", "month", "day", "tile"])
+        else:
+            raise ValueError("Unexpected value in relevant_tile_vals:,", relevant_tile_vals)
         df = df.astype({"year": int, "month": int, "day": int})
         df = df[["year", "month", "day", "cycle", "trend", "tile"]]
-        df.to_csv("intermediate_reference_xco2.csv", header=False, index=False, sep="	")
-        with open(REFERENCE_XCO2_FILE, "w") as rf:
-            for fname in [REFERENCE_XCO2_FILE_HEADER, "intermediate_reference_xco2.csv"]:
+        df.to_csv(INTERMEDIATE_REFERENCE_XCO2_FILE_DICT[LITE_FILE_SUBSTRING_DICT["satellite"]], header=False, index=False, sep="	")
+        with open(REFERENCE_XCO2_FILE_DICT[LITE_FILE_SUBSTRING_DICT["satellite"]], "w") as rf:
+            for fname in [REFERENCE_XCO2_FILE_HEADER, INTERMEDIATE_REFERENCE_XCO2_FILE_DICT[LITE_FILE_SUBSTRING_DICT["satellite"]]]:
                 with open(fname) as infile:
                     rf.write(infile.read())
     
