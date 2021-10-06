@@ -223,6 +223,7 @@ if __name__ == "__main__":
             if var not in DATA_DICT[lite_file_substring_dict["product"]].keys():
                 if verbose:
                     print(var + " is not defined in the " + lite_file_substring_dict["product"] + " data dictionary. Please add it or check spelling.")
+                    print("Defined variables:", DATA_DICT[lite_file_substring_dict["product"]].keys())
                 var_list.remove(var)
         
         if not var_list:
