@@ -10,7 +10,6 @@ import sqlite3
 from routine_processing import get_image_filename, check_processing_or_problem, build_config
 code_dir = os.path.join(os.path.dirname(os.path.realpath(__file__)), os.path.pardir)
 sys.path.append(code_dir)
-from oco2_worldview_imagery import stitch_quadrants
 
 #Global Variables
 DATA_DICT = { "LtCO2" : {

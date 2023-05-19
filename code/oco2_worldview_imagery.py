@@ -19,11 +19,7 @@ from glob import glob
 import xml.etree.ElementTree as ET
 from jinja2 import Template
 import matplotlib as mpl
-from osgeo import gdal, osr
 from PIL import Image, ImagePalette
-import cartopy
-import cartopy.feature as cfeature
-ccrs = cartopy.crs
 #NOTE: matplotlib.pyplot import is handled import_pyplot_appropriately function to support interactively selecting the backend based on usage
 
 #Global Variables
@@ -516,105 +512,6 @@ def regrid_oco2(data, vertex_latitude, vertex_longitude, lat_centers_subset, lon
    
 ### End Operational Functionality ###
 
-### Research Functionality ###
-
-def stitch_quadrants(quadrant_plot_name_dict, result_plot):
-    """
-    Stitches four existing plots into one single plot.
-    For research mode, not operations. 
-    Called from on_demand_processing job builder.
-    """
-    
-    NE_plot = quadrant_plot_name_dict["NE"]
-    SE_plot = quadrant_plot_name_dict["SE"]
-    SW_plot = quadrant_plot_name_dict["SW"]
-    NW_plot = quadrant_plot_name_dict["NW"]
-    
-    north_imgs = [Image.open(i) for i in [NW_plot, NE_plot]]
-    min_shape = sorted([(np.sum(i.size), i.size) for i in north_imgs])[0][1]
-    north = np.hstack((np.asarray(i.resize(min_shape)) for i in north_imgs))
-    north_img = Image.fromarray(north)
-    north_img.save("temp_north.png")
-    
-    south_imgs = [Image.open(i) for i in [SW_plot, SE_plot]]
-    min_shape = sorted([(np.sum(i.size), i.size) for i in south_imgs])[0][1]
-    south = np.hstack((np.asarray(i.resize(min_shape)) for i in south_imgs))
-    south_img = Image.fromarray(south)
-    south_img.save("temp_south.png")
-    
-    global_imgs = [Image.open(i) for i in ["temp_north.png", "temp_south.png"]]
-    min_shape = sorted([(np.sum(i.size), i.size) for i in global_imgs])[0][1]
-    global_stack = np.vstack((np.asarray(i.resize(min_shape)) for i in global_imgs))
-    global_img = Image.fromarray(global_stack)
-    global_img.save(result_plot)
-    
-    return True
-
-def update_GIBS_xml(date, xml_file):
-    """
-    Puts the date of interest into the GIBS XML file.
-    For research mode, not operations
-    """
-    
-    tree = ET.parse(xml_file)
-    root = tree.getroot()
-
-    url = root[0][0].text
-
-    old_date = re.split('/', url)[6]
-
-    new_url = re.sub(old_date, date, url)
-
-    root[0][0].text = new_url
-    tree.write(xml_file)
-    
-    return True
-    
-def pull_Aqua_RGB_GIBS(lat_ul, lon_ul, lat_lr, lon_lr, xml_file, tif_file, xsize=1200, ysize=1000):
-    """
-    Pulls the Aqua RGB imagery from WorldView using GIBS and puts it in specified tif file with associated metadata.
-    For research mode, not operations
-    """ 
-    
-    print("\nPulling RGB imagery from GIBS")
-    gdal_path = os.popen("which gdal_translate").read().strip()
-    cmd = gdal_path + " -of GTiff -outsize "+str(xsize)+" "+str(ysize)+" -projwin "+str(lon_ul)+" "+str(lat_ul)+" "+str(lon_lr)+" "+str(lat_lr)+" "+xml_file+" "+tif_file
-    os.system(cmd)
-    
-    return True
-
-def prep_RGB(rgb_name, tif_file):
-    """
-    Prepares the RGB geotiff for layering with the data and writes it to a png
-    For research mode, not operations
-    """
-    
-    if not "matplotlib.pyplot" in sys.modules:
-        success = import_pyplot_appropriately()
-
-    img = plt.imread(tif_file)
-    plt.imsave(rgb_name, img, format="png")
-    
-    return True
-
-def layer_rgb_and_data(rgb_name, data_plot_name, layered_plot_name):
-    """
-    Layers the data PNG on top of the RGB PNG
-    For research mode, not operations
-    """
-    
-    base = Image.open(rgb_name)
-    top = Image.open(data_plot_name).convert("RGBA")
-    pixel_dat = list(top.getdata())
-    top.putdata(pixel_dat)
-    base_copy = base.copy()
-    base_copy.paste(top, (0,0), top)
-    base_copy.save(layered_plot_name)
-    
-    return True
-    
-### End Research Functionality ###
-
 def oco2_worldview_imagery(job_file, update_db=False, verbose=False, debug=False):
     """
     Main code for generating gridded OCO-2 imagery for Worldview
@@ -730,11 +627,6 @@ def oco2_worldview_imagery(job_file, update_db=False, verbose=False, debug=False
         out_plot_dir = os.path.dirname(job_info.out_plot_name)
         just_plot_name = os.path.basename(job_info.out_plot_name)
         rgb_name = os.path.join(out_plot_dir, re.sub(job_info.var, "RGB", just_plot_name))
-        
-        success = update_GIBS_xml(date, job_info.rgb["xml"])
-        success = pull_Aqua_RGB_GIBS(lat_ul, lon_ul, lat_lr, lon_lr, job_info.rgb["xml"], job_info.rgb["intermediate_tif"], xsize = len(lon_data_indices), ysize = len(lat_data_indices))
-        success = prep_RGB(rgb_name, job_info.rgb["intermediate_tif"])
-        success = layer_rgb_and_data(rgb_name, job_info.out_plot_name, job_info.rgb["layered_rgb_name"])
         
     if update_db and job_info.var == "xco2_relative":
         #official relative XCO2 imagery was produced; update the reference XCO2 file
