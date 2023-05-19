@@ -18,11 +18,7 @@ from glob import glob
 import matplotlib.patches as mpatches
 import xml.etree.ElementTree as ET
 import matplotlib as mpl
-from osgeo import gdal, osr
 from PIL import Image
-import cartopy
-import cartopy.feature as cfeature
-ccrs = cartopy.crs
 #NOTE: matplotlib.pyplot import is handled import_pyplot_appropriately function to support interactively selecting the backend based on usage
 
 #Global Variables
@@ -104,90 +100,6 @@ def read_job_file(job_file):
     job_info = tuple_setup(**contents)
     return job_info
 
-def stitch_quadrants(quadrant_plot_name_dict, result_plot):
-    """
-    Stitches four existing plots into one single plot
-    """
-    
-    NE_plot = quadrant_plot_name_dict["NE"]
-    SE_plot = quadrant_plot_name_dict["SE"]
-    SW_plot = quadrant_plot_name_dict["SW"]
-    NW_plot = quadrant_plot_name_dict["NW"]
-    
-    north_imgs = [Image.open(i) for i in [NW_plot, NE_plot]]
-    min_shape = sorted([(np.sum(i.size), i.size) for i in north_imgs])[0][1]
-    north = np.hstack((np.asarray(i.resize(min_shape)) for i in north_imgs))
-    north_img = Image.fromarray(north)
-    north_img.save("temp_north.png")
-    
-    south_imgs = [Image.open(i) for i in [SW_plot, SE_plot]]
-    min_shape = sorted([(np.sum(i.size), i.size) for i in south_imgs])[0][1]
-    south = np.hstack((np.asarray(i.resize(min_shape)) for i in south_imgs))
-    south_img = Image.fromarray(south)
-    south_img.save("temp_south.png")
-    
-    global_imgs = [Image.open(i) for i in ["temp_north.png", "temp_south.png"]]
-    min_shape = sorted([(np.sum(i.size), i.size) for i in global_imgs])[0][1]
-    global_stack = np.vstack((np.asarray(i.resize(min_shape)) for i in global_imgs))
-    global_img = Image.fromarray(global_stack)
-    global_img.save(result_plot)
-    
-    return True
-
-def update_GIBS_xml(date, xml_file):
-    """
-    Puts the date of interest into the GIBS XML file.
-    For research mode, not operations
-    """
-    
-    tree = ET.parse(xml_file)
-    root = tree.getroot()
-
-    url = root[0][0].text
-
-    old_date = re.split('/', url)[6]
-
-    new_url = re.sub(old_date, date, url)
-
-    root[0][0].text = new_url
-    tree.write(xml_file)
-    
-    return True
-    
-def pull_Aqua_RGB_GIBS(lat_ul, lon_ul, lat_lr, lon_lr, xml_file, tif_file, xsize=1200, ysize=1000):
-    """
-    Pulls the Aqua RGB imagery from WorldView using GIBS and puts it in specified tif file with associated metadata.
-    For research mode, not operations
-    """ 
-    
-    print("\nPulling RGB imagery from GIBS")
-    gdal_path = os.popen("which gdal_translate").read().strip()
-    cmd = gdal_path + " -of GTiff -outsize "+str(xsize)+" "+str(ysize)+" -projwin "+str(lon_ul)+" "+str(lat_ul)+" "+str(lon_lr)+" "+str(lat_lr)+" "+xml_file+" "+tif_file
-    os.system(cmd)
-    
-    return True
-
-def prep_RGB(rgb_name, tif_file, extent, xpix, ypix):
-    """
-    Prepares the RGB geotiff for layering with the data and writes it to a png
-    For research mode, not operations
-    """
-    
-    if not "matplotlib.pyplot" in sys.modules:
-        success = import_pyplot_appropriately()
-    
-    fig = plt.figure(figsize=(xpix / DPI, ypix / DPI), dpi=DPI)
-
-    img = plt.imread(tif_file)
-
-    ax = plt.axes(projection=ccrs.PlateCarree())
-    ax.set_extent(extent, crs=ccrs.PlateCarree())
-    ax.outline_patch.set_visible(False)
-    ax.imshow(img, origin='upper', transform=ccrs.PlateCarree(), extent=extent)
-    
-    fig.savefig(rgb_name, bbox_inches='tight', pad_inches=0, dpi=DPI)
-    
-    return True
 
 def patch_plot(data, grid_lat_south, grid_lat_north, grid_lon_west, grid_lon_east, extent, data_limits, cmap, out_plot_name, xpix, ypix, verbose=False):
     """
@@ -241,25 +153,6 @@ def patch_plot(data, grid_lat_south, grid_lat_north, grid_lon_west, grid_lon_eas
     del polygon
     del patches
     del p
-    
-    return True
-
-def layer_rgb_and_data(rgb_name, data_plot_name, layered_plot_name):
-    """
-    Layers the data PNG on top of the RGB PNG
-    For research mode, not operations
-    """
-    
-    base = Image.open(rgb_name)
-    top = Image.open(data_plot_name)
-    pixel_dat = list(top.getdata())
-    for i, p in enumerate(pixel_dat):
-        if p[:3] == (255, 255, 255):
-            pixel_dat[i] = (255, 255, 255, 0)
-    top.putdata(pixel_dat)
-    base_copy = base.copy()
-    base_copy.paste(top, (0,0), top)
-    base_copy.save(layered_plot_name)
     
     return True
 
@@ -563,11 +456,6 @@ def oco2_worldview_imagery(job_file, verbose=False, debug=False):
         just_plot_name = os.path.basename(job_info.out_plot_name)
         rgb_name = os.path.join(out_plot_dir, re.sub(job_info.var, "RGB", just_plot_name))
         
-        success = update_GIBS_xml(date, job_info.rgb["xml"])
-        success = pull_Aqua_RGB_GIBS(lat_ul, lon_ul, lat_lr, lon_lr, job_info.rgb["xml"], job_info.rgb["intermediate_tif"])
-        success = prep_RGB(rgb_name, job_info.rgb["intermediate_tif"], job_info.extent_box, float(len(lon_data_indices)), float(len(lat_data_indices)))
-        success = layer_rgb_and_data(rgb_name, job_info.out_plot_name, job_info.rgb["layered_rgb_name"])
-    
     return True
                     
 if __name__ == "__main__":
