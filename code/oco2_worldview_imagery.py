@@ -192,12 +192,11 @@ def preprocess(var, lite_file, external_data_file=None, verbose=False):
             df = pd.read_csv(os.path.join(CODE_DIR, FTP_SUBSTRING_DICT["ftp_file"]), comment="#", na_values=-99.99, header=None, \
                             names=['year', 'month', 'day', 'cycle', 'trend'], delim_whitespace=True)
             
-            REFERENCE_XCO2_TO_SAVE = df.iloc[df.index[df["year"] == int("20" + LITE_FILE_SUBSTRING_DICT["yy"])] & 
-                                            df.index[df["month"] == int(LITE_FILE_SUBSTRING_DICT["mm"])] & 
-                                            df.index[df["day"] == int(LITE_FILE_SUBSTRING_DICT["dd"])]]
-            ref_xco2 = float(df["cycle"][df.index[df["year"] == int("20" + LITE_FILE_SUBSTRING_DICT["yy"])] & 
-                                         df.index[df["month"] == int(LITE_FILE_SUBSTRING_DICT["mm"])] & 
-                                         df.index[df["day"] == int(LITE_FILE_SUBSTRING_DICT["dd"])]])
+            REFERENCE_XCO2_TO_SAVE = df.loc[(df["year"] == int("20" + LITE_FILE_SUBSTRING_DICT["yy"])) &
+                    (df["month"] == int(LITE_FILE_SUBSTRING_DICT["mm"])) &
+                    (df["day"] == int(LITE_FILE_SUBSTRING_DICT["dd"]))]
+                            
+            ref_xco2 = float(REFERENCE_XCO2_TO_SAVE["cycle"])
             oco2_xco2 = get_hdf5_data("xco2", lite_file)
             data = oco2_xco2 - ref_xco2
             del oco2_xco2
@@ -245,6 +244,7 @@ def make_cnorm(gibs_csv_file):
     bounds_list = list(cmap_df.data_lim_low)
     n_colors = len(bounds_list)
     bounds_list.append(cmap_df.data_lim_high.iloc[-1])
+    bounds_list = bounds_list[1:]
     
     norm = mpl.colors.BoundaryNorm(bounds_list, n_colors)  
 
