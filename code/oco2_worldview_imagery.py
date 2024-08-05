@@ -254,7 +254,9 @@ def color_idx_plot(grid, norm, rgb_list, out_plot_name, verbose=False):
     """
     Plot data to a paletted PNG
     """
-        
+
+    breakpoint()
+
     grid_norm = norm(grid)
     
     im = Image.fromarray(np.flipud(grid_norm.T))
