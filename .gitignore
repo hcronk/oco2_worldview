@@ -1,2 +1,6 @@
-# development directory
+# directories to ignore
 development
+__pycache__
+
+# files to ignore
+*.pkl
