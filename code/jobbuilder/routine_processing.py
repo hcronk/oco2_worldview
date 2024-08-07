@@ -1,5 +1,3 @@
-#!/home/hcronk/anaconda3/bin/python
-
 import os
 import sys
 CODE_DIR = os.path.join(os.path.dirname(os.path.realpath(__file__)), os.path.pardir)
