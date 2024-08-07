@@ -4,3 +4,4 @@ __pycache__
 
 # files to ignore
 *.pkl
+co2_trend_gl.txt
