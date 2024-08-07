@@ -12,7 +12,7 @@ import datetime
 import shutil
 import pickle
 import errno
-#from multiprocessing import Process
+from multiprocessing import Process
 import sqlite3
 
 #Global Variables
@@ -166,20 +166,15 @@ def build_config(oco2_file, lite_product, var, extent_box, out_plot_name, job_fi
         os.remove(LOCKFILE)
         sys.exit()
 
-    ##
-    ## 8/5 NJK: comment out multiprocessing so that breakpoints are honored and debugging is easier
-    ##
-
     #Run as a multiprocessing Process even though just one process runs now to allow for multiprocessing
     #and also to ensure memory is released between jobs and to make sure jobs are killed if the parent process
     #is killed
-    #process = Process(target=run_job, args=(job_file, update_db, verbose))
-    #process.daemon = True
-    #process.start()
-    #process.join()
-    #if process.is_alive():
-    #    process.terminate()
-    run_job(job_file, update_db, verbose)
+    process = Process(target=run_job, args=(job_file, update_db, verbose))
+    process.daemon = True
+    process.start()
+    process.join()
+    if process.is_alive():
+        process.terminate()
 
 def get_image_filename(image_dir, satellite, var, extent_box, plot_name_tags):
     """
