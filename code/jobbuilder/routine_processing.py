@@ -20,7 +20,7 @@ LITE_FILE_DIRS = {"LtCO2": "/data/oco2/scf/product/Lite/B10206Ar/r02",
                   "LtSIF": "/data/oco2/scf/product/Lite/B10206r/r02"}
 OUT_PLOT_DIR = "/home/jrhall/oco2_worldview/images"
 IMAGE_REGEX = "(?P<satellite>[oco2|oco3]{4})_(?P<var>[a-z0-9](.*))_(?P<latspan>[Lato\.-](.*))_(?P<lonspan>[Lton\.-](.*))_(?P<yymmdd>[0-9]{6})_(?P<version>B[0-9A-Za-z]{0,7}).png"
-LOCKFILE_DIR = "/home/nkedzuf/work/oco_worldview/processing_status"
+LOCKFILE_DIR = "/home/ttaylor/oco2_worldview/processing_status"
 TRY_THRESHOLD = 3 #(number of times to try to process before moving to issues for analysis)
 TRY_WAIT = 3600 #(number of seconds to wait before trying to reprocess a failed job)
 OVERWRITE = False
