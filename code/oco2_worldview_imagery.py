@@ -266,7 +266,7 @@ def color_idx_plot(grid, norm, rgb_list, out_plot_name, verbose=False):
     if verbose:
         print("Saving plot to " + out_plot_name)
         
-    im.save(out_plot_name, format="PNG", transparency=0)
+    im.save(out_plot_name, format="PNG", transparency=256)
     
     return True
 
