@@ -17,14 +17,14 @@ DATA_DICT = { "LtCO2" : {
                                    "data_field_name" : "xco2", 
                                    "preprocessing" : False, 
                                    "range": [380, 430], 
-                                   "cmap_file" : os.path.join(code_dir, "utils", "gibs_cmaps", "padded", "xco2_viridis_380to430.csv"), 
+                                   "cmap_file" : os.path.join(code_dir, "utils", "gibs_cmaps", "padded", "xco2_viridis_380to430.csv"),
                                    "quality_info" : {"quality_field_name" : "xco2_quality_flag", "qc_val" :  0, "qc_operator" : operator.eq }
                                   }, 
                 "xco2_relative" : {
                                    "data_field_name" : None, 
                                    "preprocessing" : "ftp://aftp.cmdl.noaa.gov/products/trends/co2/co2_trend_gl.txt", 
-                                   "range": [-6, 6], 
-                                   "cmap_file" : os.path.join(code_dir, "utils", "gibs_cmaps", "padded", "xco2_relative_RdBu_r_-10to10.csv"), 
+                                   "range": [-8, 8],
+                                   "cmap_file" : os.path.join(code_dir, "utils", "gibs_cmaps", "padded", "xco2_relative_RdBu_r_-8to8.csv"),
                                    "quality_info" : {"quality_field_name" : "xco2_quality_flag", "qc_val" :  0, "qc_operator" : operator.eq }
                                   }, 
                          "tcwv" : {
