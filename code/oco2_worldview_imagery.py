@@ -247,7 +247,6 @@ def make_cnorm(gibs_csv_file):
     bounds_list = list(cmap_df.data_lim_low)
     n_colors = len(bounds_list)
     bounds_list.append(cmap_df.data_lim_high.iloc[-1])
-    bounds_list = bounds_list[1:]
     
     norm = mpl.colors.BoundaryNorm(bounds_list, n_colors)  
 
