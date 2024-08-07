@@ -239,7 +239,10 @@ def make_cnorm(gibs_csv_file):
 
     cmap_df = pd.read_csv(gibs_csv_file)
 
-    rgb_list = cmap_df.red.tolist() + cmap_df.green.tolist() + cmap_df.blue.tolist()
+    # rgb_list should be [RGBRGBRGB...] not [RRR...GGG...BBB...]
+    rgb_list = []
+    for index, row in cmap_df.iterrows():
+        rgb_list += [int(row['red']), int(row['green']), int(row['blue'])]
     
     bounds_list = list(cmap_df.data_lim_low)
     n_colors = len(bounds_list)
@@ -254,8 +257,6 @@ def color_idx_plot(grid, norm, rgb_list, out_plot_name, verbose=False):
     """
     Plot data to a paletted PNG
     """
-
-    breakpoint()
 
     grid_norm = norm(grid)
     
