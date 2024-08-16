@@ -91,8 +91,13 @@ for var in DATA_DICT.keys():
     # unpadded colormap CSVs go to GIBS
     cmap_df.to_csv(unpadded_cmap_name, index=False)
     
+    # drop first entry (mapping NaNs to upper bound of colormap)
+    # normalization function for mapping data to colormaps cannot handle
+    # NaNs in bins anymore. It automatically maps them to 1+max (1+255=256)
+    cmap_df = cmap_df.drop(0)
+    
     #pad to 256 colors for imagery generation colormaps
-    cmap_df = pd.concat([cmap_df, cmap_df.iloc[[-1]*(256-ncolors-3)]])
+    cmap_df = pd.concat([cmap_df, cmap_df.iloc[[-1]*(256-ncolors-2)]])
     cmap_df.to_csv(padded_cmap_name, index=False)
     
     
