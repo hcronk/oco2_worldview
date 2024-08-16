@@ -89,7 +89,7 @@ for var in DATA_DICT.keys():
     cmap_df.to_csv(unpadded_cmap_name, index=False)
     
     #pad to 256 colors for imagery generation colormaps
-    cmap_df = cmap_df.append(cmap_df.iloc[[-1]*(256-ncolors-3)])
+    cmap_df = pd.concat([cmap_df, cmap_df.iloc[[-1]*(256-ncolors-3)]])
     cmap_df.to_csv(padded_cmap_name, index=False)
     
     
