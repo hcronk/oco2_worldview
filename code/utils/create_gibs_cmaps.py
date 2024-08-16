@@ -38,10 +38,6 @@ for var in DATA_DICT.keys():
     # initialize empty cmap list to append cmap bins to (easier to convert list of list into DataFrame)
     cmap_list = []
     
-    # append as first NaN -> 0,0,0 RGB
-    cmap_nans = [0, 0, 0, 0, np.nan, np.nan]
-    cmap_list.append(cmap_nans)
-    
     # append initial cmap bin
     cmap_start = np.round(255*mpl.colors.to_rgba_array(DATA_DICT[var]["cmap"](0))[0]).tolist() + [np.NINF, data_crange_low[0]]
     cmap_list.append(cmap_start)
@@ -58,6 +54,11 @@ for var in DATA_DICT.keys():
     cmap_bin = np.round(255*mpl.colors.to_rgba_array(DATA_DICT[var]["cmap"](ncolors+2))[0]).tolist() + [round(data_crange_high[n]), np.inf]
     cmap_list.append(cmap_bin)
     
+    # NaNs map to upper bound of color bar, which we set to transparent
+    # this information is needed for GIBS colormaps, so insert
+    # [R_upper, G_upper, B_upper, 0.0, nan, nan] at beginning
+    cmap_list.insert(0, cmap_list[-1][:3]+[0.,np.nan,np.nan])
+
     # convert cmap list of cmap bin lists into dataframe with columns:
     # red, green, blue, alpha, data_lim_low, data_lim_high
     cmap_df = pd.DataFrame(cmap_list, columns = ["red", "green", "blue", "alpha", "data_lim_low", "data_lim_high"])
@@ -84,8 +85,10 @@ for var in DATA_DICT.keys():
         print(cmap_df[cmap_df.duplicated(subset=["red", "green", "blue", "alpha"])])
         sys.exit()
     
-    #unpadded colormap CSVs go to GIBS
+    # recast RGBA floats to ints
     cmap_df = cmap_df.astype({"red": int, "green": int, "blue": int, "alpha": int})
+    
+    # unpadded colormap CSVs go to GIBS
     cmap_df.to_csv(unpadded_cmap_name, index=False)
     
     #pad to 256 colors for imagery generation colormaps
