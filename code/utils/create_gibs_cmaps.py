@@ -9,12 +9,12 @@ import math
 
 CMAP_CSV_DIR = "/home/nkedzuf/projects/oco2_worldview/code/utils/gibs_cmaps"
 
-DATA_DICT = { "xco2" : {"range": [380, 430], "cmap" : "cm.viridis", "binsize": 0.2}, 
-              "xco2_relative" : {"range": [-8, 8], "cmap" : "cm.RdBu_r", "binsize": 0.065},
-              "tcwv" : {"range": [0, 75], "cmap" : "cm.Blues", "binsize": 1/3.}, 
-              "sif757" : {"data_field_name" : "SIF_757nm", "preprocessing" : False, "range": [-1, 2], "cmap" : "cm.YlGn", "binsize": 0.015}, 
-              "sif771" : {"data_field_name" : "SIF_771nm", "preprocessing" : False, "range": [-1, 2], "cmap" : "cm.YlGn", "binsize": 0.015}, 
-              "sif_blended" : {"data_field_name" : None, "preprocessing" : True, "range": [-1, 2], "cmap" : "cm.YlGn", "binsize": 0.015}
+DATA_DICT = { "xco2" : {"range": [380, 430], "cmap" : cm.viridis, "binsize": 0.2}, 
+              "xco2_relative" : {"range": [-8, 8], "cmap" : cm.RdBu_r, "binsize": 0.065},
+              "tcwv" : {"range": [0, 75], "cmap" : cm.Blues, "binsize": 1/3.}, 
+              "sif757" : {"data_field_name" : "SIF_757nm", "preprocessing" : False, "range": [-1, 2], "cmap" : cm.YlGn, "binsize": 0.015}, 
+              "sif771" : {"data_field_name" : "SIF_771nm", "preprocessing" : False, "range": [-1, 2], "cmap" : cm.YlGn, "binsize": 0.015}, 
+              "sif_blended" : {"data_field_name" : None, "preprocessing" : True, "range": [-1, 2], "cmap" : cm.YlGn, "binsize": 0.015}
             }
 
 
@@ -27,8 +27,8 @@ def truncate(n, d):
 for var in DATA_DICT.keys():
     #print(var)
     
-    unpadded_cmap_name = os.path.join(CMAP_CSV_DIR, "unpadded", var + "_" + re.split("\.", DATA_DICT[var]["cmap"])[-1] + "_" +  str(DATA_DICT[var]["range"][0]) + "to" + str(DATA_DICT[var]["range"][1]) + ".csv")
-    padded_cmap_name = os.path.join(CMAP_CSV_DIR, "padded", var + "_" + re.split("\.", DATA_DICT[var]["cmap"])[-1] + "_" +  str(DATA_DICT[var]["range"][0]) + "to" + str(DATA_DICT[var]["range"][1]) + ".csv")
+    unpadded_cmap_name = os.path.join(CMAP_CSV_DIR, "unpadded", var + "_" + DATA_DICT[var]["cmap"].name + "_" +  str(DATA_DICT[var]["range"][0]) + "to" + str(DATA_DICT[var]["range"][1]) + ".csv")
+    padded_cmap_name = os.path.join(CMAP_CSV_DIR, "padded", var + "_" + DATA_DICT[var]["cmap"].name + "_" +  str(DATA_DICT[var]["range"][0]) + "to" + str(DATA_DICT[var]["range"][1]) + ".csv")
         
     data_crange_low = [i*DATA_DICT[var]["binsize"] for i in np.arange(DATA_DICT[var]["range"][0] / DATA_DICT[var]["binsize"], (DATA_DICT[var]["range"][1] + DATA_DICT[var]["binsize"]) / DATA_DICT[var]["binsize"], 1)][:-1]
     data_crange_high = [i*DATA_DICT[var]["binsize"] for i in np.arange(DATA_DICT[var]["range"][0] / DATA_DICT[var]["binsize"], (DATA_DICT[var]["range"][1] + DATA_DICT[var]["binsize"]) / DATA_DICT[var]["binsize"], 1)][1:]
@@ -36,19 +36,19 @@ for var in DATA_DICT.keys():
     ncolors = len(data_crange_low)
     
     cmap_df = pd.DataFrame([np.array([0, 0, 0, 0, np.nan, np.nan])], columns = ["red", "green", "blue", "alpha", "data_lim_low", "data_lim_high"])
-    array_to_append = np.append(np.round(255*mpl.colors.to_rgba_array(eval(DATA_DICT[var]["cmap"])(0))), [np.NINF, data_crange_low[0]])
+    array_to_append = np.append(np.round(255*mpl.colors.to_rgba_array(DATA_DICT[var]["cmap"](0))), [np.NINF, data_crange_low[0]])
     cmap_df = cmap_df.append(pd.DataFrame([array_to_append], columns = ["red", "green", "blue", "alpha", "data_lim_low", "data_lim_high"]))
     
     for n in range(ncolors):
         #print(n)
         if round(data_crange_high[n], 3) > DATA_DICT[var]["range"][1]:
-            array_to_append = np.append(np.round(255*mpl.colors.to_rgba_array(eval(DATA_DICT[var]["cmap"])(n+1))), [round(data_crange_low[n], 3), round(data_crange_high[n])])
+            array_to_append = np.append(np.round(255*mpl.colors.to_rgba_array(DATA_DICT[var]["cmap"](n+1))), [round(data_crange_low[n], 3), round(data_crange_high[n])])
             cmap_df = cmap_df.append(pd.DataFrame([array_to_append], columns = ["red", "green", "blue", "alpha", "data_lim_low", "data_lim_high"]))
             break
-        array_to_append = np.append(np.round(255*mpl.colors.to_rgba_array(eval(DATA_DICT[var]["cmap"])(n+1))), [round(data_crange_low[n], 3), round(data_crange_high[n], 3)])
+        array_to_append = np.append(np.round(255*mpl.colors.to_rgba_array(DATA_DICT[var]["cmap"](n+1))), [round(data_crange_low[n], 3), round(data_crange_high[n], 3)])
         cmap_df = cmap_df.append(pd.DataFrame([array_to_append], columns = ["red", "green", "blue", "alpha", "data_lim_low", "data_lim_high"]))
             
-    array_to_append = np.append(np.round(255*mpl.colors.to_rgba_array(eval(DATA_DICT[var]["cmap"])(ncolors+2))), [round(data_crange_high[n]), np.inf])
+    array_to_append = np.append(np.round(255*mpl.colors.to_rgba_array(DATA_DICT[var]["cmap"](ncolors+2))), [round(data_crange_high[n]), np.inf])
     cmap_df = cmap_df.append(pd.DataFrame([array_to_append], columns = ["red", "green", "blue", "alpha", "data_lim_low", "data_lim_high"]))
 
     if var == "tcwv":
