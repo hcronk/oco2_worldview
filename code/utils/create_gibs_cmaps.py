@@ -7,12 +7,10 @@ import pandas as pd
 import re
 import math
 
-CMAP_CSV_DIR = "/home/hcronk/oco2_worldview/code/utils/gibs_cmaps"
+CMAP_CSV_DIR = "/home/nkedzuf/projects/oco2_worldview/code/utils/gibs_cmaps"
 
 DATA_DICT = { "xco2" : {"range": [380, 430], "cmap" : "cm.viridis", "binsize": 0.2}, 
-              #"xco2_relative" : {"range": [-6, 6], "cmap" : "cm.RdBu_r", "binsize": 0.05}, 
               "xco2_relative" : {"range": [-8, 8], "cmap" : "cm.RdBu_r", "binsize": 0.065},
-              #"xco2_relative" : {"range": [-10, 10], "cmap" : "cm.RdBu_r", "binsize": 0.08},
               "tcwv" : {"range": [0, 75], "cmap" : "cm.Blues", "binsize": 1/3.}, 
               "sif757" : {"data_field_name" : "SIF_757nm", "preprocessing" : False, "range": [-1, 2], "cmap" : "cm.YlGn", "binsize": 0.015}, 
               "sif771" : {"data_field_name" : "SIF_771nm", "preprocessing" : False, "range": [-1, 2], "cmap" : "cm.YlGn", "binsize": 0.015}, 
