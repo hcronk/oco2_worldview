@@ -35,21 +35,32 @@ for var in DATA_DICT.keys():
     
     ncolors = len(data_crange_low)
     
-    cmap_df = pd.DataFrame([np.array([0, 0, 0, 0, np.nan, np.nan])], columns = ["red", "green", "blue", "alpha", "data_lim_low", "data_lim_high"])
-    array_to_append = np.append(np.round(255*mpl.colors.to_rgba_array(DATA_DICT[var]["cmap"](0))), [np.NINF, data_crange_low[0]])
-    cmap_df = cmap_df.append(pd.DataFrame([array_to_append], columns = ["red", "green", "blue", "alpha", "data_lim_low", "data_lim_high"]))
+    # initialize empty cmap list to append cmap bins to (easier to convert list of list into DataFrame)
+    cmap_list = []
+    
+    # append as first NaN -> 0,0,0 RGB
+    cmap_nans = [0, 0, 0, 0, np.nan, np.nan]
+    cmap_list.append(cmap_nans)
+    
+    # append initial cmap bin
+    cmap_start = np.round(255*mpl.colors.to_rgba_array(DATA_DICT[var]["cmap"](0))[0]).tolist() + [np.NINF, data_crange_low[0]]
+    cmap_list.append(cmap_start)
     
     for n in range(ncolors):
         #print(n)
         if round(data_crange_high[n], 3) > DATA_DICT[var]["range"][1]:
-            array_to_append = np.append(np.round(255*mpl.colors.to_rgba_array(DATA_DICT[var]["cmap"](n+1))), [round(data_crange_low[n], 3), round(data_crange_high[n])])
-            cmap_df = cmap_df.append(pd.DataFrame([array_to_append], columns = ["red", "green", "blue", "alpha", "data_lim_low", "data_lim_high"]))
+            cmap_bin = np.round(255*mpl.colors.to_rgba_array(DATA_DICT[var]["cmap"](n+1))[0]).tolist() + [round(data_crange_low[n], 3), round(data_crange_high[n])]
+            cmap_list.append(cmap_bin)
             break
-        array_to_append = np.append(np.round(255*mpl.colors.to_rgba_array(DATA_DICT[var]["cmap"](n+1))), [round(data_crange_low[n], 3), round(data_crange_high[n], 3)])
-        cmap_df = cmap_df.append(pd.DataFrame([array_to_append], columns = ["red", "green", "blue", "alpha", "data_lim_low", "data_lim_high"]))
+        cmap_bin = np.round(255*mpl.colors.to_rgba_array(DATA_DICT[var]["cmap"](n+1))[0]).tolist() + [round(data_crange_low[n], 3), round(data_crange_high[n], 3)]
+        cmap_list.append(cmap_bin)
             
-    array_to_append = np.append(np.round(255*mpl.colors.to_rgba_array(DATA_DICT[var]["cmap"](ncolors+2))), [round(data_crange_high[n]), np.inf])
-    cmap_df = cmap_df.append(pd.DataFrame([array_to_append], columns = ["red", "green", "blue", "alpha", "data_lim_low", "data_lim_high"]))
+    cmap_bin = np.round(255*mpl.colors.to_rgba_array(DATA_DICT[var]["cmap"](ncolors+2))[0]).tolist() + [round(data_crange_high[n]), np.inf]
+    cmap_list.append(cmap_bin)
+    
+    # convert cmap list of cmap bin lists into dataframe with columns:
+    # red, green, blue, alpha, data_lim_low, data_lim_high
+    cmap_df = pd.DataFrame(cmap_list, columns = ["red", "green", "blue", "alpha", "data_lim_low", "data_lim_high"])
 
     if var == "tcwv":
         cmap_df["data_lim_low"] = cmap_df["data_lim_low"].map(lambda x: truncate(x, 2))
