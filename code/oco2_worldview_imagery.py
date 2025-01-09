@@ -275,13 +275,13 @@ def blank_plot(x, y, rgb_list, out_plot_name, verbose=False):
     Create a blank PNG
     """
     
-    im = Image.new("P", (x, y))
+    im = Image.new("P", (x, y), color=256)
     im.putpalette(ImagePalette.ImagePalette(palette=rgb_list))
     
     if verbose:
         print("Saving plot to " + out_plot_name)
         
-    im.save(out_plot_name, format="PNG", transparency=0)
+    im.save(out_plot_name, format="PNG", transparency=256)
     
     return True
 
