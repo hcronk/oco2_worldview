@@ -68,12 +68,10 @@ for var in DATA_DICT.keys():
 
     #deal with known duplicates (due to converting colormap entries to bytescale integers)
     if var == "xco2":
-        # [38,130,142,255,402.4,402.6] -> [38,131,142,255,402.4,402.6]
-        cmap_df.loc[(cmap_df["data_lim_low"] == 402.4) & (cmap_df["data_lim_high"] == 402.6), ["green"]] = 131
-        # [33,145,140,255,405.4,405.6] -> [33,145,141,255,405.4,405.6]
-        cmap_df.loc[(cmap_df["data_lim_low"] == 405.4) & (cmap_df["data_lim_high"] == 405.6), ["blue"]] = 141
-        # [32,146,140,255,405.6,405.8] -> [32,146,141,255,405.6,405.8]
-        cmap_df.loc[(cmap_df["data_lim_low"] == 405.6) & (cmap_df["data_lim_high"] == 405.8), ["blue"]] = 141
+        # [38,130,142,255,424.4,424.8] -> [38,131,142,255,424.4,424.8]
+        cmap_df.loc[(cmap_df["data_lim_low"] == 424.4) & (cmap_df["data_lim_high"] == 424.8), ["green"]] = 131
+        # [32,146,140,255,431.6,432.0] -> [32,146,141,255,431.6,432.0]
+        cmap_df.loc[(cmap_df["data_lim_low"] == 431.6) & (cmap_df["data_lim_high"] == 432.0), ["blue"]] = 141
 
     if var == "tcwv":
         # [238,245,252,255,3.66,4.0] -> [237,245,252,255,3.66,4.0]
