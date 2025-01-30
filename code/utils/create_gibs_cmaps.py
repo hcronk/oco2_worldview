@@ -1,4 +1,3 @@
-import os
 import sys
 import matplotlib as mpl
 from matplotlib import cm
@@ -6,17 +5,17 @@ import numpy as np
 import pandas as pd
 import re
 import math
+from pathlib import Path
 
-CMAP_CSV_DIR = "/home/nkedzuf/projects/oco2_worldview/code/utils/gibs_cmaps"
+CMAP_CSV_DIR = Path("/home/nkedzuf/projects/oco2_worldview/code/utils/gibs_cmaps")
 
-DATA_DICT = { "xco2" : {"range": [380, 430], "cmap" : cm.viridis, "binsize": 0.2}, 
+DATA_DICT = { "xco2" : {"range": [380, 480], "cmap" : cm.viridis, "binsize": 0.4}, 
               "xco2_relative" : {"range": [-8, 8], "cmap" : cm.RdBu_r, "binsize": 0.065},
               "tcwv" : {"range": [0, 75], "cmap" : cm.Blues, "binsize": 1/3.}, 
               "sif757" : {"data_field_name" : "SIF_757nm", "preprocessing" : False, "range": [-1, 2], "cmap" : cm.YlGn, "binsize": 0.015}, 
               "sif771" : {"data_field_name" : "SIF_771nm", "preprocessing" : False, "range": [-1, 2], "cmap" : cm.YlGn, "binsize": 0.015}, 
               "sif_blended" : {"data_field_name" : None, "preprocessing" : True, "range": [-1, 2], "cmap" : cm.YlGn, "binsize": 0.015}
             }
-
 
 def truncate(n, d):
     if np.isfinite(n):
@@ -25,13 +24,14 @@ def truncate(n, d):
         return n
 
 for var in DATA_DICT.keys():
-    #print(var)
-    
-    unpadded_cmap_name = os.path.join(CMAP_CSV_DIR, "unpadded", var + "_" + DATA_DICT[var]["cmap"].name + "_" +  str(DATA_DICT[var]["range"][0]) + "to" + str(DATA_DICT[var]["range"][1]) + ".csv")
-    padded_cmap_name = os.path.join(CMAP_CSV_DIR, "padded", var + "_" + DATA_DICT[var]["cmap"].name + "_" +  str(DATA_DICT[var]["range"][0]) + "to" + str(DATA_DICT[var]["range"][1]) + ".csv")
-        
-    data_crange_low = [i*DATA_DICT[var]["binsize"] for i in np.arange(DATA_DICT[var]["range"][0] / DATA_DICT[var]["binsize"], (DATA_DICT[var]["range"][1] + DATA_DICT[var]["binsize"]) / DATA_DICT[var]["binsize"], 1)][:-1]
-    data_crange_high = [i*DATA_DICT[var]["binsize"] for i in np.arange(DATA_DICT[var]["range"][0] / DATA_DICT[var]["binsize"], (DATA_DICT[var]["range"][1] + DATA_DICT[var]["binsize"]) / DATA_DICT[var]["binsize"], 1)][1:]
+
+    var_dict = DATA_DICT[var]
+
+    unpadded_cmap_name = CMAP_CSV_DIR / "unpadded" / f"{var}_{var_dict['cmap'].name}_{var_dict['range'][0]}to{var_dict['range'][1]}.csv"
+    padded_cmap_name = CMAP_CSV_DIR / "padded" / f"{var}_{var_dict['cmap'].name}_{var_dict['range'][0]}to{var_dict['range'][1]}.csv"
+
+    data_crange_low = [i*var_dict["binsize"] for i in np.arange(var_dict["range"][0] / var_dict["binsize"], (var_dict["range"][1] + var_dict["binsize"]) / var_dict["binsize"], 1)][:-1]
+    data_crange_high = [i*var_dict["binsize"] for i in np.arange(var_dict["range"][0] / var_dict["binsize"], (var_dict["range"][1] + var_dict["binsize"]) / var_dict["binsize"], 1)][1:]
     
     ncolors = len(data_crange_low)
     
@@ -39,19 +39,19 @@ for var in DATA_DICT.keys():
     cmap_list = []
     
     # append initial cmap bin
-    cmap_start = np.round(255*mpl.colors.to_rgba_array(DATA_DICT[var]["cmap"](0))[0]).tolist() + [np.NINF, data_crange_low[0]]
+    cmap_start = np.round(255*mpl.colors.to_rgba_array(var_dict["cmap"](0))[0]).tolist() + [np.NINF, data_crange_low[0]]
     cmap_list.append(cmap_start)
     
     for n in range(ncolors):
         #print(n)
-        if round(data_crange_high[n], 3) > DATA_DICT[var]["range"][1]:
-            cmap_bin = np.round(255*mpl.colors.to_rgba_array(DATA_DICT[var]["cmap"](n+1))[0]).tolist() + [round(data_crange_low[n], 3), round(data_crange_high[n])]
+        if round(data_crange_high[n], 3) > var_dict["range"][1]:
+            cmap_bin = np.round(255*mpl.colors.to_rgba_array(var_dict["cmap"](n+1))[0]).tolist() + [round(data_crange_low[n], 3), round(data_crange_high[n])]
             cmap_list.append(cmap_bin)
             break
-        cmap_bin = np.round(255*mpl.colors.to_rgba_array(DATA_DICT[var]["cmap"](n+1))[0]).tolist() + [round(data_crange_low[n], 3), round(data_crange_high[n], 3)]
+        cmap_bin = np.round(255*mpl.colors.to_rgba_array(var_dict["cmap"](n+1))[0]).tolist() + [round(data_crange_low[n], 3), round(data_crange_high[n], 3)]
         cmap_list.append(cmap_bin)
             
-    cmap_bin = np.round(255*mpl.colors.to_rgba_array(DATA_DICT[var]["cmap"](ncolors+2))[0]).tolist() + [round(data_crange_high[n]), np.inf]
+    cmap_bin = np.round(255*mpl.colors.to_rgba_array(var_dict["cmap"](ncolors+2))[0]).tolist() + [round(data_crange_high[n]), np.inf]
     cmap_list.append(cmap_bin)
     
     # NaNs map to upper bound of color bar, which we set to transparent
