@@ -31,8 +31,8 @@ DATA_DICT = { "LtCO2" : {
                          "xco2" : {
                                    "data_field_name" : "xco2", 
                                    "preprocessing" : False, 
-                                   "range": [380, 430], 
-                                   "cmap_file" : os.path.join(CODE_DIR, "utils", "gibs_cmaps", "padded", "xco2_viridis_380to430.csv"), 
+                                   "range": [380, 480],
+                                   "cmap_file" : os.path.join(CODE_DIR, "utils", "gibs_cmaps", "padded", "xco2_viridis_380to480.csv"),
                                    "quality_info" : {"quality_field_name" : "xco2_quality_flag", "qc_val" :  0, "qc_operator" : operator.eq }
                                   }, 
                 "xco2_relative" : {
