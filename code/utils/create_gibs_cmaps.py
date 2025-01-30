@@ -30,30 +30,29 @@ for var in DATA_DICT.keys():
     unpadded_cmap_name = CMAP_CSV_DIR / "unpadded" / f"{var}_{var_dict['cmap'].name}_{var_dict['range'][0]}to{var_dict['range'][1]}.csv"
     padded_cmap_name = CMAP_CSV_DIR / "padded" / f"{var}_{var_dict['cmap'].name}_{var_dict['range'][0]}to{var_dict['range'][1]}.csv"
 
-    data_crange_low = [i*var_dict["binsize"] for i in np.arange(var_dict["range"][0] / var_dict["binsize"], (var_dict["range"][1] + var_dict["binsize"]) / var_dict["binsize"], 1)][:-1]
-    data_crange_high = [i*var_dict["binsize"] for i in np.arange(var_dict["range"][0] / var_dict["binsize"], (var_dict["range"][1] + var_dict["binsize"]) / var_dict["binsize"], 1)][1:]
-    
+    data_crange_low = np.arange(var_dict["range"][0], var_dict["range"][1], var_dict["binsize"])
+    data_crange_high = data_crange_low + var_dict["binsize"]
+
     ncolors = len(data_crange_low)
-    
+
     # initialize empty cmap list to append cmap bins to (easier to convert list of list into DataFrame)
     cmap_list = []
-    
+
     # append initial cmap bin
     cmap_start = np.round(255*mpl.colors.to_rgba_array(var_dict["cmap"](0))[0]).tolist() + [np.NINF, data_crange_low[0]]
     cmap_list.append(cmap_start)
-    
+
     for n in range(ncolors):
-        #print(n)
         if round(data_crange_high[n], 3) > var_dict["range"][1]:
             cmap_bin = np.round(255*mpl.colors.to_rgba_array(var_dict["cmap"](n+1))[0]).tolist() + [round(data_crange_low[n], 3), round(data_crange_high[n])]
             cmap_list.append(cmap_bin)
             break
         cmap_bin = np.round(255*mpl.colors.to_rgba_array(var_dict["cmap"](n+1))[0]).tolist() + [round(data_crange_low[n], 3), round(data_crange_high[n], 3)]
         cmap_list.append(cmap_bin)
-            
+
     cmap_bin = np.round(255*mpl.colors.to_rgba_array(var_dict["cmap"](ncolors+2))[0]).tolist() + [round(data_crange_high[n]), np.inf]
     cmap_list.append(cmap_bin)
-    
+
     # NaNs map to upper bound of color bar, which we set to transparent
     # this information is needed for GIBS colormaps, so insert
     # [R_upper, G_upper, B_upper, 0.0, nan, nan] at beginning
@@ -66,7 +65,7 @@ for var in DATA_DICT.keys():
     if var == "tcwv":
         cmap_df["data_lim_low"] = cmap_df["data_lim_low"].map(lambda x: truncate(x, 2))
         cmap_df["data_lim_high"] = cmap_df["data_lim_high"].map(lambda x: truncate(x, 2))
-    
+
     #deal with known duplicates (due to converting colormap entries to bytescale integers)
     if var == "xco2":
         # [38,130,142,255,402.4,402.6] -> [38,131,142,255,402.4,402.6]
@@ -75,7 +74,7 @@ for var in DATA_DICT.keys():
         cmap_df.loc[(cmap_df["data_lim_low"] == 405.4) & (cmap_df["data_lim_high"] == 405.6), ["blue"]] = 141
         # [32,146,140,255,405.6,405.8] -> [32,146,141,255,405.6,405.8]
         cmap_df.loc[(cmap_df["data_lim_low"] == 405.6) & (cmap_df["data_lim_high"] == 405.8), ["blue"]] = 141
-        
+
     if var == "tcwv":
         # [238,245,252,255,3.66,4.0] -> [237,245,252,255,3.66,4.0]
         cmap_df.loc[(cmap_df["data_lim_low"] == 3.66) & (cmap_df["data_lim_high"] == 4.0), ["red"]] = 237
@@ -84,20 +83,18 @@ for var in DATA_DICT.keys():
         print("Duplicate RGBAs still exist for " + var)
         print(cmap_df[cmap_df.duplicated(subset=["red", "green", "blue", "alpha"])])
         sys.exit()
-    
+
     # recast RGBA floats to ints
     cmap_df = cmap_df.astype({"red": int, "green": int, "blue": int, "alpha": int})
-    
+
     # unpadded colormap CSVs go to GIBS
     cmap_df.to_csv(unpadded_cmap_name, index=False)
-    
+
     # drop first entry (mapping NaNs to upper bound of colormap)
     # normalization function for mapping data to colormaps cannot handle
     # NaNs in bins anymore. It automatically maps them to 1+max (1+255=256)
     cmap_df = cmap_df.drop(0)
-    
+
     #pad to 256 colors for imagery generation colormaps
     cmap_df = pd.concat([cmap_df, cmap_df.iloc[[-1]*(256-ncolors-2)]])
     cmap_df.to_csv(padded_cmap_name, index=False)
-    
-    
